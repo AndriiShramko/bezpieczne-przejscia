@@ -22,38 +22,72 @@ import urllib.request
 
 import db
 
+# Backend: "gemini" (cloud, free tier ~1000 req/day) or "local" (Ollama VLM on
+# our own server — no cloud, no per-request cost, better privacy).
+BACKEND = os.environ.get("AI_BACKEND", "gemini").lower()
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 DAILY_CAP = int(os.environ.get("AI_DAILY_CAP", "150"))
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
+# local (Ollama) — recommended: qwen2.5vl:3b (Apache-2.0) on a 4c/8GB box,
+# fallback moondream. One call per event, ~10-20 s on CPU.
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://patrol-ollama:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5vl:3b")
+
 _breaker = {"fails": 0, "until": 0.0}
 
 
 def enabled():
-    return bool(API_KEY) and time.time() >= _breaker["until"] and db.ai_calls_today() < DAILY_CAP
+    if time.time() < _breaker["until"]:
+        return False
+    if BACKEND == "local":
+        return True
+    return bool(API_KEY) and db.ai_calls_today() < DAILY_CAP
 
 
 def _call(parts, max_tokens=2000, temperature=0.2, timeout=90):
+    try:
+        if BACKEND == "local":
+            out = _call_local(parts, max_tokens, temperature, timeout=max(timeout, 180))
+        else:
+            out = _call_gemini(parts, max_tokens, temperature, timeout)
+        _breaker["fails"] = 0
+        return out
+    except Exception as e:
+        _breaker["fails"] += 1
+        if _breaker["fails"] >= 3:
+            _breaker["until"] = time.time() + 1800  # 30 min off
+            _breaker["fails"] = 0
+        print(f"ai_analyst error ({BACKEND}): {e}", flush=True)
+        return None
+
+
+def _call_gemini(parts, max_tokens, temperature, timeout):
     body = {"contents": [{"parts": parts}],
             "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens,
                                  "responseMimeType": "application/json"}}
     req = urllib.request.Request(URL, data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json",
                                           "x-goog-api-key": API_KEY})
-    try:
-        r = json.load(urllib.request.urlopen(req, timeout=timeout))
-        db.ai_call_inc()
-        txt = r["candidates"][0]["content"]["parts"][0]["text"]
-        _breaker["fails"] = 0
-        return json.loads(txt)
-    except Exception as e:
-        _breaker["fails"] += 1
-        if _breaker["fails"] >= 3:
-            _breaker["until"] = time.time() + 1800  # 30 min off
-            _breaker["fails"] = 0
-        print(f"ai_analyst error: {e}", flush=True)
-        return None
+    r = json.load(urllib.request.urlopen(req, timeout=timeout))
+    db.ai_call_inc()
+    return json.loads(r["candidates"][0]["content"]["parts"][0]["text"])
+
+
+def _call_local(parts, max_tokens, temperature, timeout):
+    """Ollama VLM (e.g. qwen2.5vl:3b / moondream). Images + one text prompt."""
+    images = [p["inline_data"]["data"] for p in parts if "inline_data" in p]
+    prompt = "\n".join(p["text"] for p in parts if "text" in p)
+    body = {"model": OLLAMA_MODEL, "prompt": prompt, "images": images,
+            "stream": False, "format": "json",
+            "options": {"temperature": temperature, "num_predict": max_tokens}}
+    req = urllib.request.Request(OLLAMA_URL.rstrip("/") + "/api/generate",
+                                 data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    r = json.load(urllib.request.urlopen(req, timeout=timeout))
+    db.ai_call_inc()
+    return json.loads(r["response"])
 
 
 def _img_part(jpeg_bytes):
@@ -75,7 +109,12 @@ Return ONLY JSON with keys:
   measurable features (PL lane ~3.5 m, zebra stripe 0.5 m, crossing length);
 - event_rules: short rules for a REAL "driver failed to yield" at THESE crossings, including how
   signals change interpretation;
-- pitfalls: where a naive zone-overlap detector would false-alarm here (waiting cars, islands...)."""
+- pitfalls: where a naive zone-overlap detector would false-alarm here (waiting cars, islands...);
+- ignore_regions: CRITICAL — array of {label, bbox:[x1,y1,x2,y2]} for every FIXED object a COCO
+  detector (YOLO) is likely to MISCLASSIFY as a car or a person: traffic-light heads and their
+  poles, road signs on poles, bollards/posts, statues/monuments, illuminated shop signs, parked-
+  forever objects, litter bins. Give a tight bbox for each. The pipeline uses these to suppress
+  false "car"/"person" detections on static street furniture, so be thorough."""
 
 
 def scene_context(jpeg_bytes):

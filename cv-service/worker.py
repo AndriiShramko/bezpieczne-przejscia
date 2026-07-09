@@ -54,6 +54,11 @@ POST_ROLL_S = float(os.environ.get("POST_ROLL_S", "3"))
 EPISODE_END_S = float(os.environ.get("EPISODE_END_S", "4"))
 EPISODE_MAX_S = float(os.environ.get("EPISODE_MAX_S", "35"))
 MOVE_KMH_MIN = float(os.environ.get("MOVE_KMH_MIN", "4"))
+FG_MIN = float(os.environ.get("FG_MIN", "0.05"))        # foreground fraction => "moving now"
+MIN_TRACK_FRAMES = int(os.environ.get("MIN_TRACK_FRAMES", "4"))
+MIN_MOVE_PX = float(os.environ.get("MIN_MOVE_PX", "16"))  # on PROC-width frame
+MIN_EVENT_FRAMES = int(os.environ.get("MIN_EVENT_FRAMES", "3"))
+MIN_CLIP_SEC = float(os.environ.get("MIN_CLIP_SEC", "3"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 CLIPS_MAX_GB = float(os.environ.get("CLIPS_MAX_GB", "2.0"))
 DISK_MIN_FREE_GB = float(os.environ.get("DISK_MIN_FREE_GB", "2.0"))
@@ -199,6 +204,61 @@ class SpeedBook:
         return tid not in getattr(self, "stationary", set())
 
 
+class ConfirmBook:
+    """Confirms a track is a REAL object only after it has been tracked for
+    >=min_frames AND has actually MOVED >=min_move_px over its lifetime. This
+    is what kills static false positives (a pole/sign/traffic-light misread as
+    person/car never moves, so it is never confirmed and never counted) and
+    single-frame phantom flickers."""
+
+    def __init__(self, min_frames, min_move_px):
+        self.min_frames = min_frames
+        self.min_move = min_move_px
+        self.info = {}
+        self.newly = set()
+
+    def update(self, tracks, fg_hits):
+        self.newly = set()
+        for tid, (x, y) in tracks.items():
+            e = self.info.get(tid)
+            if e is None:
+                e = {"n": 0, "x0": x, "y0": y, "maxd": 0.0, "ok": False, "fg": 0}
+                self.info[tid] = e
+            e["n"] += 1
+            d = ((x - e["x0"]) ** 2 + (y - e["y0"]) ** 2) ** 0.5
+            if d > e["maxd"]:
+                e["maxd"] = d
+            if tid in fg_hits:
+                e["fg"] += 1
+            if not e["ok"] and e["n"] >= self.min_frames and e["maxd"] >= self.min_move:
+                e["ok"] = True
+                self.newly.add(tid)
+        for tid in list(self.info):
+            if tid not in tracks:
+                del self.info[tid]
+        return self.newly
+
+    def confirmed(self, tid):
+        e = self.info.get(tid)
+        return bool(e and e["ok"])
+
+    def active(self, tid):
+        """Confirmed (has moved) OR currently showing foreground — used to
+        decide what to DRAW, so we never box a static pole."""
+        e = self.info.get(tid)
+        return bool(e and (e["ok"] or e["fg"] > 0))
+
+
+def fg_ratio_at(fgmask, x, y, r=22):
+    h, w = fgmask.shape[:2]
+    x1, y1 = max(0, int(x - r)), max(0, int(y - r))
+    x2, y2 = min(w, int(x + r)), min(h, int(y + r))
+    patch = fgmask[y1:y2, x1:x2]
+    if patch.size == 0:
+        return 0.0
+    return float((patch > 0).mean())
+
+
 # ---------------- episode recorder ----------------
 class Episode:
     def __init__(self):
@@ -259,6 +319,28 @@ def detect_roi(det, frame, bbox, up_to=900):
     return out
 
 
+def _scene_ignore(scene, w, h):
+    """Pixel boxes of known STATIC scene objects (traffic lights, signs, poles,
+    statues, lit shop signs) that the detector must NOT treat as car/person."""
+    if not scene:
+        return []
+    out = []
+    for t in scene.get("traffic_lights", []):
+        b = t.get("bbox", [])
+        if len(b) == 4:
+            out.append((b[0] * w, b[1] * h, b[2] * w, b[3] * h))
+    for r in scene.get("ignore_regions", []):
+        b = r.get("bbox", r) if isinstance(r, dict) else r
+        if isinstance(b, (list, tuple)) and len(b) == 4:
+            out.append((b[0] * w, b[1] * h, b[2] * w, b[3] * h))
+    # pad tiny light boxes so a nearby misdetection still overlaps
+    padded = []
+    for x1, y1, x2, y2 in out:
+        pw, ph = (x2 - x1) * 0.6 + 8, (y2 - y1) * 0.6 + 8
+        padded.append((x1 - pw, y1 - ph, x2 + pw, y2 + ph))
+    return padded
+
+
 def scene_path(cam_id):
     return os.path.join(SCENE_DIR, f"scene_{cam_id}.json")
 
@@ -283,6 +365,12 @@ def norm_scene_coords(scene):
         b = t.get("bbox", [])
         if len(b) == 4:
             t["bbox"] = [nrm(b[0]), nrm(b[1], 1080), nrm(b[2]), nrm(b[3], 1080)]
+    for r in scene.get("ignore_regions", []):
+        b = r.get("bbox") if isinstance(r, dict) else r
+        if isinstance(b, (list, tuple)) and len(b) == 4:
+            nb = [nrm(b[0]), nrm(b[1], 1080), nrm(b[2]), nrm(b[3], 1080)]
+            if isinstance(r, dict):
+                r["bbox"] = nb
     return scene
 
 
@@ -416,7 +504,11 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
 
     ped_tr = CentroidTracker(max_dist=90, ttl=8)
     veh_tr = CentroidTracker(max_dist=130, ttl=8)
-    seen_ped, seen_veh = set(), set()
+    ped_cb = ConfirmBook(MIN_TRACK_FRAMES, MIN_MOVE_PX)
+    veh_cb = ConfirmBook(MIN_TRACK_FRAMES, MIN_MOVE_PX)
+    bgsub = cv2.createBackgroundSubtractorMOG2(history=400, varThreshold=40,
+                                               detectShadows=False)
+    cond_streak = 0
     poly = None; zone = None; bbox = None
     scene = load_scene(cam_id)
     if scene:
@@ -480,11 +572,29 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
                     with S.lock:
                         S.ticker.appendleft("AI opisał scenę перекрёстка (scene context) ✔")
 
+        # foreground (motion) mask for this fixed camera — static objects
+        # (poles, signs, traffic lights) produce ~no foreground and get gated out
+        fgmask = bgsub.apply(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), learningRate=0.01)
+
         dets = det.detect(frame)
         roi_dets = detect_roi(det, frame, bbox)
         for r in roi_dets:
             if not any(_iou(r.xyxy, d.xyxy) > 0.45 and r.cls == d.cls for d in dets):
                 dets.append(r)
+
+        # drop detections that overlap a known STATIC scene object (traffic light /
+        # sign / pole) — this is the scene-context "teaching the detector what to
+        # ignore". Also drop absurdly small boxes.
+        ignore = _scene_ignore(scene, w, h)
+        kept = []
+        for d in dets:
+            bw = d.xyxy[2] - d.xyxy[0]; bh = d.xyxy[3] - d.xyxy[1]
+            if bw * bh < 90:
+                continue
+            if any(_iou(d.xyxy, ig) > 0.30 for ig in ignore):
+                continue
+            kept.append(d)
+        dets = kept
 
         # privacy first
         pboxes = [head_region(d.xyxy) for d in dets if d.cls == PERSON]
@@ -495,9 +605,13 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
         vehs = [d for d in dets if d.cls == VEHICLE]
         ped_tracks = ped_tr.update(peds)
         veh_tracks = veh_tr.update(vehs)
-        new_ped = len(set(ped_tracks) - seen_ped)
-        new_veh = len(set(veh_tracks) - seen_veh)
-        seen_ped |= set(ped_tracks); seen_veh |= set(veh_tracks)
+
+        # which tracks show foreground motion right now
+        ped_fg = {tid for tid, p in ped_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
+        veh_fg = {tid for tid, p in veh_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
+        # confirm real objects (moved over lifetime) — count ONLY on confirmation
+        new_ped = len(ped_cb.update(ped_tracks, ped_fg))
+        new_veh = len(veh_cb.update(veh_tracks, veh_fg))
         if new_ped or new_veh:
             db.bump_counts(cam_id, new_ped, new_veh, 0)
         db.bump_counts(cam_id, 0, 0, min(dt, 3.0))
@@ -525,18 +639,28 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
 
         def in_bbox(p):
             return bbox[0] <= p[0] <= bbox[2] and bbox[1] <= p[1] <= bbox[3]
-        ped_in = [p for tid, p in ped_tracks.items() if zone.contains(p)]
-        # vehicle conflict zone = dilated bbox (zebra + short approach); a vehicle
-        # counts unless PROVABLY stationary (waiting at a red light). This keeps
-        # fast crossers/approachers and drops waiting cars; AI + humans refine.
+        # events use ONLY confirmed (real, moved) tracks — never phantom statics
+        ped_in = [p for tid, p in ped_tracks.items()
+                  if zone.contains(p) and ped_cb.confirmed(tid)]
         veh_in_moving = [tid for tid, p in veh_tracks.items()
-                         if in_bbox(p) and speeds.is_moving(tid)]
-        condition = bool(ped_in) and bool(veh_in_moving)
+                         if in_bbox(p) and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
+        instant_condition = bool(ped_in) and bool(veh_in_moving)
+        cond_streak = cond_streak + 1 if instant_condition else 0
+        # require the conflict to persist a few frames — kills 1-frame phantoms
+        condition = cond_streak >= MIN_EVENT_FRAMES
+
+        # what to DRAW / count in-frame: only ACTIVE detections (confirmed track
+        # OR foreground now) — a static pole/light is never boxed
+        def det_active(d):
+            ax, ay = d.anchor
+            return fg_ratio_at(fgmask, ax, ay) >= FG_MIN
+        active_peds = [d for d in peds if det_active(d)]
+        active_vehs = [d for d in vehs if det_active(d)]
 
         # annotate
         ann = frame.copy()
         cv2.polylines(ann, [np.array(poly, np.int32)], True, (60, 200, 255), 2)
-        for d in dets:
+        for d in active_peds + active_vehs:
             x1, y1, x2, y2 = [int(v) for v in d.xyxy]
             c = (90, 230, 120) if d.cls == PERSON else (80, 150, 255)
             cv2.rectangle(ann, (x1, y1), (x2, y2), c, 2)
@@ -544,7 +668,7 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         cv2.circle(ann, (20, 22), 7, (60, 60, 235), -1)
         vmax = max(veh_kmh.values()) if veh_kmh else 0
-        cv2.putText(ann, f"LIVE | piesi: {len(peds)}  pojazdy: {len(vehs)}"
+        cv2.putText(ann, f"LIVE | piesi: {len(active_peds)}  pojazdy: {len(active_vehs)}"
                          f" | max ~{vmax:.0f} km/h | sygnalizacja: {tl_summary[:28]} | {ts}",
                     (36, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (240, 240, 240), 1, cv2.LINE_AA)
         if condition or (ep is not None):
@@ -582,11 +706,12 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
             ended = (now - ep.last_cond > EPISODE_END_S) or (now - ep.start > EPISODE_MAX_S)
             if ended:
                 if now - ep.last_cond > EPISODE_END_S:  # keep short post-roll
-                    dur = ep.last_cond - ep.start
+                    keep = [f for f in ep.frames if f[0] <= ep.last_cond + POST_ROLL_S]
+                    # honest duration = span of the recorded clip (never 0)
+                    dur = max(MIN_CLIP_SEC, (keep[-1][0] - keep[0][0]) if len(keep) > 1 else 0.0)
                     stamp = int(ep.start)
                     clip_name = f"ep_{cam_id}_{stamp}.mp4"
                     snap_name = f"ep_{cam_id}_{stamp}.jpg"
-                    keep = [f for f in ep.frames if f[0] <= ep.last_cond + POST_ROLL_S]
                     ok_clip = write_clip(os.path.join(CLIP_DIR, clip_name), keep, CLIP_FPS)
                     if ep.best_snap is not None:
                         cv2.imwrite(os.path.join(SNAP_DIR, snap_name), ep.best_snap,
@@ -608,7 +733,7 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
         with S.lock:
             S.ped_total += new_ped
             S.veh_total += new_veh
-            S.in_ped, S.in_veh = len(peds), len(vehs)
+            S.in_ped, S.in_veh = len(active_peds), len(active_vehs)
             S.fps = 0.8 * S.fps + 0.2 * (1.0 / dt if dt > 0 else 0)
             S.tl = tl_states
             S.speeds_now = {
