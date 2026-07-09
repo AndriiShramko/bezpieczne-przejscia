@@ -23,18 +23,36 @@ kamery przejścia — bez identyfikacji, bez rejestru, bez kar.*
 
 Live demo (real camera): https://patrol.flyreelstudio.eu
 
-## Architecture
+## Architecture — three cheap models that cooperate
+
+The design goal: approach the quality of an expensive "unlimited" AI agent
+for **pennies**, by letting each model do only what it is best at.
 
 ```mermaid
 flowchart LR
-  A[Live public crossing camera\nHLS / MJPEG] --> B[In-RAM analysis\nYOLOX Apache-2.0, CPU]
+  A[Live public crossing camera\nHLS / MJPEG] --> B[YOLOX Apache-2.0, CPU\nperception: who/where, every frame]
   B --> C[Pixelate faces & plates\nimmediately]
-  C --> D[Ephemeral tracking\nRAM-only IDs]
-  D --> E[Zone topology\ncounts + conflict flags]
-  E --> F[(Disk: counters +\nBLURRED event snapshots)]
-  E --> G[Annotated MJPEG\n+ live counters]
-  F --> H[Public verifies each event\n-> true accuracy]
+  C --> D[Ephemeral tracking + motion\nRAM-only IDs, speed est.]
+  D --> E[Episode detector\nmoving vehicle meets pedestrian in zone\nNOT a car waiting at red]
+  E --> F[Low-res episode CLIP\n+ traffic-light state HSV]
+  F --> G[Gemini Flash-Lite\nscene context once/camera +\nper-event VERDICT + explanation]
+  G --> H[Humans confirm/refute\n-> true AI↔human agreement]
+  E --> I[(Disk: counters +\nBLURRED clips/snapshots + votes)]
+  D --> J[Annotated MJPEG\n+ live counters + speeds + signals]
 ```
+
+- **YOLOX (local, free)** — fast perception, but no scene understanding.
+- **Gemini Flash-Lite (pennies)** — (a) describes each crossing ONCE (lanes,
+  signals, flows, and the *pitfalls* where a naive detector false-alarms, e.g.
+  "cars waiting at a red light near the zebra"); (b) watches each flagged
+  episode clip and returns a **verdict + plain-language explanation** (real
+  violation, or why it is a false alarm). A hard daily call cap + circuit
+  breaker keep cost near zero and the site up even if the LLM is unavailable.
+- **Humans (free)** — verify every AI verdict; we publish the AI↔human
+  agreement and collect the explanations as a dataset for improving detection.
+
+Camera management + automatic failover: see [cv-service/CAMERAS.md](cv-service/CAMERAS.md).
+Admin panel: `/admin.html`. Downloadable per-crossing reports: `/cv/report.html`, `/cv/report.csv`.
 
 Key honesty mechanisms:
 - **coverage_bucket** stores actually-observed seconds per interval; all
