@@ -356,14 +356,23 @@ def load_scene(cam_id):
 
 
 def norm_scene_coords(scene):
-    """Defensive: model sometimes mixes pixels and fractions."""
+    """Defensive: model sometimes mixes pixels and fractions, or returns
+    malformed points. Skip anything that isn't a clean [x,y] / [x1,y1,x2,y2]."""
     def nrm(v, size=1920):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return 0.0
         return v / size if v > 1.5 else v
     for c in scene.get("crossings", []):
-        c["polygon"] = [[nrm(x), nrm(y, 1080)] for x, y in c.get("polygon", [])]
+        pts = []
+        for p in c.get("polygon", []):
+            if isinstance(p, (list, tuple)) and len(p) >= 2:
+                pts.append([nrm(p[0]), nrm(p[1], 1080)])
+        c["polygon"] = pts
     for t in scene.get("traffic_lights", []):
         b = t.get("bbox", [])
-        if len(b) == 4:
+        if isinstance(b, (list, tuple)) and len(b) == 4:
             t["bbox"] = [nrm(b[0]), nrm(b[1], 1080), nrm(b[2]), nrm(b[3], 1080)]
     for r in scene.get("ignore_regions", []):
         b = r.get("bbox") if isinstance(r, dict) else r
