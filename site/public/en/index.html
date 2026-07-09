@@ -48,8 +48,8 @@
   <div class="kicker">Live video analysis · real camera · human verification</div>
   <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
   <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
-  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live —
-  and let you judge each situation yourself.</p>
+  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live, AI judges each
+  situation, and you verify it.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>
@@ -63,7 +63,8 @@
 </section>
 <section id="live" class="live-wrap">
  <div class="live-head">
-  <h2>Live camera — AI counts in real time</h2>
+  <h2>Live camera — AI analyses in real time</h2>
+  <span class="epi-badge" id="epi-badge" style="display:none">● recording episode…</span>
   <span class="live-badge off" id="live-badge">○ OFFLINE</span>
  </div>
  <p class="muted" id="live-source">Public crossing camera (PL) · 24/7</p>
@@ -75,17 +76,39 @@
  <div class="stats">
   <div class="stat" id="st-ped"><div class="big">—</div><div class="lbl">pedestrians (session)</div><div class="sub"></div></div>
   <div class="stat" id="st-veh"><div class="big">—</div><div class="lbl">vehicles (session)</div><div class="sub"></div></div>
-  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">flagged events</div><div class="sub"></div></div>
-  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">human-rated accuracy</div><div class="sub">from user votes</div></div>
+  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">events</div><div class="sub"></div></div>
+  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">AI↔human agreement</div><div class="sub"></div></div>
  </div>
  <p class="muted small" id="st-inframe"></p>
 </section>
 <section class="verify">
- <h2>Help us check the AI — confirm or refute an event</h2>
- <p class="lead">The AI only <strong>flags</strong> suspicious situations (a vehicle on the crossing with a
- pedestrian present). Real violation or false alarm? You decide. From your votes we compute the
- model's <strong>true accuracy</strong> — more honest than a vendor's claim.</p>
- <div id="events" class="events"><p class="muted pad">Waiting for the first detected event…</p></div>
+ <h2>How it works: 3 models that cooperate</h2>
+ <div class="pipe3">
+  <div><b>1 · YOLOX — local, free</b><span>Perception: finds pedestrians and vehicles in every frame. Fast, but it doesn't "understand" the scene.</span></div>
+  <div><b>2 · AI analyst — Gemini Flash-Lite, pennies</b><span>Understanding: describes the crossing once (lanes, signals, directions), then judges EVERY episode — verdict + explanation.</span></div>
+  <div><b>3 · Humans — free</b><span>Verification: you confirm or refute the AI verdict. We compute real AI↔human agreement.</span></div>
+ </div>
+ <p class="note">Together they approach an expensive "unlimited" AI agent — for pennies. An event is created ONLY when a
+ <strong>moving</strong> vehicle meets a pedestrian in the crossing zone (a car stopped at a red light is not an event).</p>
+ <h2 class="mt">Check the AI — click an event, watch the clip fullscreen, step through the rest</h2>
+ <div class="tabs-row">
+  <button class="tab cur" data-tab="all">All</button>
+  <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
+  <button class="tab" data-tab="pending">Awaiting AI</button>
+ </div>
+ <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
+</section>
+<section class="charts">
+ <h2>Crossing statistics — live from the database</h2>
+ <div class="chart-grid">
+  <div class="chart-card"><h3>Traffic per hour (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Vehicle speed distribution (indicative)</h3><div class="chart" id="chart-speed"></div></div>
+  <div class="chart-card"><h3>Episodes & AI violations per hour</h3><div class="chart" id="chart-events"></div></div>
+ </div>
+ <p class="dl">Download the full crossing analytics:
+  <a class="btn ghost" href="/cv/report.html" target="_blank">HTML report</a>
+  <a class="btn ghost" href="/cv/report.csv">CSV data</a></p>
 </section>
 <section class="hooks">
  <h2>Why this matters to government</h2>
@@ -93,23 +116,30 @@
   <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
   One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
   <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
-  crossings −59% before/after). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  crossings −59%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
   <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
   <span class="src">Polish Road Safety Observatory</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
   We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
  </div>
- <h2 class="mt">What we do · what we'll add · how we change things</h2>
+</section>
+<section class="research">
+ <h2>Open source · for researchers and integrators</h2>
+ <p class="lead">The whole project is open (Apache-2.0) — <strong>anyone can reproduce, verify or extend it</strong>.
+ It is a deliberately cheap, multi-model system (local detector + cheap LLM + human verification) that approaches
+ the quality of an expensive "unlimited" AI agent for pennies.</p>
  <div class="cols3">
-  <div><h3>Today</h3><ul><li>Count pedestrians and vehicles from a real camera.</li>
-   <li>Flag crossing conflicts and save a snapshot for verification.</li>
-   <li>Measure true accuracy from human ratings.</li><li>Blur faces and plates at ingest.</li></ul></div>
-  <div><h3>We'll add</h3><ul><li>Conflict times in seconds (PET/TTC) on a calibrated camera.</li>
-   <li>City ranking of the most dangerous crossings + before/after reports.</li>
-   <li>Night and weather analysis, threshold alerts.</li><li>Active learning from human votes.</li></ul></div>
-  <div><h3>How we change things</h3><p>Measure → pinpoint the worst crossings → recommend an
-   intervention (refuge, raised table, lighting) → measure the effect in numbers. Pedestrian
-   safety turns from guesswork into a measurable, repeatable process.</p></div>
+  <div><h3>What's in the repo</h3><ul><li>CV service (YOLOX ONNX, tracking, zones, episodes, clips).</li>
+   <li>AI layer: scene-context + per-event analysis (cheap LLM).</li><li>Database, API, camera admin panel.</li>
+   <li>Frontend, reports, docker-compose with resource caps.</li></ul></div>
+  <div><h3>For researchers</h3><ul><li>We collect anonymous AI explanations + human ratings → a dataset for
+   surrogate-safety and "did-not-yield" research.</li><li>The method ports to any crossing (describe the scene → analyse).</li>
+   <li>Honest error profile and limits (see "Accuracy").</li></ul></div>
+  <div><h3>Collaborate</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Poland).
+   Deployments, consulting, joint research and grants.
+   <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
 </section>
 <section id="kontakt" class="contact">
@@ -136,7 +166,13 @@ var d=Object.fromEntries(new FormData(f).entries());
 fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
 .then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
 .catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
-</section></main>
+</section>
+<div id="lightbox" class="lightbox" style="display:none">
+ <button class="lb-close" aria-label="close">✕</button>
+ <button class="lb-prev" aria-label="prev">‹</button>
+ <div class="lb-body"><div class="lb-stage"></div><div class="lb-info"></div></div>
+ <button class="lb-next" aria-label="next">›</button>
+</div></main>
 <footer>
  <div class="foot-grid">
   <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>

@@ -20,7 +20,7 @@ WORKDIR /app
 RUN mkdir -p /app/models && curl -fsSL -o /app/models/yolox_s.onnx \
       https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.onnx
 COPY safecross /app/safecross
-COPY worker.py /app/worker.py
+COPY worker.py db.py ai_analyst.py /app/
 
 ENV DENO_PATH=/usr/local/bin/deno \
     YTDLP_BIN=yt-dlp \

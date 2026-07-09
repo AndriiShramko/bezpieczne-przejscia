@@ -92,6 +92,118 @@ fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},bod
 .then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
 .catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>"""
 
+LIGHTBOX = """
+<div id="lightbox" class="lightbox" style="display:none">
+ <button class="lb-close" aria-label="close">✕</button>
+ <button class="lb-prev" aria-label="prev">‹</button>
+ <div class="lb-body"><div class="lb-stage"></div><div class="lb-info"></div></div>
+ <button class="lb-next" aria-label="next">›</button>
+</div>"""
+
+VERIFY_PL = """
+<section class="verify">
+ <h2>Jak to działa: 3 modele, które współpracują</h2>
+ <div class="pipe3">
+  <div><b>1 · YOLOX — lokalnie, za darmo</b><span>Percepcja: wykrywa pieszych i pojazdy w każdej klatce. Szybki, ale „nie rozumie” sceny.</span></div>
+  <div><b>2 · AI-analityk — Gemini Flash-Lite, grosze</b><span>Zrozumienie: raz opisuje przejście (pasy, sygnalizacja, kierunki), a potem ocenia KAŻDY epizod — werdykt + wyjaśnienie po polsku.</span></div>
+  <div><b>3 · Ludzie — za darmo</b><span>Weryfikacja: potwierdzasz lub odrzucasz werdykt AI. Liczymy realną zgodność AI↔ludzie.</span></div>
+ </div>
+ <p class="note">Razem dają wynik zbliżony do drogiego, „nieograniczonego” agenta AI — ale za grosze. Zdarzenie
+ powstaje TYLKO gdy pojazd <strong>w ruchu</strong> spotyka pieszego w strefie przejścia (auto stojące na czerwonym to nie zdarzenie).</p>
+ <h2 class="mt">Sprawdź AI — kliknij zdarzenie, obejrzyj klip na pełnym ekranie, przejdź do kolejnych</h2>
+ <div class="tabs-row">
+  <button class="tab cur" data-tab="all">Wszystkie</button>
+  <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="rejected">Odrzucone przez AI — sprawdź!</button>
+  <button class="tab" data-tab="pending">Czekają na AI</button>
+ </div>
+ <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
+</section>
+<section class="charts">
+ <h2>Statystyka przejścia — na żywo z bazy danych</h2>
+ <div class="chart-grid">
+  <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Rozkład prędkości pojazdów (orientacyjnie)</h3><div class="chart" id="chart-speed"></div></div>
+  <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
+ </div>
+ <p class="dl">Pobierz pełną analitykę przejścia:
+  <a class="btn ghost" href="/cv/report.html" target="_blank">Raport HTML</a>
+  <a class="btn ghost" href="/cv/report.csv">Dane CSV</a></p>
+</section>"""
+
+VERIFY_EN = """
+<section class="verify">
+ <h2>How it works: 3 models that cooperate</h2>
+ <div class="pipe3">
+  <div><b>1 · YOLOX — local, free</b><span>Perception: finds pedestrians and vehicles in every frame. Fast, but it doesn't "understand" the scene.</span></div>
+  <div><b>2 · AI analyst — Gemini Flash-Lite, pennies</b><span>Understanding: describes the crossing once (lanes, signals, directions), then judges EVERY episode — verdict + explanation.</span></div>
+  <div><b>3 · Humans — free</b><span>Verification: you confirm or refute the AI verdict. We compute real AI↔human agreement.</span></div>
+ </div>
+ <p class="note">Together they approach an expensive "unlimited" AI agent — for pennies. An event is created ONLY when a
+ <strong>moving</strong> vehicle meets a pedestrian in the crossing zone (a car stopped at a red light is not an event).</p>
+ <h2 class="mt">Check the AI — click an event, watch the clip fullscreen, step through the rest</h2>
+ <div class="tabs-row">
+  <button class="tab cur" data-tab="all">All</button>
+  <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
+  <button class="tab" data-tab="pending">Awaiting AI</button>
+ </div>
+ <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
+</section>
+<section class="charts">
+ <h2>Crossing statistics — live from the database</h2>
+ <div class="chart-grid">
+  <div class="chart-card"><h3>Traffic per hour (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Vehicle speed distribution (indicative)</h3><div class="chart" id="chart-speed"></div></div>
+  <div class="chart-card"><h3>Episodes & AI violations per hour</h3><div class="chart" id="chart-events"></div></div>
+ </div>
+ <p class="dl">Download the full crossing analytics:
+  <a class="btn ghost" href="/cv/report.html" target="_blank">HTML report</a>
+  <a class="btn ghost" href="/cv/report.csv">CSV data</a></p>
+</section>"""
+
+RESEARCH_PL = """
+<section class="research">
+ <h2>Open source · dla badaczy i integratorów</h2>
+ <p class="lead">Cały projekt jest otwarty (Apache-2.0) — <strong>każdy może go powtórzyć, zweryfikować lub rozwinąć</strong>.
+ To celowo tani, wielomodelowy system (lokalny detektor + tania LLM + weryfikacja ludzi), który zbliża się jakością
+ do drogiego, „nieograniczonego” agenta AI, ale kosztuje grosze.</p>
+ <div class="cols3">
+  <div><h3>Co jest w repo</h3><ul><li>Serwis CV (YOLOX ONNX, trekking, strefy, epizody, klipy).</li>
+   <li>Warstwa AI: scene-context + analiza zdarzeń (tania LLM).</li><li>Baza danych, API, panel admina kamer.</li>
+   <li>Frontend, raporty, docker-compose z limitami zasobów.</li></ul></div>
+  <div><h3>Dla badaczy</h3><ul><li>Zbieramy anonimowe wyjaśnienia AI + oceny ludzi → zbiór do badań nad
+   surrogate-safety i „did-not-yield”.</li><li>Metoda przenośna na dowolne przejście (opisz scenę → analizuj).</li>
+   <li>Uczciwy profil błędów i granic (patrz „Skuteczność”).</li></ul></div>
+  <div><h3>Współpraca</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Polska).
+   Wdrożenia, konsultacje, wspólne badania i granty (KRBRD, NCBR, Horizon).
+   <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
+ </div>
+</section>"""
+
+RESEARCH_EN = """
+<section class="research">
+ <h2>Open source · for researchers and integrators</h2>
+ <p class="lead">The whole project is open (Apache-2.0) — <strong>anyone can reproduce, verify or extend it</strong>.
+ It is a deliberately cheap, multi-model system (local detector + cheap LLM + human verification) that approaches
+ the quality of an expensive "unlimited" AI agent for pennies.</p>
+ <div class="cols3">
+  <div><h3>What's in the repo</h3><ul><li>CV service (YOLOX ONNX, tracking, zones, episodes, clips).</li>
+   <li>AI layer: scene-context + per-event analysis (cheap LLM).</li><li>Database, API, camera admin panel.</li>
+   <li>Frontend, reports, docker-compose with resource caps.</li></ul></div>
+  <div><h3>For researchers</h3><ul><li>We collect anonymous AI explanations + human ratings → a dataset for
+   surrogate-safety and "did-not-yield" research.</li><li>The method ports to any crossing (describe the scene → analyse).</li>
+   <li>Honest error profile and limits (see "Accuracy").</li></ul></div>
+  <div><h3>Collaborate</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Poland).
+   Deployments, consulting, joint research and grants.
+   <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
+ </div>
+</section>"""
+
 
 def head(lang, page, extra=""):
     t = T[lang]
@@ -156,15 +268,47 @@ def stat_card(idv, label, sub=""):
 
 
 def page_index(lang):
+    def livesec(lang):
+        if lang == "pl":
+            head_ = ("Kamera na żywo — AI liczy w czasie rzeczywistym", "Publiczna kamera przejścia (PL) · 24/7",
+                     "Podgląd na żywo z analizą AI (twarze i tablice rozmyte)", "Kamera chwilowo niedostępna — ponawiam…",
+                     "pieszych (sesja)", "pojazdów (sesja)", "zdarzeń", "zgodność AI↔ludzie", "● nagrywam epizod…")
+        else:
+            head_ = ("Live camera — AI analyses in real time", "Public crossing camera (PL) · 24/7",
+                     "Live preview with AI analysis (faces and plates blurred)", "Camera temporarily unavailable — reconnecting…",
+                     "pedestrians (session)", "vehicles (session)", "events", "AI↔human agreement", "● recording episode…")
+        h2, src, alt, off, k1, k2, k3, k4, epi = head_
+        return f"""
+<section id="live" class="live-wrap">
+ <div class="live-head">
+  <h2>{h2}</h2>
+  <span class="epi-badge" id="epi-badge" style="display:none">{epi}</span>
+  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
+ </div>
+ <p class="muted" id="live-source">{src}</p>
+ <div class="live-stage">
+  <img id="live-img" alt="{alt}">
+  <div class="live-offline" id="live-offline"><span>{off}</span></div>
+ </div>
+ <div id="ticker" class="ticker"></div>
+ <div class="stats">
+  {stat_card("st-ped", k1)}
+  {stat_card("st-veh", k2)}
+  {stat_card("st-ev", k3)}
+  {stat_card("st-acc", k4)}
+ </div>
+ <p class="muted small" id="st-inframe"></p>
+</section>"""
+
     if lang == "pl":
-        hero = f"""
+        hero = """
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
   <h1>Tylko <span class="hot">2%</span> kierowców zatrzymuje się przed pieszym na przejściu.</h1>
   <p class="lead">Od 1 czerwca 2021 prawo nakazuje ustąpić pieszemu <em>wchodzącemu</em> na przejście.
   W praktyce zatrzymuje się ok. 2%, a pierwszeństwo czekającemu daje 1 na 5 kierowców.
-  Pokazujemy to na żywo — i pozwalamy Ci samemu ocenić każdą sytuację.</p>
+  Pokazujemy to na żywo, AI ocenia każdą sytuację, a Ty ją weryfikujesz.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
    <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
@@ -176,57 +320,18 @@ def page_index(lang):
   <div class="fact"><b>2,57 mln zł</b><span>jednostkowy koszt jednej ofiary śmiertelnej (KRBRD)</span></div>
  </aside>
 </section>"""
-        live = f"""
-<section id="live" class="live-wrap">
- <div class="live-head">
-  <h2>Kamera na żywo — AI liczy w czasie rzeczywistym</h2>
-  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
- </div>
- <p class="muted" id="live-source">Publiczna kamera przejścia (PL) · 24/7</p>
- <div class="live-stage">
-  <img id="live-img" alt="Podgląd na żywo z analizą AI (twarze i tablice rozmyte)">
-  <div class="live-offline" id="live-offline"><span>Kamera chwilowo niedostępna — ponawiam…</span></div>
- </div>
- <div id="ticker" class="ticker"></div>
- <div class="stats">
-  {stat_card("st-ped", "pieszych (sesja)", "")}
-  {stat_card("st-veh", "pojazdów (sesja)", "")}
-  {stat_card("st-ev", "wykrytych zdarzeń", "")}
-  {stat_card("st-acc", "trafność wg ludzi", "z głosów użytkowników")}
- </div>
- <p class="muted small" id="st-inframe"></p>
-</section>
-<section class="verify">
- <h2>Pomóż nam sprawdzać AI — potwierdź lub odrzuć zdarzenie</h2>
- <p class="lead">AI tylko <strong>flaguje</strong> podejrzane sytuacje (pojazd na przejściu, gdy jest pieszy).
- Czy to realne naruszenie, czy fałszywy alarm? Oceniasz Ty. Z Twoich głosów liczymy
- <strong>prawdziwą skuteczność</strong> modelu — to uczciwiej niż deklaracje producenta.</p>
- <div id="events" class="events"><p class="muted pad">Czekam na pierwsze wykryte zdarzenie…</p></div>
-</section>"""
         why = """
 <section class="hooks">
  <h2>Dlaczego to ważne dla samorządu i KRBRD</h2>
  <div class="hook-grid">
   <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
-  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, metoda PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23,6%</b><p>o tyle spadła liczba wypadków na przejściach po nowelizacji z 2021 r.
-  (piesi zabici na pasach −59% w analizie przed/po). Działa — trzeba dokończyć.<span class="src">KRBRD, analiza 2019–2023</span></p></div>
-  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych w Polsce na milion mieszkańców — jedna z najwyższych w UE-27.
+  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23,6%</b><p>spadek wypadków na przejściach po nowelizacji z 2021 r.
+  (piesi zabici na pasach −59%). Działa — trzeba dokończyć.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych na milion mieszkańców — jedna z najwyższych w UE-27.
   <span class="src">Polskie Obserwatorium BRD</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>UE: −50% ofiar do 2030, zero do 2050 (Safe System).
-  Dostarczamy obiektywne dane, których dziś brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework 2021–2030</span></p></div>
- </div>
- <h2 class="mt">Co już umiemy · co dodamy · jak zmieniamy sytuację</h2>
- <div class="cols3">
-  <div><h3>Umiemy dziś</h3><ul><li>Liczyć pieszych i pojazdy z prawdziwej kamery.</li>
-   <li>Flagować sytuacje konfliktowe na przejściu i zapisywać zrzut do weryfikacji.</li>
-   <li>Mierzyć realną trafność z ocen ludzi.</li><li>Rozmywać twarze i tablice na wejściu.</li></ul></div>
-  <div><h3>Dodamy</h3><ul><li>Czasy konfliktu w sekundach (PET/TTC) na kamerze skalibrowanej.</li>
-   <li>Ranking najniebezpieczniejszych przejść w mieście + raport przed/po.</li>
-   <li>Analiza pory nocnej i pogody, alerty progowe.</li><li>Aktywne uczenie modelu z głosów ludzi.</li></ul></div>
-  <div><h3>Jak zmieniamy sytuację</h3><p>Mierzymy → wskazujemy najgroźniejsze przejścia →
-   rekomendujemy interwencję (azyl, wyniesienie, doświetlenie) → mierzymy efekt w liczbach.
-   Bezpieczeństwo pieszych z domysłu staje się mierzalnym, powtarzalnym procesem.</p></div>
+  Dostarczamy obiektywne dane, których brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework</span></p></div>
  </div>
 </section>"""
         contact = f"""
@@ -235,15 +340,16 @@ def page_index(lang):
  <p class="lead">Dla samorządu, zarządu dróg, firmy lub projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
  {lead_form_html("pl")}
 </section>"""
+        verify, research = VERIFY_PL, RESEARCH_PL
     else:
-        hero = f"""
+        hero = """
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
   <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
   <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
-  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live —
-  and let you judge each situation yourself.</p>
+  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live, AI judges each
+  situation, and you verify it.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>
@@ -255,33 +361,6 @@ def page_index(lang):
   <div class="fact"><b>PLN 2.57M</b><span>unit cost of a single road fatality (KRBRD)</span></div>
  </aside>
 </section>"""
-        live = f"""
-<section id="live" class="live-wrap">
- <div class="live-head">
-  <h2>Live camera — AI counts in real time</h2>
-  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
- </div>
- <p class="muted" id="live-source">Public crossing camera (PL) · 24/7</p>
- <div class="live-stage">
-  <img id="live-img" alt="Live preview with AI analysis (faces and plates blurred)">
-  <div class="live-offline" id="live-offline"><span>Camera temporarily unavailable — reconnecting…</span></div>
- </div>
- <div id="ticker" class="ticker"></div>
- <div class="stats">
-  {stat_card("st-ped", "pedestrians (session)", "")}
-  {stat_card("st-veh", "vehicles (session)", "")}
-  {stat_card("st-ev", "flagged events", "")}
-  {stat_card("st-acc", "human-rated accuracy", "from user votes")}
- </div>
- <p class="muted small" id="st-inframe"></p>
-</section>
-<section class="verify">
- <h2>Help us check the AI — confirm or refute an event</h2>
- <p class="lead">The AI only <strong>flags</strong> suspicious situations (a vehicle on the crossing with a
- pedestrian present). Real violation or false alarm? You decide. From your votes we compute the
- model's <strong>true accuracy</strong> — more honest than a vendor's claim.</p>
- <div id="events" class="events"><p class="muted pad">Waiting for the first detected event…</p></div>
-</section>"""
         why = """
 <section class="hooks">
  <h2>Why this matters to government</h2>
@@ -289,23 +368,11 @@ def page_index(lang):
   <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
   One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
   <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
-  crossings −59% before/after). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  crossings −59%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
   <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
   <span class="src">Polish Road Safety Observatory</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
   We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
- </div>
- <h2 class="mt">What we do · what we'll add · how we change things</h2>
- <div class="cols3">
-  <div><h3>Today</h3><ul><li>Count pedestrians and vehicles from a real camera.</li>
-   <li>Flag crossing conflicts and save a snapshot for verification.</li>
-   <li>Measure true accuracy from human ratings.</li><li>Blur faces and plates at ingest.</li></ul></div>
-  <div><h3>We'll add</h3><ul><li>Conflict times in seconds (PET/TTC) on a calibrated camera.</li>
-   <li>City ranking of the most dangerous crossings + before/after reports.</li>
-   <li>Night and weather analysis, threshold alerts.</li><li>Active learning from human votes.</li></ul></div>
-  <div><h3>How we change things</h3><p>Measure → pinpoint the worst crossings → recommend an
-   intervention (refuge, raised table, lighting) → measure the effect in numbers. Pedestrian
-   safety turns from guesswork into a measurable, repeatable process.</p></div>
  </div>
 </section>"""
         contact = f"""
@@ -314,9 +381,11 @@ def page_index(lang):
  <p class="lead">For a municipality, road authority, company or research project. I reply within 1–2 business days.</p>
  {lead_form_html("en")}
 </section>"""
+        verify, research = VERIFY_EN, RESEARCH_EN
     extra = (JSONLD.replace("%BASE%", BASE) + FAQ_PL +
              '\n<script defer src="/assets/live.js"></script>')
-    return head(lang, "index", extra) + hero + live + why + contact + foot(lang)
+    return (head(lang, "index", extra) + hero + livesec(lang) + verify + why
+            + research + contact + LIGHTBOX + foot(lang))
 
 
 def page_how(lang):
@@ -633,6 +702,38 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .vbtn.mine{outline:2px solid var(--acc)}
 .vbtn:disabled{opacity:.55;cursor:default}
 .ev-tally{font-size:.78rem;color:var(--mut);margin-top:.5rem}
+.epi-badge{background:#2f1216;color:#ff8a92;font-weight:800;font-size:.72rem;padding:.15rem .55rem;border-radius:20px;margin-right:.4rem;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.pipe3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem;margin:1rem 0}
+.pipe3>div{background:var(--panel);border-radius:12px;padding:.9rem}
+.pipe3 b{color:var(--acc);display:block;margin-bottom:.3rem;font-size:.92rem}
+.pipe3 span{font-size:.85rem;color:#cdd6e0}
+.tabs-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
+.tab{background:var(--panel);color:var(--mut);border:0;border-radius:20px;padding:.4rem .9rem;font-size:.85rem;cursor:pointer;font-weight:600}
+.tab.cur{background:var(--acc);color:#04120c}
+.ev-media{position:relative;cursor:pointer;background:#000;aspect-ratio:16/9}
+.ev-media video,.ev-media img{width:100%;height:100%;object-fit:cover;display:block}
+.ev-media .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:#fff;text-shadow:0 2px 8px #000;opacity:.85}
+.ev-top{font-size:.76rem;color:var(--mut);margin-bottom:.4rem}
+.ev-ai{font-size:.86rem;color:#dfe7ef;margin-bottom:.5rem;min-height:2.4em}
+.badge{font-size:.68rem;font-weight:800;padding:.08rem .4rem;border-radius:6px;white-space:nowrap}
+.badge.viol{background:#3a1418;color:#ff8a92}.badge.ok{background:#123021;color:#7fe0a0}
+.badge.unc{background:#2f2a12;color:#ffd97a}.badge.wait{background:#1c2432;color:#8b97a7}
+.charts{margin:2rem 0}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.chart-card{background:var(--panel);border-radius:14px;padding:1rem}
+.chart-card h3{font-size:.95rem;margin:.2rem 0 .6rem}
+.chart{height:150px}.chart .legend{display:flex;gap:.9rem;flex-wrap:wrap;font-size:.72rem;color:var(--mut);margin-top:.3rem}
+.chart .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.25rem;vertical-align:middle}
+.dl{margin-top:1rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;color:var(--mut);font-size:.9rem}
+.research{background:var(--bg2);border-radius:18px;padding:1.4rem;margin:2rem 0}
+.lightbox{position:fixed;inset:0;z-index:100;background:rgba(4,7,12,.96);display:flex;align-items:center;justify-content:center;padding:1rem}
+.lb-body{max-width:1200px;width:100%;display:grid;gap:.8rem}
+.lb-stage{background:#000;border-radius:12px;overflow:hidden;max-height:70vh}
+.lb-stage video,.lb-stage img{width:100%;max-height:70vh;object-fit:contain;display:block}
+.lb-info{color:#dfe7ef;font-size:.9rem}
+.lb-close,.lb-prev,.lb-next{position:absolute;background:rgba(20,28,40,.8);color:#fff;border:0;border-radius:50%;width:44px;height:44px;font-size:1.4rem;cursor:pointer}
+.lb-close{top:1rem;right:1rem}.lb-prev{left:1rem;top:50%}.lb-next{right:1rem;top:50%}
 .hooks{margin:2.4rem 0}
 .hook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
 .hook{background:linear-gradient(160deg,var(--panel),var(--bg2));border-radius:14px;padding:1.1rem}
@@ -754,6 +855,9 @@ def main():
             os.remove(fp)
     if os.path.isdir(os.path.join(PUB, "data")):
         shutil.rmtree(os.path.join(PUB, "data"))
+    admin_src = os.path.join(ROOT, "admin.html")
+    if os.path.exists(admin_src):
+        shutil.copy(admin_src, os.path.join(PUB, "admin.html"))
     print(f"built {n} pages + assets into {PUB}")
 
 

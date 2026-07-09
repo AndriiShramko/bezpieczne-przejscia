@@ -54,19 +54,24 @@ services:
       - VIDEO_URL=https://ls-proxy-local.lantech.com.pl/hls/sch/index.m3u8
       - STREAM_REFERER=https://lantech.com.pl/
       - SOURCE_LABEL=Skrzyżowanie CH Słoneczne, Szczecin — publiczna kamera (LanTech LiveSzczecin)
-      - CROSS_POLY=0.44,0.62;0.77,0.60;0.80,0.80;0.47,0.84
       - PROC_WIDTH=1280
       - CONF=0.28
       - TARGET_FPS=2
-      - EVENT_COOLDOWN=12
-      - MAX_SNAPSHOTS=300
+      - CLIP_WIDTH=640
+      - CLIP_FPS=2
+      - MOVE_KMH_MIN=4
+      - AI_DAILY_CAP=150
+      - GEMINI_MODEL=gemini-3.1-flash-lite
+      - CLIPS_MAX_GB=3.0
+      - DISK_MIN_FREE_GB=2.5
+    env_file: ./cv.env      # GEMINI_API_KEY, ADMIN_TOKEN, TG_BOT_TOKEN, TG_CHAT_ID — chmod 600, NOT in git
     volumes:
       - ./cv-data:/data
     networks: [patrol-internal]
-    mem_limit: 1000m
-    memswap_limit: 1000m
-    cpus: 1.0
-    pids_limit: 128
+    mem_limit: 1400m
+    memswap_limit: 1400m
+    cpus: 1.5
+    pids_limit: 160
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }

@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="pl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin kamer — Bezpieczne Przejścia</title>
+<style>
+body{font:14px/1.5 system-ui;background:#0a0e14;color:#e6edf3;margin:0;padding:1.4rem;max-width:1000px;margin:0 auto}
+h1{font-size:1.4rem}h2{font-size:1.05rem;margin-top:1.6rem}
+input,textarea,button{font:inherit;background:#141c28;color:#e6edf3;border:1px solid #233044;border-radius:8px;padding:.5rem}
+input,textarea{width:100%}label{display:block;margin:.4rem 0;font-size:.85rem;color:#8b97a7}
+button{background:#2ee6a6;color:#04120c;font-weight:700;border:0;cursor:pointer}
+button.sec{background:#1a2432;color:#e6edf3}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:.6rem 0}
+td,th{border-bottom:1px solid #233044;padding:.4rem;text-align:left}
+.card{background:#0f1620;border-radius:12px;padding:1rem;margin:1rem 0}
+.tag{background:#22301f;color:#7fe0a0;border-radius:6px;padding:.1rem .4rem;font-size:.75rem}
+.muted{color:#8b97a7;font-size:.85rem}code{background:#141c28;padding:.1rem .3rem;border-radius:4px}
+</style></head><body>
+<h1>🚸 Admin kamer</h1>
+<p class="muted">Token administratora (trzymany tylko w tej karcie, nie zapisujemy go):</p>
+<input id="tok" type="password" placeholder="ADMIN_TOKEN" style="max-width:420px">
+<button onclick="loadAll()">Wczytaj</button>
+<h2>Kamery</h2><div id="cams"></div>
+<h2>Dodaj / edytuj kamerę</h2>
+<div class="card">
+ <label>ID (krótki, np. <code>sch</code>)<input id="c_id"></label>
+ <label>Etykieta (widoczna publicznie)<input id="c_label"></label>
+ <label>URL strumienia (HLS <code>.m3u8</code> / MJPEG / RTSP / YouTube-watch)<input id="c_url"></label>
+ <label>Referer (jeśli wymagany, np. <code>https://lantech.com.pl/</code>)<input id="c_ref"></label>
+ <label>Wielokąt strefy przejścia — 4–6 punktów [x,y] jako ułamki 0..1 (JSON)<textarea id="c_poly" rows="2">[[0.44,0.62],[0.77,0.60],[0.80,0.80],[0.47,0.84]]</textarea></label>
+ <label>Metrów na 1 piksel przy pełnej szerokości (do prędkości, np. <code>0.075</code>)<input id="c_mpp" value="0.075"></label>
+ <button onclick="saveCam()">Zapisz kamerę</button>
+</div>
+<h2>Niezawodność kamer (up / down / failover)</h2><div id="health"></div>
+<p class="muted">Instrukcja jakie kamery i jak dodawać: <a href="https://github.com/AndriiShramko/bezpieczne-przejscia/blob/main/cv-service/CAMERAS.md" style="color:#37b6ff">CAMERAS.md</a></p>
+<script>
+function tok(){return document.getElementById('tok').value.trim();}
+function h(){return {'Content-Type':'application/json','X-Admin-Token':tok()};}
+function loadAll(){
+  fetch('/cv/admin/cameras',{headers:h()}).then(r=>r.json()).then(function(cfg){
+    if(cfg.ok===false){document.getElementById('cams').innerHTML='<p class="muted">Błędny token.</p>';return;}
+    window._cfg=cfg;
+    var rows=cfg.cameras.map(function(c){var act=cfg.active===c.id;
+      return '<tr><td>'+(act?'<span class="tag">AKTYWNA</span> ':'')+'<b>'+c.id+'</b></td><td>'+c.label+'</td>'+
+        '<td class="muted">'+c.url.slice(0,46)+'…</td>'+
+        '<td><button class="sec" onclick="setActive(\''+c.id+'\')">Pokaż publicznie</button> '+
+        '<button class="sec" onclick="edit(\''+c.id+'\')">Edytuj</button> '+
+        '<button class="sec" onclick="del(\''+c.id+'\')">Usuń</button></td></tr>';}).join('');
+    document.getElementById('cams').innerHTML='<table><tr><th>ID</th><th>Etykieta</th><th>URL</th><th></th></tr>'+rows+'</table>'+
+      '<p class="muted">Failover: aktywna → reszta. Gdy strumień padnie, system przełącza na następną żywą (każda ma własną statystykę).</p>';
+  });
+  fetch('/cv/admin/health',{headers:h()}).then(r=>r.json()).then(function(d){
+    if(d.ok===false)return;
+    var rows=Object.keys(d).map(function(cam){var e=d[cam];
+      return '<tr><td><b>'+cam+'</b></td><td>'+((e.down||{}).count||0)+'</td><td>'+((e.failover||{}).count||0)+'</td>'+
+        '<td>'+((e.up||{}).count||0)+'</td><td class="muted">'+(((e.down||{}).last)||'—')+'</td></tr>';}).join('');
+    document.getElementById('health').innerHTML='<table><tr><th>Kamera</th><th>Padnięcia</th><th>Failover</th><th>Starty</th><th>Ostatnie padnięcie</th></tr>'+rows+'</table>';
+  });
+}
+function edit(id){var c=window._cfg.cameras.find(x=>x.id===id);if(!c)return;
+  c_id.value=c.id;c_label.value=c.label;c_url.value=c.url;c_ref.value=c.referer||'';
+  c_poly.value=JSON.stringify(c.poly);c_mpp.value=c.m_per_px_fullw||0.075;window.scrollTo(0,600);}
+function saveCam(){var cam={id:c_id.value.trim(),label:c_label.value.trim(),url:c_url.value.trim(),
+    referer:c_ref.value.trim(),poly:JSON.parse(c_poly.value),m_per_px_fullw:parseFloat(c_mpp.value)};
+  fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({camera:cam})}).then(r=>r.json()).then(loadAll);}
+function setActive(id){fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({active:id})}).then(r=>r.json()).then(loadAll);}
+function del(id){if(!confirm('Usunąć '+id+'?'))return;fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({delete:id})}).then(r=>r.json()).then(loadAll);}
+</script></body></html>

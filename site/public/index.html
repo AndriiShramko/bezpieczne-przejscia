@@ -49,7 +49,7 @@
   <h1>Tylko <span class="hot">2%</span> kierowców zatrzymuje się przed pieszym na przejściu.</h1>
   <p class="lead">Od 1 czerwca 2021 prawo nakazuje ustąpić pieszemu <em>wchodzącemu</em> na przejście.
   W praktyce zatrzymuje się ok. 2%, a pierwszeństwo czekającemu daje 1 na 5 kierowców.
-  Pokazujemy to na żywo — i pozwalamy Ci samemu ocenić każdą sytuację.</p>
+  Pokazujemy to na żywo, AI ocenia każdą sytuację, a Ty ją weryfikujesz.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
    <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
@@ -64,6 +64,7 @@
 <section id="live" class="live-wrap">
  <div class="live-head">
   <h2>Kamera na żywo — AI liczy w czasie rzeczywistym</h2>
+  <span class="epi-badge" id="epi-badge" style="display:none">● nagrywam epizod…</span>
   <span class="live-badge off" id="live-badge">○ OFFLINE</span>
  </div>
  <p class="muted" id="live-source">Publiczna kamera przejścia (PL) · 24/7</p>
@@ -75,41 +76,70 @@
  <div class="stats">
   <div class="stat" id="st-ped"><div class="big">—</div><div class="lbl">pieszych (sesja)</div><div class="sub"></div></div>
   <div class="stat" id="st-veh"><div class="big">—</div><div class="lbl">pojazdów (sesja)</div><div class="sub"></div></div>
-  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">wykrytych zdarzeń</div><div class="sub"></div></div>
-  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">trafność wg ludzi</div><div class="sub">z głosów użytkowników</div></div>
+  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">zdarzeń</div><div class="sub"></div></div>
+  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">zgodność AI↔ludzie</div><div class="sub"></div></div>
  </div>
  <p class="muted small" id="st-inframe"></p>
 </section>
 <section class="verify">
- <h2>Pomóż nam sprawdzać AI — potwierdź lub odrzuć zdarzenie</h2>
- <p class="lead">AI tylko <strong>flaguje</strong> podejrzane sytuacje (pojazd na przejściu, gdy jest pieszy).
- Czy to realne naruszenie, czy fałszywy alarm? Oceniasz Ty. Z Twoich głosów liczymy
- <strong>prawdziwą skuteczność</strong> modelu — to uczciwiej niż deklaracje producenta.</p>
- <div id="events" class="events"><p class="muted pad">Czekam na pierwsze wykryte zdarzenie…</p></div>
+ <h2>Jak to działa: 3 modele, które współpracują</h2>
+ <div class="pipe3">
+  <div><b>1 · YOLOX — lokalnie, za darmo</b><span>Percepcja: wykrywa pieszych i pojazdy w każdej klatce. Szybki, ale „nie rozumie” sceny.</span></div>
+  <div><b>2 · AI-analityk — Gemini Flash-Lite, grosze</b><span>Zrozumienie: raz opisuje przejście (pasy, sygnalizacja, kierunki), a potem ocenia KAŻDY epizod — werdykt + wyjaśnienie po polsku.</span></div>
+  <div><b>3 · Ludzie — za darmo</b><span>Weryfikacja: potwierdzasz lub odrzucasz werdykt AI. Liczymy realną zgodność AI↔ludzie.</span></div>
+ </div>
+ <p class="note">Razem dają wynik zbliżony do drogiego, „nieograniczonego” agenta AI — ale za grosze. Zdarzenie
+ powstaje TYLKO gdy pojazd <strong>w ruchu</strong> spotyka pieszego w strefie przejścia (auto stojące na czerwonym to nie zdarzenie).</p>
+ <h2 class="mt">Sprawdź AI — kliknij zdarzenie, obejrzyj klip na pełnym ekranie, przejdź do kolejnych</h2>
+ <div class="tabs-row">
+  <button class="tab cur" data-tab="all">Wszystkie</button>
+  <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="rejected">Odrzucone przez AI — sprawdź!</button>
+  <button class="tab" data-tab="pending">Czekają na AI</button>
+ </div>
+ <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
+</section>
+<section class="charts">
+ <h2>Statystyka przejścia — na żywo z bazy danych</h2>
+ <div class="chart-grid">
+  <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Rozkład prędkości pojazdów (orientacyjnie)</h3><div class="chart" id="chart-speed"></div></div>
+  <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
+ </div>
+ <p class="dl">Pobierz pełną analitykę przejścia:
+  <a class="btn ghost" href="/cv/report.html" target="_blank">Raport HTML</a>
+  <a class="btn ghost" href="/cv/report.csv">Dane CSV</a></p>
 </section>
 <section class="hooks">
  <h2>Dlaczego to ważne dla samorządu i KRBRD</h2>
  <div class="hook-grid">
   <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
-  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, metoda PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23,6%</b><p>o tyle spadła liczba wypadków na przejściach po nowelizacji z 2021 r.
-  (piesi zabici na pasach −59% w analizie przed/po). Działa — trzeba dokończyć.<span class="src">KRBRD, analiza 2019–2023</span></p></div>
-  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych w Polsce na milion mieszkańców — jedna z najwyższych w UE-27.
+  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23,6%</b><p>spadek wypadków na przejściach po nowelizacji z 2021 r.
+  (piesi zabici na pasach −59%). Działa — trzeba dokończyć.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych na milion mieszkańców — jedna z najwyższych w UE-27.
   <span class="src">Polskie Obserwatorium BRD</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>UE: −50% ofiar do 2030, zero do 2050 (Safe System).
-  Dostarczamy obiektywne dane, których dziś brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework 2021–2030</span></p></div>
+  Dostarczamy obiektywne dane, których brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework</span></p></div>
  </div>
- <h2 class="mt">Co już umiemy · co dodamy · jak zmieniamy sytuację</h2>
+</section>
+<section class="research">
+ <h2>Open source · dla badaczy i integratorów</h2>
+ <p class="lead">Cały projekt jest otwarty (Apache-2.0) — <strong>każdy może go powtórzyć, zweryfikować lub rozwinąć</strong>.
+ To celowo tani, wielomodelowy system (lokalny detektor + tania LLM + weryfikacja ludzi), który zbliża się jakością
+ do drogiego, „nieograniczonego” agenta AI, ale kosztuje grosze.</p>
  <div class="cols3">
-  <div><h3>Umiemy dziś</h3><ul><li>Liczyć pieszych i pojazdy z prawdziwej kamery.</li>
-   <li>Flagować sytuacje konfliktowe na przejściu i zapisywać zrzut do weryfikacji.</li>
-   <li>Mierzyć realną trafność z ocen ludzi.</li><li>Rozmywać twarze i tablice na wejściu.</li></ul></div>
-  <div><h3>Dodamy</h3><ul><li>Czasy konfliktu w sekundach (PET/TTC) na kamerze skalibrowanej.</li>
-   <li>Ranking najniebezpieczniejszych przejść w mieście + raport przed/po.</li>
-   <li>Analiza pory nocnej i pogody, alerty progowe.</li><li>Aktywne uczenie modelu z głosów ludzi.</li></ul></div>
-  <div><h3>Jak zmieniamy sytuację</h3><p>Mierzymy → wskazujemy najgroźniejsze przejścia →
-   rekomendujemy interwencję (azyl, wyniesienie, doświetlenie) → mierzymy efekt w liczbach.
-   Bezpieczeństwo pieszych z domysłu staje się mierzalnym, powtarzalnym procesem.</p></div>
+  <div><h3>Co jest w repo</h3><ul><li>Serwis CV (YOLOX ONNX, trekking, strefy, epizody, klipy).</li>
+   <li>Warstwa AI: scene-context + analiza zdarzeń (tania LLM).</li><li>Baza danych, API, panel admina kamer.</li>
+   <li>Frontend, raporty, docker-compose z limitami zasobów.</li></ul></div>
+  <div><h3>Dla badaczy</h3><ul><li>Zbieramy anonimowe wyjaśnienia AI + oceny ludzi → zbiór do badań nad
+   surrogate-safety i „did-not-yield”.</li><li>Metoda przenośna na dowolne przejście (opisz scenę → analizuj).</li>
+   <li>Uczciwy profil błędów i granic (patrz „Skuteczność”).</li></ul></div>
+  <div><h3>Współpraca</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Polska).
+   Wdrożenia, konsultacje, wspólne badania i granty (KRBRD, NCBR, Horizon).
+   <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
 </section>
 <section id="kontakt" class="contact">
@@ -136,7 +166,13 @@ var d=Object.fromEntries(new FormData(f).entries());
 fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
 .then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
 .catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
-</section></main>
+</section>
+<div id="lightbox" class="lightbox" style="display:none">
+ <button class="lb-close" aria-label="close">✕</button>
+ <button class="lb-prev" aria-label="prev">‹</button>
+ <div class="lb-body"><div class="lb-stage"></div><div class="lb-info"></div></div>
+ <button class="lb-next" aria-label="next">›</button>
+</div></main>
 <footer>
  <div class="foot-grid">
   <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
