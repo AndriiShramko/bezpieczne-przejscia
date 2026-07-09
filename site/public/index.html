@@ -62,6 +62,75 @@
   <li><strong>Projekty badawcze i granty UE</strong> — mierzalne wskaźniki
   bezpieczeństwa pieszych.</li>
  </ul>
+</section>
+<section>
+ <h2>Co już umiemy</h2>
+ <ul>
+  <li>Zliczać pieszych i pojazdy na godzinę (bez kalibracji kamery).</li>
+  <li>Mierzyć zajętość przejścia i wykrywać <strong>nieustąpienie pierwszeństwa</strong>
+  pieszemu (zdarzenie topologiczne — pojazd przejeżdża przez zebrę bez zatrzymania,
+  gdy pieszy na niej jest).</li>
+  <li>Szacować <strong>% pieszych z głową w dół</strong> (próbkowany proxy uwagi,
+  z przedziałem ufności — nie oskarżenie konkretnej osoby).</li>
+  <li>Pokazywać trendy godzina×dzień, pokrycie obserwacją i status failover kamer.</li>
+  <li>Robić to prywatnie: pikselizacja twarzy/tablic, zero klatek na dysku, zero rejestru.</li>
+ </ul>
+ <h2>Co możemy dodać</h2>
+ <ul>
+  <li><strong>Czasy konfliktu w sekundach (PET / TTC)</strong> i near-miss — na kamerze
+  skalibrowanej metrycznie: liczbowy wskaźnik „o włos od wypadku”, zanim dojdzie do kolizji.</li>
+  <li><strong>Raport przed/po</strong> dla konkretnej interwencji (azyl, wyniesienie,
+  doświetlenie, sygnalizacja) — twardy dowód, czy zmiana zadziałała.</li>
+  <li><strong>Analiza pory nocnej i pogody</strong>, ranking najniebezpieczniejszych
+  przejść w mieście, alerty progowe.</li>
+  <li><strong>Pomiar prędkości z kamery</strong> jako warstwa przesiewowa (screening)
+  wskazująca kandydatów dla certyfikowanego urządzenia organu — nigdy jako dowód.</li>
+  <li>Integracja z istniejącymi kamerami miejskimi i panelami samorządu.</li>
+ </ul>
+ <h2>Jak zmieniamy bezpieczeństwo pieszych</h2>
+ <p>Łańcuch przyczynowy jest prosty: <strong>mierzymy → wskazujemy najbardziej
+ niebezpieczne przejścia → rekomendujemy interwencję → mierzymy jej efekt.</strong>
+ Dziś decyzje o azylu, wyniesieniu czy doświetleniu przejścia zapadają często „na
+ wyczucie” i bez sprawdzenia skutku. My dostarczamy ciągły, obiektywny, anonimowy
+ sygnał: gdzie kierowcy nie ustępują, gdzie piesi są nieuważni, o których godzinach
+ rośnie ryzyko — a po zmianie infrastruktury pokazujemy w liczbach, czy realnie
+ spadło. To zamienia bezpieczeństwo pieszych z domysłu w mierzalny, powtarzalny proces.</p>
+</section>
+<section id="kontakt" class="card">
+ <h2>Porozmawiajmy o Twoim przejściu</h2>
+ <p>Napisz — dla samorządu, firmy czy projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
+ <form id="leadform" autocomplete="on">
+ <label>Imię i nazwisko*<input name="name" type="text" required autocomplete="name"></label>
+ <label>Organizacja<input name="organization" type="text" autocomplete="organization"></label>
+ <label>Rola<input name="role" type="text" autocomplete="organization-title"></label>
+ <label>Segment<select name="segment"><option>Samorząd</option><option>Firma</option><option>Projekt UE / nauka</option><option>Inne</option></select></label>
+ <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
+ <label>Wiadomość*<textarea name="message" rows="5" required></textarea></label>
+ <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
+ <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>Wyrażam zgodę na przetwarzanie podanych danych w celu obsługi zapytania (administrator: Andrii Shramko, JDG; szczegóły w <a href='/privacy.html'>polityce prywatności</a>).*</span></label>
+ <input type="hidden" name="lang" value="pl">
+ <button type="submit">Wyślij</button>
+</form>
+<p id="formok" class="ok" style="display:none">✅ Dziękuję! Zapytanie dotarło — odezwę się wkrótce.</p>
+<p id="formerr" class="err" style="display:none">❌ Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com</p>
+
+<script>
+(function(){
+  var f=document.getElementById('leadform'); if(!f) return;
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn=f.querySelector('button'); btn.disabled=true;
+    var data=Object.fromEntries(new FormData(f).entries());
+    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error(r.status);
+        f.style.display='none';
+        document.getElementById('formok').style.display='block';})
+      .catch(function(){ btn.disabled=false;
+        document.getElementById('formerr').style.display='block';});
+  });
+})();
+</script>
 </section></main>
 <footer>
  <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>

@@ -62,6 +62,75 @@
   <li><strong>Research projects & EU grants</strong> — measurable pedestrian-safety
   indicators.</li>
  </ul>
+</section>
+<section>
+ <h2>What we can already do</h2>
+ <ul>
+  <li>Count pedestrians and vehicles per hour (no camera calibration needed).</li>
+  <li>Measure crosswalk occupancy and detect <strong>failure to yield</strong> to a
+  pedestrian (topological event — a vehicle transits the crossing without stopping
+  while a pedestrian is on it).</li>
+  <li>Estimate the <strong>% of head-down pedestrians</strong> (a sampled attention
+  proxy with a confidence interval — never an accusation of a specific person).</li>
+  <li>Show hour×day trends, observation coverage, and camera failover status.</li>
+  <li>Do it privately: faces/plates pixelated, zero frames on disk, zero register.</li>
+ </ul>
+ <h2>What we can add</h2>
+ <ul>
+  <li><strong>Conflict times in seconds (PET / TTC)</strong> and near-misses — on a
+  metrically calibrated camera: a numeric “close-call” indicator before a collision happens.</li>
+  <li><strong>Before/after reports</strong> for a specific intervention (refuge island,
+  raised table, lighting, signals) — hard proof of whether the change worked.</li>
+  <li><strong>Night-time and weather analysis</strong>, a city-wide ranking of the most
+  dangerous crossings, threshold alerts.</li>
+  <li><strong>Camera-based speed</strong> as a screening layer flagging candidates for a
+  certified authority device — never as evidence.</li>
+  <li>Integration with existing municipal cameras and dashboards.</li>
+ </ul>
+ <h2>How we change pedestrian safety</h2>
+ <p>The causal chain is simple: <strong>measure → pinpoint the most dangerous crossings
+ → recommend an intervention → measure its effect.</strong> Today, decisions about a
+ refuge island, a raised table or better lighting are often made by intuition and
+ without checking the result. We provide a continuous, objective, anonymous signal:
+ where drivers fail to yield, where pedestrians are distracted, at which hours risk
+ rises — and after an infrastructure change we show, in numbers, whether it actually
+ dropped. That turns pedestrian safety from guesswork into a measurable, repeatable process.</p>
+</section>
+<section id="contact" class="card">
+ <h2>Let's talk about your crossing</h2>
+ <p>Get in touch — for a municipality, a company or a research project. I reply within 1–2 business days.</p>
+ <form id="leadform" autocomplete="on">
+ <label>Full name*<input name="name" type="text" required autocomplete="name"></label>
+ <label>Organisation<input name="organization" type="text" autocomplete="organization"></label>
+ <label>Role<input name="role" type="text" autocomplete="organization-title"></label>
+ <label>Segment<select name="segment"><option>Government</option><option>Company</option><option>EU project / research</option><option>Other</option></select></label>
+ <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
+ <label>Message*<textarea name="message" rows="5" required></textarea></label>
+ <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
+ <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>I consent to the processing of the data provided in order to handle this inquiry (controller: Andrii Shramko, sole trader; details in the <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
+ <input type="hidden" name="lang" value="en">
+ <button type="submit">Send</button>
+</form>
+<p id="formok" class="ok" style="display:none">✅ Thank you! Your inquiry arrived — I'll be in touch soon.</p>
+<p id="formerr" class="err" style="display:none">❌ Sending failed. Please write directly: zmei116@gmail.com</p>
+
+<script>
+(function(){
+  var f=document.getElementById('leadform'); if(!f) return;
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn=f.querySelector('button'); btn.disabled=true;
+    var data=Object.fromEntries(new FormData(f).entries());
+    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error(r.status);
+        f.style.display='none';
+        document.getElementById('formok').style.display='block';})
+      .catch(function(){ btn.disabled=false;
+        document.getElementById('formerr').style.display='block';});
+  });
+})();
+</script>
 </section></main>
 <footer>
  <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>

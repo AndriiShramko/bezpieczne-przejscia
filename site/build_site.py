@@ -186,6 +186,44 @@ def page_index(lang):
   <li><strong>Projekty badawcze i granty UE</strong> — mierzalne wskaźniki
   bezpieczeństwa pieszych.</li>
  </ul>
+</section>
+<section>
+ <h2>Co już umiemy</h2>
+ <ul>
+  <li>Zliczać pieszych i pojazdy na godzinę (bez kalibracji kamery).</li>
+  <li>Mierzyć zajętość przejścia i wykrywać <strong>nieustąpienie pierwszeństwa</strong>
+  pieszemu (zdarzenie topologiczne — pojazd przejeżdża przez zebrę bez zatrzymania,
+  gdy pieszy na niej jest).</li>
+  <li>Szacować <strong>% pieszych z głową w dół</strong> (próbkowany proxy uwagi,
+  z przedziałem ufności — nie oskarżenie konkretnej osoby).</li>
+  <li>Pokazywać trendy godzina×dzień, pokrycie obserwacją i status failover kamer.</li>
+  <li>Robić to prywatnie: pikselizacja twarzy/tablic, zero klatek na dysku, zero rejestru.</li>
+ </ul>
+ <h2>Co możemy dodać</h2>
+ <ul>
+  <li><strong>Czasy konfliktu w sekundach (PET / TTC)</strong> i near-miss — na kamerze
+  skalibrowanej metrycznie: liczbowy wskaźnik „o włos od wypadku”, zanim dojdzie do kolizji.</li>
+  <li><strong>Raport przed/po</strong> dla konkretnej interwencji (azyl, wyniesienie,
+  doświetlenie, sygnalizacja) — twardy dowód, czy zmiana zadziałała.</li>
+  <li><strong>Analiza pory nocnej i pogody</strong>, ranking najniebezpieczniejszych
+  przejść w mieście, alerty progowe.</li>
+  <li><strong>Pomiar prędkości z kamery</strong> jako warstwa przesiewowa (screening)
+  wskazująca kandydatów dla certyfikowanego urządzenia organu — nigdy jako dowód.</li>
+  <li>Integracja z istniejącymi kamerami miejskimi i panelami samorządu.</li>
+ </ul>
+ <h2>Jak zmieniamy bezpieczeństwo pieszych</h2>
+ <p>Łańcuch przyczynowy jest prosty: <strong>mierzymy → wskazujemy najbardziej
+ niebezpieczne przejścia → rekomendujemy interwencję → mierzymy jej efekt.</strong>
+ Dziś decyzje o azylu, wyniesieniu czy doświetleniu przejścia zapadają często „na
+ wyczucie” i bez sprawdzenia skutku. My dostarczamy ciągły, obiektywny, anonimowy
+ sygnał: gdzie kierowcy nie ustępują, gdzie piesi są nieuważni, o których godzinach
+ rośnie ryzyko — a po zmianie infrastruktury pokazujemy w liczbach, czy realnie
+ spadło. To zamienia bezpieczeństwo pieszych z domysłu w mierzalny, powtarzalny proces.</p>
+</section>
+<section id="kontakt" class="card">
+ <h2>Porozmawiajmy o Twoim przejściu</h2>
+ <p>Napisz — dla samorządu, firmy czy projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
+ """ + lead_form_html("pl") + """
 </section>"""
     else:
         body = """
@@ -219,6 +257,44 @@ def page_index(lang):
   <li><strong>Research projects & EU grants</strong> — measurable pedestrian-safety
   indicators.</li>
  </ul>
+</section>
+<section>
+ <h2>What we can already do</h2>
+ <ul>
+  <li>Count pedestrians and vehicles per hour (no camera calibration needed).</li>
+  <li>Measure crosswalk occupancy and detect <strong>failure to yield</strong> to a
+  pedestrian (topological event — a vehicle transits the crossing without stopping
+  while a pedestrian is on it).</li>
+  <li>Estimate the <strong>% of head-down pedestrians</strong> (a sampled attention
+  proxy with a confidence interval — never an accusation of a specific person).</li>
+  <li>Show hour×day trends, observation coverage, and camera failover status.</li>
+  <li>Do it privately: faces/plates pixelated, zero frames on disk, zero register.</li>
+ </ul>
+ <h2>What we can add</h2>
+ <ul>
+  <li><strong>Conflict times in seconds (PET / TTC)</strong> and near-misses — on a
+  metrically calibrated camera: a numeric “close-call” indicator before a collision happens.</li>
+  <li><strong>Before/after reports</strong> for a specific intervention (refuge island,
+  raised table, lighting, signals) — hard proof of whether the change worked.</li>
+  <li><strong>Night-time and weather analysis</strong>, a city-wide ranking of the most
+  dangerous crossings, threshold alerts.</li>
+  <li><strong>Camera-based speed</strong> as a screening layer flagging candidates for a
+  certified authority device — never as evidence.</li>
+  <li>Integration with existing municipal cameras and dashboards.</li>
+ </ul>
+ <h2>How we change pedestrian safety</h2>
+ <p>The causal chain is simple: <strong>measure → pinpoint the most dangerous crossings
+ → recommend an intervention → measure its effect.</strong> Today, decisions about a
+ refuge island, a raised table or better lighting are often made by intuition and
+ without checking the result. We provide a continuous, objective, anonymous signal:
+ where drivers fail to yield, where pedestrians are distracted, at which hours risk
+ rises — and after an infrastructure change we show, in numbers, whether it actually
+ dropped. That turns pedestrian safety from guesswork into a measurable, repeatable process.</p>
+</section>
+<section id="contact" class="card">
+ <h2>Let's talk about your crossing</h2>
+ <p>Get in touch — for a municipality, a company or a research project. I reply within 1–2 business days.</p>
+ """ + lead_form_html("en") + """
 </section>"""
     return head(lang, "index", JSONLD_HOME.replace("%BASE%", BASE)) + body + foot(lang)
 
@@ -450,6 +526,43 @@ runs on the authority's own legal basis (Art. 6(1)(e)) with a processing agreeme
     return head(lang, "compliance") + body + foot(lang)
 
 
+def lead_form_html(lang):
+    if lang == "pl":
+        f = {"name": "Imię i nazwisko*", "org": "Organizacja", "role": "Rola",
+             "seg": "Segment", "segs": ["Samorząd", "Firma", "Projekt UE / nauka", "Inne"],
+             "email": "E-mail*", "msg": "Wiadomość*",
+             "consent": ("Wyrażam zgodę na przetwarzanie podanych danych w celu obsługi "
+                         "zapytania (administrator: Andrii Shramko, JDG; szczegóły w "
+                         "<a href='/privacy.html'>polityce prywatności</a>).*"),
+             "send": "Wyślij", "ok": "Dziękuję! Zapytanie dotarło — odezwę się wkrótce.",
+             "err": "Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com"}
+    else:
+        f = {"name": "Full name*", "org": "Organisation", "role": "Role",
+             "seg": "Segment", "segs": ["Government", "Company", "EU project / research", "Other"],
+             "email": "E-mail*", "msg": "Message*",
+             "consent": ("I consent to the processing of the data provided in order to "
+                         "handle this inquiry (controller: Andrii Shramko, sole trader; "
+                         "details in the <a href='/en/privacy.html'>privacy policy</a>).*"),
+             "send": "Send", "ok": "Thank you! Your inquiry arrived — I'll be in touch soon.",
+             "err": "Sending failed. Please write directly: zmei116@gmail.com"}
+    opts = "".join(f"<option>{s}</option>" for s in f["segs"])
+    return f"""<form id="leadform" autocomplete="on">
+ <label>{f['name']}<input name="name" type="text" required autocomplete="name"></label>
+ <label>{f['org']}<input name="organization" type="text" autocomplete="organization"></label>
+ <label>{f['role']}<input name="role" type="text" autocomplete="organization-title"></label>
+ <label>{f['seg']}<select name="segment">{opts}</select></label>
+ <label>{f['email']}<input name="email" type="email" required autocomplete="email"></label>
+ <label>{f['msg']}<textarea name="message" rows="5" required></textarea></label>
+ <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
+ <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>{f['consent']}</span></label>
+ <input type="hidden" name="lang" value="{lang}">
+ <button type="submit">{f['send']}</button>
+</form>
+<p id="formok" class="ok" style="display:none">✅ {f['ok']}</p>
+<p id="formerr" class="err" style="display:none">❌ {f['err']}</p>
+{FORM_JS}"""
+
+
 def page_contact(lang):
     if lang == "pl":
         f = {"h1": "Kontakt", "lead": "Odpowiadam zwykle w 1–2 dni robocze.",
@@ -471,25 +584,10 @@ def page_contact(lang):
                          "details in the <a href='/en/privacy.html'>privacy policy</a>).*"),
              "send": "Send", "ok": "Thank you! Your inquiry arrived — I'll be in touch soon.",
              "err": "Sending failed. Please write directly: zmei116@gmail.com"}
-    opts = "".join(f"<option>{s}</option>" for s in f["segs"])
     body = f"""
 <h1>{f['h1']}</h1>
 <p>{f['lead']}</p>
-<form id="leadform" autocomplete="on">
- <label>{f['name']}<input name="name" type="text" required autocomplete="name"></label>
- <label>{f['org']}<input name="organization" type="text" autocomplete="organization"></label>
- <label>{f['role']}<input name="role" type="text" autocomplete="organization-title"></label>
- <label>{f['seg']}<select name="segment">{opts}</select></label>
- <label>{f['email']}<input name="email" type="email" required autocomplete="email"></label>
- <label>{f['msg']}<textarea name="message" rows="5" required></textarea></label>
- <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>{f['consent']}</span></label>
- <input type="hidden" name="lang" value="{lang}">
- <button type="submit">{f['send']}</button>
-</form>
-<p id="formok" class="ok" style="display:none">✅ {f['ok']}</p>
-<p id="formerr" class="err" style="display:none">❌ {f['err']}</p>
-{FORM_JS}
+{lead_form_html(lang)}
 <p>E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
 LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p>"""
     return head(lang, "contact") + body + foot(lang)
