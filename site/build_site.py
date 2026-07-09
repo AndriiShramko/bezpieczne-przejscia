@@ -22,6 +22,10 @@ T = {
                        "egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, "
                        "nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane "
                        "są syntetyczne (demo)."),
+        "meta_desc": ("Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla "
+                      "pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. "
+                      "Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, "
+                      "bez kar. Demonstrator, nie egzekwowanie."),
         "nav": {"index": "Start", "dashboard": "Dashboard",
                 "how-it-works": "Jak to działa", "resources": "Zasoby",
                 "compliance": "Zgodność (RODO/AI Act)", "contact": "Kontakt",
@@ -43,6 +47,10 @@ T = {
                        "enforcement; it imposes no penalties, identifies no persons "
                        "and keeps no register of offences. All data shown is "
                        "synthetic (demo)."),
+        "meta_desc": ("Anonymous, aggregate pedestrian-crossing safety dashboard: "
+                      "pedestrians/hour, failure to yield, attention proxy. "
+                      "Privacy by design (GDPR/AI Act) — no identification, no register, "
+                      "no penalties. A demonstrator, not enforcement."),
         "nav": {"index": "Home", "dashboard": "Dashboard",
                 "how-it-works": "How it works", "resources": "Resources",
                 "compliance": "Compliance (GDPR/AI Act)", "contact": "Contact",
@@ -119,7 +127,13 @@ def head(lang, page, extra=""):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{t['titles'][page]}</title>
-<meta name="description" content="{t['disclaimer'][:150]}">
+<meta name="description" content="{t['meta_desc']}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{t['titles'][page]}">
+<meta property="og:description" content="{t['meta_desc']}">
+<meta property="og:url" content="{BASE}{t['prefix']}/{fname}">
+<meta property="og:locale" content="{'pl_PL' if lang == 'pl' else 'en_US'}">
+<meta name="twitter:card" content="summary">
 <link rel="canonical" href="{BASE}{t['prefix']}/{fname}">
 <link rel="alternate" hreflang="pl" href="{BASE}/{fname}">
 <link rel="alternate" hreflang="en" href="{BASE}/en/{fname}">
