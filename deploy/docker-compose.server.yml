@@ -55,9 +55,9 @@ services:
       - STREAM_REFERER=https://lantech.com.pl/
       - SOURCE_LABEL=Skrzyżowanie CH Słoneczne, Szczecin — publiczna kamera (LanTech LiveSzczecin)
       - CROSS_POLY=0.44,0.62;0.77,0.60;0.80,0.80;0.47,0.84
-      - PROC_WIDTH=1600
+      - PROC_WIDTH=1280
       - CONF=0.28
-      - TARGET_FPS=3
+      - TARGET_FPS=2
       - EVENT_COOLDOWN=12
       - MAX_SNAPSHOTS=300
     volumes:
@@ -65,7 +65,7 @@ services:
     networks: [patrol-internal]
     mem_limit: 1000m
     memswap_limit: 1000m
-    cpus: 1.2
+    cpus: 1.0
     pids_limit: 128
     logging:
       driver: json-file

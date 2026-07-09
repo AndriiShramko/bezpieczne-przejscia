@@ -72,10 +72,21 @@
     var s = e.querySelector(".sub"); if (s) s.textContent = sub;
   }
 
+  var lastSig = "";
   function renderEvents(events) {
     var box = el("events");
     if (!box) return;
-    if (!events.length) { box.innerHTML = '<p class="muted pad">' + T.noev + "</p>"; return; }
+    if (!events.length) {
+      if (lastSig !== "empty") { box.innerHTML = '<p class="muted pad">' + T.noev + "</p>"; lastSig = "empty"; }
+      return;
+    }
+    // only re-render when the set of events or their tallies/votes changed,
+    // so the buttons stay clickable (no DOM churn every poll)
+    var sig = events.map(function (e) {
+      return e.id + ":" + e.confirm + ":" + e.refute + ":" + (voted[e.id] || "");
+    }).join("|");
+    if (sig === lastSig) return;
+    lastSig = sig;
     box.innerHTML = events.map(function (e) {
       var v = voted[e.id];
       var total = e.confirm + e.refute;

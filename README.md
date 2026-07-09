@@ -4,34 +4,36 @@
 > This is a **technical demonstrator of privacy-preserving road-safety
 > analytics**. It is **NOT an enforcement system**: it identifies no persons,
 > recognises no faces, keeps no register of offences, and imposes no
-> penalties. All published data is **synthetic**. Faces and licence plates
-> are pixelated during analysis; video frames are never stored; no face
-> embeddings ever exist. A real deployment additionally requires: a
-> permissioned (or own) camera source, a lawyer-reviewed LIA + DPIA under
-> GDPR **before the first real frame**, and — for public-sector use — the
-> authority's own legal basis with the supplier acting as processor
-> (GDPR Art. 28). Enforcement stays with competent authorities.
+> penalties. Faces and licence plates are **pixelated before display or
+> storage**; raw video frames are never persisted; no face embeddings ever
+> exist. Only counters and **blurred** event snapshots are saved, for human
+> verification. A production deployment requires a permissioned (or own)
+> camera source, a lawyer-reviewed LIA + DPIA under GDPR **before real use**,
+> and — for public-sector use — the authority's own legal basis with the
+> supplier acting as processor (GDPR Art. 28). Enforcement stays with
+> competent authorities.
 
-**Bezpieczne Przejścia** (PL: "safe crossings") turns a camera view of ONE
-pedestrian crossing into **anonymous aggregate safety metrics**:
-pedestrians/hour, % head-down pedestrians (sampled attention proxy with
-confidence intervals), drivers failing to yield (topological event),
-conflict events — rendered as a chart dashboard (PL/EN). One sentence (PL):
-*Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych —
-bez identyfikacji, bez rejestru, bez kar.*
+**Bezpieczne Przejścia** (PL: "safe crossings") analyses a **real, live**
+public crossing camera in real time: it counts pedestrians and vehicles,
+**flags potential conflicts** (a vehicle in the crossing while a pedestrian is
+present), snapshots each flagged moment, and lets the public **confirm or
+refute** it — so the model's *true* accuracy is measured from human votes, not
+claimed by a vendor. One sentence (PL): *Analiza wideo na żywo z prawdziwej
+kamery przejścia — bez identyfikacji, bez rejestru, bez kar.*
 
-Live demo: https://patrol.flyreelstudio.eu (synthetic data)
+Live demo (real camera): https://patrol.flyreelstudio.eu
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  A[Camera sources\nfailover pool, ONE crossing] --> B[In-RAM analysis\nApache-2.0 detector]
+  A[Live public crossing camera\nHLS / MJPEG] --> B[In-RAM analysis\nYOLOX Apache-2.0, CPU]
   B --> C[Pixelate faces & plates\nimmediately]
   C --> D[Ephemeral tracking\nRAM-only IDs]
-  D --> E[Zone topology\ncounts, occupancy, yield]
-  E --> F[(Aggregate counters ONLY\nstats + coverage + health)]
-  F --> G[Static dashboard\ncharts, no video]
+  D --> E[Zone topology\ncounts + conflict flags]
+  E --> F[(Disk: counters +\nBLURRED event snapshots)]
+  E --> G[Annotated MJPEG\n+ live counters]
+  F --> H[Public verifies each event\n-> true accuracy]
 ```
 
 Key honesty mechanisms:
