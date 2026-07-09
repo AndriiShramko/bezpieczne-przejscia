@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contact — SafeCross</title>
-<meta name="description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Contact — SafeCross">
-<meta property="og:description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/en/contact.html">
 <meta property="og:locale" content="en_US">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/en/contact.html">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/contact.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/contact.html">
@@ -19,54 +20,43 @@
 
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</div>
-<header>
- <div class="brand"><a href="/en/">🚸 SafeCross — Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/en/">Home</a><a href="/en/dashboard.html">Dashboard</a><a href="/en/how-it-works.html">How it works</a><a href="/en/resources.html">Resources</a><a href="/en/compliance.html">Compliance (GDPR/AI Act)</a><a href="/en/contact.html">Contact</a>
- <a class="lang" href="/contact.html">PL</a></nav>
+<header class="nav">
+ <a class="logo" href="/en/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/en/">Live</a><a href="/en/how-it-works.html">How it works</a><a href="/en/accuracy.html">Accuracy</a><a href="/en/resources.html">Deployment</a><a href="/en/compliance.html">Compliance / GDPR</a><a href="/en/contact.html" class=cur>Contact</a></nav>
+ <a class="lang" href="/contact.html">PL</a>
 </header>
-<main>
-<h1>Contact</h1>
-<p>I usually reply within 1–2 business days.</p>
-<form id="leadform" autocomplete="on">
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
+<main><h1>Contact</h1><p class="lead">I usually reply within 1–2 business days.</p><form id="leadform" autocomplete="on">
  <label>Full name*<input name="name" type="text" required autocomplete="name"></label>
  <label>Organisation<input name="organization" type="text" autocomplete="organization"></label>
  <label>Role<input name="role" type="text" autocomplete="organization-title"></label>
- <label>Segment<select name="segment"><option>Government</option><option>Company</option><option>EU project / research</option><option>Other</option></select></label>
+ <label>Segment<select name="segment"><option>Municipality / road authority</option><option>National road-safety body</option><option>Company</option><option>EU project / research</option><option>Other</option></select></label>
  <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
- <label>Message*<textarea name="message" rows="5" required></textarea></label>
+ <label class="wide">Message*<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>I consent to the processing of the data provided in order to handle this inquiry (controller: Andrii Shramko, sole trader; details in the <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>I consent to processing my data to handle this inquiry (controller: Andrii Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
  <input type="hidden" name="lang" value="en">
  <button type="submit">Send</button>
 </form>
 <p id="formok" class="ok" style="display:none">✅ Thank you! Your inquiry arrived — I'll be in touch soon.</p>
-<p id="formerr" class="err" style="display:none">❌ Sending failed. Please write directly: zmei116@gmail.com</p>
+<p id="formerr" class="err" style="display:none">❌ Sending failed. Write to: zmei116@gmail.com</p>
 
-<script>
-(function(){
-  var f=document.getElementById('leadform'); if(!f) return;
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var btn=f.querySelector('button'); btn.disabled=true;
-    var data=Object.fromEntries(new FormData(f).entries());
-    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)})
-      .then(function(r){ if(!r.ok) throw new Error(r.status);
-        f.style.display='none';
-        document.getElementById('formok').style.display='block';})
-      .catch(function(){ btn.disabled=false;
-        document.getElementById('formerr').style.display='block';});
-  });
-})();
-</script>
-<p>E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+<script>(function(){var f=document.getElementById('leadform');if(!f)return;
+f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
+var d=Object.fromEntries(new FormData(f).entries());
+fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
+.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
+<p class="muted">E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
 LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p></main>
 <footer>
- <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>
- <p>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · <a href="/en/privacy.html">Privacy</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/en/privacy.html">Privacy</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>

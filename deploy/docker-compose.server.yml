@@ -1,0 +1,77 @@
+name: patrol
+
+services:
+  patrol-web:
+    image: nginx:alpine
+    container_name: patrol-web
+    restart: unless-stopped
+    environment:
+      - VIRTUAL_HOST=patrol.flyreelstudio.eu
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=patrol.flyreelstudio.eu
+      - LETSENCRYPT_EMAIL=zmei116@gmail.com
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [web-proxy, patrol-internal]
+    depends_on: [patrol-form, patrol-cv]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  patrol-form:
+    image: python:3.12-alpine
+    container_name: patrol-form
+    restart: unless-stopped
+    command: ["python", "/app/server.py"]
+    env_file: ./config.env
+    environment: [PORT=8087]
+    volumes:
+      - ./server.py:/app/server.py:ro
+    read_only: true
+    tmpfs: [/tmp:size=8m]
+    networks: [patrol-internal]
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Real-time computer-vision worker: pulls a live crossing feed, runs YOLOX
+  # on CPU, blurs faces/plates, counts + flags conflicts, serves MJPEG + API.
+  patrol-cv:
+    build: ./cv-service
+    image: patrol-cv:latest
+    container_name: patrol-cv
+    restart: unless-stopped
+    environment:
+      - VIDEO_URL=https://ls-proxy-local.lantech.com.pl/hls/sch/index.m3u8
+      - STREAM_REFERER=https://lantech.com.pl/
+      - SOURCE_LABEL=Skrzyżowanie CH Słoneczne, Szczecin — publiczna kamera (LanTech LiveSzczecin)
+      - CROSS_POLY=0.44,0.62;0.77,0.60;0.80,0.80;0.47,0.84
+      - PROC_WIDTH=1600
+      - CONF=0.28
+      - TARGET_FPS=3
+      - EVENT_COOLDOWN=12
+      - MAX_SNAPSHOTS=300
+    volumes:
+      - ./cv-data:/data
+    networks: [patrol-internal]
+    mem_limit: 1000m
+    memswap_limit: 1000m
+    cpus: 1.2
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  web-proxy:
+    external: true
+  patrol-internal:

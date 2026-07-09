@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Static site generator — Bezpieczne Przejścia / SafeCross (PL root + /en/).
+"""Static site generator — Bezpieczne Przejścia / SafeCross.
 
-Every page carries the non-enforcement disclaimer banner (spec-legal §6).
-No video, no lists of people/vehicles — aggregate charts only.
+Dark, modern, fast. The MAIN page is a live command center: real camera
+feed with real-time counting + a crowd-verified event feed. Decision-maker
+statistics (sourced, Polish) lead the narrative. PL root + /en/.
 """
 import os
 import shutil
@@ -10,31 +11,29 @@ import shutil
 BASE = "https://patrol.flyreelstudio.eu"
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(ROOT, "public")
-
-PAGES = ["index", "dashboard", "how-it-works", "resources", "compliance",
-         "contact", "privacy"]
+PAGES = ["index", "how-it-works", "accuracy", "resources", "compliance", "contact", "privacy"]
 
 T = {
     "pl": {
         "lang": "pl", "prefix": "",
         "brand": "Bezpieczne Przejścia",
-        "disclaimer": ("Demonstrator techniczny — NIE jest oficjalnym nadzorem ani "
-                       "egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, "
-                       "nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane "
-                       "są syntetyczne (demo)."),
-        "meta_desc": ("Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla "
-                      "pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. "
-                      "Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, "
-                      "bez kar. Demonstrator, nie egzekwowanie."),
-        "nav": {"index": "Start", "dashboard": "Dashboard",
-                "how-it-works": "Jak to działa", "resources": "Zasoby",
-                "compliance": "Zgodność (RODO/AI Act)", "contact": "Kontakt",
-                "privacy": "Prywatność"},
+        "disclaimer": ("Demonstrator technologiczny — pokazuje możliwości analizy wideo dla "
+                       "bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem "
+                       "prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są "
+                       "rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane "
+                       "przez ludzi."),
+        "meta_desc": ("Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: "
+                      "liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, "
+                      "weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator "
+                      "dla samorządów i KRBRD, prywatność by design."),
+        "nav": {"index": "Na żywo", "how-it-works": "Jak to działa",
+                "accuracy": "Skuteczność", "resources": "Wdrożenie",
+                "compliance": "Zgodność / RODO", "contact": "Kontakt", "privacy": "Prywatność"},
         "titles": {
-            "index": "Bezpieczne Przejścia — anonimowy dashboard bezpieczeństwa przejść dla pieszych",
-            "dashboard": "Dashboard bezpieczeństwa przejścia — dane zagregowane (demo)",
-            "how-it-works": "Jak to działa — metoda i uczciwe ograniczenia",
-            "resources": "Zasoby i koszty wdrożenia — dla samorządów i firm",
+            "index": "Bezpieczne Przejścia — analiza bezpieczeństwa przejść na żywo (AI + weryfikacja ludzi)",
+            "how-it-works": "Jak to działa — pipeline, model, uczciwe ograniczenia",
+            "accuracy": "Skuteczność i ryzyko błędów — uczciwa ocena techniczna",
+            "resources": "Wdrożenie i koszty — dla samorządów, GDDKiA, KRBRD",
             "compliance": "Zgodność: RODO i AI Act — privacy by design",
             "contact": "Kontakt — Bezpieczne Przejścia",
             "privacy": "Polityka prywatności i nota prawna",
@@ -42,24 +41,23 @@ T = {
     },
     "en": {
         "lang": "en", "prefix": "/en",
-        "brand": "SafeCross — Bezpieczne Przejścia",
-        "disclaimer": ("Technical demonstrator — NOT official surveillance or law "
-                       "enforcement; it imposes no penalties, identifies no persons "
-                       "and keeps no register of offences. All data shown is "
-                       "synthetic (demo)."),
-        "meta_desc": ("Anonymous, aggregate pedestrian-crossing safety dashboard: "
-                      "pedestrians/hour, failure to yield, attention proxy. "
-                      "Privacy by design (GDPR/AI Act) — no identification, no register, "
-                      "no penalties. A demonstrator, not enforcement."),
-        "nav": {"index": "Home", "dashboard": "Dashboard",
-                "how-it-works": "How it works", "resources": "Resources",
-                "compliance": "Compliance (GDPR/AI Act)", "contact": "Contact",
-                "privacy": "Privacy"},
+        "brand": "SafeCross",
+        "disclaimer": ("Technology demonstrator — it shows what video analysis can do for "
+                       "pedestrian safety. It is NOT official surveillance or law enforcement, "
+                       "imposes no penalties and identifies no persons (faces and plates are "
+                       "blurred). Behavioural readouts are indicative and are verified by humans."),
+        "meta_desc": ("SafeCross — live AI video analysis from a real camera: pedestrian and "
+                      "vehicle counting, crossing-conflict detection, human verification. Only 2% "
+                      "of drivers yield to pedestrians. A demonstrator for road authorities, "
+                      "privacy by design."),
+        "nav": {"index": "Live", "how-it-works": "How it works",
+                "accuracy": "Accuracy", "resources": "Deployment",
+                "compliance": "Compliance / GDPR", "contact": "Contact", "privacy": "Privacy"},
         "titles": {
-            "index": "SafeCross — anonymous pedestrian-crossing safety dashboard",
-            "dashboard": "Crossing safety dashboard — aggregate data (demo)",
-            "how-it-works": "How it works — method and honest limitations",
-            "resources": "Resources & deployment costs — for governments and companies",
+            "index": "SafeCross — live pedestrian-crossing safety analysis (AI + human verification)",
+            "how-it-works": "How it works — pipeline, model, honest limitations",
+            "accuracy": "Accuracy & error risk — an honest technical assessment",
+            "resources": "Deployment & costs — for road authorities",
             "compliance": "Compliance: GDPR & AI Act — privacy by design",
             "contact": "Contact — SafeCross",
             "privacy": "Privacy policy & legal notice",
@@ -67,60 +65,41 @@ T = {
     },
 }
 
-JSONLD_HOME = """
+JSONLD = """
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"Person","name":"Andrii Shramko","jobTitle":"Computer Vision / VR / 3D specialist",
-  "knowsAbout":["computer vision","pedestrian safety analytics","3D Gaussian Splatting",
-   "volumetric capture","vehicle speed estimation"],
+  "knowsAbout":["computer vision","pedestrian safety analytics","road safety","3D Gaussian Splatting","volumetric capture"],
   "sameAs":["https://www.linkedin.com/in/andriishramko"]},
- {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko",
-  "vatID":"PL7543116302"},
- {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"%BASE%",
-  "inLanguage":["pl","en"]}
-]}
-</script>"""
+ {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko","vatID":"PL7543116302"},
+ {"@type":"SoftwareApplication","name":"Bezpieczne Przejścia / SafeCross","applicationCategory":"Computer vision, road-safety analytics","operatingSystem":"Linux","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}},
+ {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"%BASE%","inLanguage":["pl","en"]}
+]}</script>"""
 
-JSONLD_FAQ_PL = """
+FAQ_PL = """
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
- {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?",
-  "acceptedAnswer":{"@type":"Answer","text":"Nie. System zlicza wyłącznie zagregowane zdarzenia (liczniki na minutę). Twarze i tablice są pikselizowane na etapie analizy, klatki nie są zapisywane, nie powstają żadne embeddingi twarzy ani rejestry."}},
- {"@type":"Question","name":"Czy to jest system egzekwowania prawa?",
-  "acceptedAnswer":{"@type":"Answer","text":"Nie. To demonstrator analityki bezpieczeństwa. Egzekwowanie prawa pozostaje wyłączną kompetencją Policji i GITD z certyfikowanymi urządzeniami."}},
- {"@type":"Question","name":"Co dokładnie jest zapisywane na dysku?",
-  "acceptedAnswer":{"@type":"Answer","text":"Wyłącznie liczniki zagregowane: statystyki na minutę (stats_bucket), realny czas obserwacji (coverage_bucket) i zdarzenia zdrowia kamer (camera_health). Żadnych klatek, żadnych danych osobowych."}},
- {"@type":"Question","name":"Skąd pewność, że luki w danych nie są zerami?",
-  "acceptedAnswer":{"@type":"Answer","text":"Każdy przedział ma zapisany czas rzeczywistej obserwacji (observed_sec). Wskaźniki są normalizowane do czasu obserwacji, a przedziały bez pokrycia są prezentowane jako brak danych, nigdy jako zero."}}
-]}
-</script>"""
-
-JSONLD_FAQ_EN = JSONLD_FAQ_PL  # EN page gets its own copy below
+ {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?","acceptedAnswer":{"@type":"Answer","text":"Nie. Twarze i tablice rejestracyjne są rozmywane na wejściu, kadry nie są przechowywane, nie powstają embeddingi twarzy. Zapisywane są tylko liczniki oraz zrzuty zdarzeń z rozmytymi danymi do weryfikacji."}},
+ {"@type":"Question","name":"Czy AI sam decyduje, że doszło do naruszenia?","acceptedAnswer":{"@type":"Answer","text":"Nie. AI FLAGUJE kandydatów na zdarzenia; ostateczną ocenę „czy kierowca ustąpił” podejmują ludzie, potwierdzając lub odrzucając każdy zrzut. Z tych głosów liczymy realną trafność."}},
+ {"@type":"Question","name":"Skąd biorą się dane na stronie?","acceptedAnswer":{"@type":"Answer","text":"Z prawdziwej publicznej kamery przejścia w Polsce, analizowanej na żywo modelem wizji komputerowej. Widać wideo z nałożonymi ramkami i licznikami."}}
+]}</script>"""
 
 FORM_JS = """
-<script>
-(function(){
-  var f=document.getElementById('leadform'); if(!f) return;
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var btn=f.querySelector('button'); btn.disabled=true;
-    var data=Object.fromEntries(new FormData(f).entries());
-    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)})
-      .then(function(r){ if(!r.ok) throw new Error(r.status);
-        f.style.display='none';
-        document.getElementById('formok').style.display='block';})
-      .catch(function(){ btn.disabled=false;
-        document.getElementById('formerr').style.display='block';});
-  });
-})();
-</script>"""
+<script>(function(){var f=document.getElementById('leadform');if(!f)return;
+f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
+var d=Object.fromEntries(new FormData(f).entries());
+fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
+.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>"""
 
 
 def head(lang, page, extra=""):
     t = T[lang]
     other = "en" if lang == "pl" else "pl"
     fname = "" if page == "index" else page + ".html"
+    nav = "".join(
+        f'<a href="{t["prefix"]}/{p if p != "index" else ""}{".html" if p != "index" else ""}"'
+        f'{" class=cur" if p == page else ""}>{t["nav"][p]}</a>' for p in PAGES[:-1])
     return f"""<!DOCTYPE html>
 <html lang="{t['lang']}">
 <head>
@@ -133,7 +112,8 @@ def head(lang, page, extra=""):
 <meta property="og:description" content="{t['meta_desc']}">
 <meta property="og:url" content="{BASE}{t['prefix']}/{fname}">
 <meta property="og:locale" content="{'pl_PL' if lang == 'pl' else 'en_US'}">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="{BASE}{t['prefix']}/{fname}">
 <link rel="alternate" hreflang="pl" href="{BASE}/{fname}">
 <link rel="alternate" hreflang="en" href="{BASE}/en/{fname}">
@@ -142,223 +122,201 @@ def head(lang, page, extra=""):
 {extra}
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ {t['disclaimer']}</div>
-<header>
- <div class="brand"><a href="{t['prefix']}/">🚸 {t['brand']}</a><span class="demo-badge">DEMO</span></div>
- <nav>{"".join(f'<a href="{t["prefix"]}/{p if p != "index" else ""}{".html" if p != "index" else ""}">{t["nav"][p]}</a>' for p in PAGES[:-1])}
- <a class="lang" href="{T[other]['prefix']}/{fname}">{'EN' if lang == 'pl' else 'PL'}</a></nav>
+<header class="nav">
+ <a class="logo" href="{t['prefix']}/">🚸 <span>{t['brand']}</span></a>
+ <nav>{nav}</nav>
+ <a class="lang" href="{T[other]['prefix']}/{fname}">{'EN' if lang == 'pl' else 'PL'}</a>
 </header>
+<div class="disclaimer">{t['disclaimer']}</div>
 <main>"""
 
 
 def foot(lang):
     t = T[lang]
-    imprint = ("Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · "
-               if lang == "pl" else
-               "Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · ")
+    imp = ("Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302"
+           if lang == "pl" else
+           "Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302")
     return f"""</main>
 <footer>
- <p>⚠️ {t['disclaimer']}</p>
- <p>{imprint}<a href="{t['prefix']}/privacy.html">{t['nav']['privacy']}</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 {t['brand']}</strong><p class="muted">{t['disclaimer']}</p></div>
+  <div>{imp}<br><a href="{t['prefix']}/privacy.html">{t['nav']['privacy']}</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>"""
 
 
+def stat_card(idv, label, sub=""):
+    return (f'<div class="stat" id="{idv}"><div class="big">—</div>'
+            f'<div class="lbl">{label}</div><div class="sub">{sub}</div></div>')
+
+
 def page_index(lang):
     if lang == "pl":
-        body = """
+        hero = f"""
 <section class="hero">
- <h1>Anonimowy dashboard bezpieczeństwa przejść dla pieszych</h1>
- <p class="lead">Kamera + wizja komputerowa → <strong>wyłącznie zagregowane liczniki
- zachowań</strong>: piesi/godz., % pieszych z głową w dół (proxy uwagi),
- kierowcy nieustępujący pierwszeństwa, konflikty. Bez identyfikacji osób,
- bez rejestru, bez kar. Twarze i tablice pikselizowane, klatki nie są zapisywane.</p>
- <p><a class="cta" href="/dashboard.html">Zobacz dashboard (dane syntetyczne)</a>
-    <a class="cta ghost" href="/contact.html">Dla samorządu / Dla firm</a></p>
+ <div class="hero-copy">
+  <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
+  <h1>Tylko <span class="hot">2%</span> kierowców zatrzymuje się przed pieszym na przejściu.</h1>
+  <p class="lead">Od 1 czerwca 2021 prawo nakazuje ustąpić pieszemu <em>wchodzącemu</em> na przejście.
+  W praktyce zatrzymuje się ok. 2%, a pierwszeństwo czekającemu daje 1 na 5 kierowców.
+  Pokazujemy to na żywo — i pozwalamy Ci samemu ocenić każdą sytuację.</p>
+  <div class="hero-cta">
+   <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
+   <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
+  </div>
+ </div>
+ <aside class="hero-facts">
+  <div class="fact"><b>458</b><span>pieszych zginęło w 2023 — ok. 1 na 4 ofiary na drogach</span></div>
+  <div class="fact"><b>131</b><span>z nich na oznakowanych przejściach (2023)</span></div>
+  <div class="fact"><b>2,57 mln zł</b><span>jednostkowy koszt jednej ofiary śmiertelnej (KRBRD)</span></div>
+ </aside>
+</section>"""
+        live = f"""
+<section id="live" class="live-wrap">
+ <div class="live-head">
+  <h2>Kamera na żywo — AI liczy w czasie rzeczywistym</h2>
+  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
+ </div>
+ <p class="muted" id="live-source">Publiczna kamera przejścia (PL) · 24/7</p>
+ <div class="live-stage">
+  <img id="live-img" alt="Podgląd na żywo z analizą AI (twarze i tablice rozmyte)">
+  <div class="live-offline" id="live-offline"><span>Kamera chwilowo niedostępna — ponawiam…</span></div>
+ </div>
+ <div id="ticker" class="ticker"></div>
+ <div class="stats">
+  {stat_card("st-ped", "pieszych (sesja)", "")}
+  {stat_card("st-veh", "pojazdów (sesja)", "")}
+  {stat_card("st-ev", "wykrytych zdarzeń", "")}
+  {stat_card("st-acc", "trafność wg ludzi", "z głosów użytkowników")}
+ </div>
+ <p class="muted small" id="st-inframe"></p>
 </section>
-<section class="cols3">
- <div><h3>🔒 Prywatność jako produkt</h3><p>Na dysk trafiają wyłącznie liczniki
- zagregowane. Tożsamości nie są utrwalane, rejestr nie istnieje. Pikselizacja twarzy
- i tablic na etapie analizy; brak embeddingów twarzy; efemeryczne ID trackingu tylko w RAM.</p></div>
- <div><h3>📊 Metryki, którym można ufać</h3><p>Każdy wskaźnik jest normalizowany do
- rzeczywistego czasu obserwacji (coverage). Luki w transmisji to «brak danych»,
- nigdy fałszywe zera. Failover kamer widoczny wprost na dashboardzie.</p></div>
- <div><h3>🛠 Ekspertyza, nie pudełko</h3><p>Demonstrator sprzedaje kompetencję:
- wdrożenia analityki bezpieczeństwa ruchu, doradztwo CV/AI, integracje.
- Autor: Andrii Shramko — specjalista computer vision / VR / 3D (Polska).</p></div>
-</section>
-<section>
- <h2>Dla kogo</h2>
- <ul>
-  <li><strong>Samorządy i zarządy dróg</strong> — obiektywne dane przed/po zmianie
-  infrastruktury (azyl, doświetlenie, wyniesienie przejścia).</li>
-  <li><strong>Integratorzy i firmy smart-city</strong> — warstwa analityki
-  behawioralnej jako podwykonawstwo.</li>
-  <li><strong>Projekty badawcze i granty UE</strong> — mierzalne wskaźniki
-  bezpieczeństwa pieszych.</li>
- </ul>
-</section>
-<section>
- <h2>Co już umiemy</h2>
- <ul>
-  <li>Zliczać pieszych i pojazdy na godzinę (bez kalibracji kamery).</li>
-  <li>Mierzyć zajętość przejścia i wykrywać <strong>nieustąpienie pierwszeństwa</strong>
-  pieszemu (zdarzenie topologiczne — pojazd przejeżdża przez zebrę bez zatrzymania,
-  gdy pieszy na niej jest).</li>
-  <li>Szacować <strong>% pieszych z głową w dół</strong> (próbkowany proxy uwagi,
-  z przedziałem ufności — nie oskarżenie konkretnej osoby).</li>
-  <li>Pokazywać trendy godzina×dzień, pokrycie obserwacją i status failover kamer.</li>
-  <li>Robić to prywatnie: pikselizacja twarzy/tablic, zero klatek na dysku, zero rejestru.</li>
- </ul>
- <h2>Co możemy dodać</h2>
- <ul>
-  <li><strong>Czasy konfliktu w sekundach (PET / TTC)</strong> i near-miss — na kamerze
-  skalibrowanej metrycznie: liczbowy wskaźnik „o włos od wypadku”, zanim dojdzie do kolizji.</li>
-  <li><strong>Raport przed/po</strong> dla konkretnej interwencji (azyl, wyniesienie,
-  doświetlenie, sygnalizacja) — twardy dowód, czy zmiana zadziałała.</li>
-  <li><strong>Analiza pory nocnej i pogody</strong>, ranking najniebezpieczniejszych
-  przejść w mieście, alerty progowe.</li>
-  <li><strong>Pomiar prędkości z kamery</strong> jako warstwa przesiewowa (screening)
-  wskazująca kandydatów dla certyfikowanego urządzenia organu — nigdy jako dowód.</li>
-  <li>Integracja z istniejącymi kamerami miejskimi i panelami samorządu.</li>
- </ul>
- <h2>Jak zmieniamy bezpieczeństwo pieszych</h2>
- <p>Łańcuch przyczynowy jest prosty: <strong>mierzymy → wskazujemy najbardziej
- niebezpieczne przejścia → rekomendujemy interwencję → mierzymy jej efekt.</strong>
- Dziś decyzje o azylu, wyniesieniu czy doświetleniu przejścia zapadają często „na
- wyczucie” i bez sprawdzenia skutku. My dostarczamy ciągły, obiektywny, anonimowy
- sygnał: gdzie kierowcy nie ustępują, gdzie piesi są nieuważni, o których godzinach
- rośnie ryzyko — a po zmianie infrastruktury pokazujemy w liczbach, czy realnie
- spadło. To zamienia bezpieczeństwo pieszych z domysłu w mierzalny, powtarzalny proces.</p>
-</section>
-<section id="kontakt" class="card">
+<section class="verify">
+ <h2>Pomóż nam sprawdzać AI — potwierdź lub odrzuć zdarzenie</h2>
+ <p class="lead">AI tylko <strong>flaguje</strong> podejrzane sytuacje (pojazd na przejściu, gdy jest pieszy).
+ Czy to realne naruszenie, czy fałszywy alarm? Oceniasz Ty. Z Twoich głosów liczymy
+ <strong>prawdziwą skuteczność</strong> modelu — to uczciwiej niż deklaracje producenta.</p>
+ <div id="events" class="events"><p class="muted pad">Czekam na pierwsze wykryte zdarzenie…</p></div>
+</section>"""
+        why = """
+<section class="hooks">
+ <h2>Dlaczego to ważne dla samorządu i KRBRD</h2>
+ <div class="hook-grid">
+  <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
+  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, metoda PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23,6%</b><p>o tyle spadła liczba wypadków na przejściach po nowelizacji z 2021 r.
+  (piesi zabici na pasach −59% w analizie przed/po). Działa — trzeba dokończyć.<span class="src">KRBRD, analiza 2019–2023</span></p></div>
+  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych w Polsce na milion mieszkańców — jedna z najwyższych w UE-27.
+  <span class="src">Polskie Obserwatorium BRD</span></p></div>
+  <div class="hook"><b>Vision Zero</b><p>UE: −50% ofiar do 2030, zero do 2050 (Safe System).
+  Dostarczamy obiektywne dane, których dziś brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework 2021–2030</span></p></div>
+ </div>
+ <h2 class="mt">Co już umiemy · co dodamy · jak zmieniamy sytuację</h2>
+ <div class="cols3">
+  <div><h3>Umiemy dziś</h3><ul><li>Liczyć pieszych i pojazdy z prawdziwej kamery.</li>
+   <li>Flagować sytuacje konfliktowe na przejściu i zapisywać zrzut do weryfikacji.</li>
+   <li>Mierzyć realną trafność z ocen ludzi.</li><li>Rozmywać twarze i tablice na wejściu.</li></ul></div>
+  <div><h3>Dodamy</h3><ul><li>Czasy konfliktu w sekundach (PET/TTC) na kamerze skalibrowanej.</li>
+   <li>Ranking najniebezpieczniejszych przejść w mieście + raport przed/po.</li>
+   <li>Analiza pory nocnej i pogody, alerty progowe.</li><li>Aktywne uczenie modelu z głosów ludzi.</li></ul></div>
+  <div><h3>Jak zmieniamy sytuację</h3><p>Mierzymy → wskazujemy najgroźniejsze przejścia →
+   rekomendujemy interwencję (azyl, wyniesienie, doświetlenie) → mierzymy efekt w liczbach.
+   Bezpieczeństwo pieszych z domysłu staje się mierzalnym, powtarzalnym procesem.</p></div>
+ </div>
+</section>"""
+        contact = f"""
+<section id="kontakt" class="contact">
  <h2>Porozmawiajmy o Twoim przejściu</h2>
- <p>Napisz — dla samorządu, firmy czy projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
- """ + lead_form_html("pl") + """
+ <p class="lead">Dla samorządu, zarządu dróg, firmy lub projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
+ {lead_form_html("pl")}
 </section>"""
     else:
-        body = """
+        hero = f"""
 <section class="hero">
- <h1>Anonymous pedestrian-crossing safety dashboard</h1>
- <p class="lead">Camera + computer vision → <strong>aggregate behaviour counters
- only</strong>: pedestrians/hour, % head-down (attention proxy), drivers failing
- to yield, conflicts. No identification, no register, no penalties. Faces and
- plates pixelated; frames never stored.</p>
- <p><a class="cta" href="/en/dashboard.html">View the dashboard (synthetic data)</a>
-    <a class="cta ghost" href="/en/contact.html">For government / For companies</a></p>
-</section>
-<section class="cols3">
- <div><h3>🔒 Privacy as the product</h3><p>Only aggregate counters ever reach disk.
- Identities are not retained; no register exists. Faces/plates pixelated at
- inference; no face embeddings; ephemeral track IDs live in RAM only.</p></div>
- <div><h3>📊 Metrics you can trust</h3><p>Every rate is normalized to actually
- observed time (coverage). Stream gaps render as “no data”, never as fake zeros.
- Camera failover is shown right on the dashboard.</p></div>
- <div><h3>🛠 Expertise, not a box</h3><p>The demonstrator sells competence:
- road-safety analytics deployments, CV/AI consulting, integrations.
- Author: Andrii Shramko — computer vision / VR / 3D specialist (Poland).</p></div>
-</section>
-<section>
- <h2>Who it is for</h2>
- <ul>
-  <li><strong>Municipalities & road authorities</strong> — objective before/after
-  data for infrastructure changes (refuge islands, lighting, raised crossings).</li>
-  <li><strong>Integrators & smart-city vendors</strong> — behavioural analytics
-  layer as a subcontract.</li>
-  <li><strong>Research projects & EU grants</strong> — measurable pedestrian-safety
-  indicators.</li>
- </ul>
-</section>
-<section>
- <h2>What we can already do</h2>
- <ul>
-  <li>Count pedestrians and vehicles per hour (no camera calibration needed).</li>
-  <li>Measure crosswalk occupancy and detect <strong>failure to yield</strong> to a
-  pedestrian (topological event — a vehicle transits the crossing without stopping
-  while a pedestrian is on it).</li>
-  <li>Estimate the <strong>% of head-down pedestrians</strong> (a sampled attention
-  proxy with a confidence interval — never an accusation of a specific person).</li>
-  <li>Show hour×day trends, observation coverage, and camera failover status.</li>
-  <li>Do it privately: faces/plates pixelated, zero frames on disk, zero register.</li>
- </ul>
- <h2>What we can add</h2>
- <ul>
-  <li><strong>Conflict times in seconds (PET / TTC)</strong> and near-misses — on a
-  metrically calibrated camera: a numeric “close-call” indicator before a collision happens.</li>
-  <li><strong>Before/after reports</strong> for a specific intervention (refuge island,
-  raised table, lighting, signals) — hard proof of whether the change worked.</li>
-  <li><strong>Night-time and weather analysis</strong>, a city-wide ranking of the most
-  dangerous crossings, threshold alerts.</li>
-  <li><strong>Camera-based speed</strong> as a screening layer flagging candidates for a
-  certified authority device — never as evidence.</li>
-  <li>Integration with existing municipal cameras and dashboards.</li>
- </ul>
- <h2>How we change pedestrian safety</h2>
- <p>The causal chain is simple: <strong>measure → pinpoint the most dangerous crossings
- → recommend an intervention → measure its effect.</strong> Today, decisions about a
- refuge island, a raised table or better lighting are often made by intuition and
- without checking the result. We provide a continuous, objective, anonymous signal:
- where drivers fail to yield, where pedestrians are distracted, at which hours risk
- rises — and after an infrastructure change we show, in numbers, whether it actually
- dropped. That turns pedestrian safety from guesswork into a measurable, repeatable process.</p>
-</section>
-<section id="contact" class="card">
- <h2>Let's talk about your crossing</h2>
- <p>Get in touch — for a municipality, a company or a research project. I reply within 1–2 business days.</p>
- """ + lead_form_html("en") + """
+ <div class="hero-copy">
+  <div class="kicker">Live video analysis · real camera · human verification</div>
+  <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
+  <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
+  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live —
+  and let you judge each situation yourself.</p>
+  <div class="hero-cta">
+   <a class="btn" href="#live">Watch the live camera ↓</a>
+   <a class="btn ghost" href="#kontakt">For government</a>
+  </div>
+ </div>
+ <aside class="hero-facts">
+  <div class="fact"><b>458</b><span>pedestrians killed in 2023 — ~1 in 4 of all road deaths</span></div>
+  <div class="fact"><b>131</b><span>of them on marked crossings (2023)</span></div>
+  <div class="fact"><b>PLN 2.57M</b><span>unit cost of a single road fatality (KRBRD)</span></div>
+ </aside>
 </section>"""
-    return head(lang, "index", JSONLD_HOME.replace("%BASE%", BASE)) + body + foot(lang)
-
-
-def page_dashboard(lang):
-    t = {"pl": {
-        "h1": "Dashboard bezpieczeństwa przejścia (dane syntetyczne)",
-        "note": ("Prezentowane dane są w całości <strong>syntetyczne</strong> — "
-                 "służą demonstracji produktu. Luki = «brak danych» (nigdy zera). "
-                 "Wskaźniki znormalizowane do czasu obserwacji."),
-        "kpi": ["Pokrycie obserwacją", "Piesi / dzień (śr.)",
-                "Nieustąpienia / dzień", "% głowa w dół (7 dni)"],
-        "charts": ["Piesi na godzinę (14 dni, luki = brak danych)",
-                   "% pieszych z głową w dół — proxy uwagi (dzienne, 95% CI)",
-                   "Nieustąpienie pierwszeństwa i konflikty (dziennie)",
-                   "Mapa cieplna: piesi wg godziny × dnia tygodnia",
-                   "Stan kamer i failover"],
-        "healthnote": "Pula failover obserwuje JEDNO przejście: primary + backup.",
-    }, "en": {
-        "h1": "Crossing safety dashboard (synthetic data)",
-        "note": ("All data shown is fully <strong>synthetic</strong> — it exists to "
-                 "demonstrate the product. Gaps = “no data” (never zeros). "
-                 "Rates normalized to observed time."),
-        "kpi": ["Observation coverage", "Pedestrians / day (avg)",
-                "Failures to yield / day", "% head-down (7 days)"],
-        "charts": ["Pedestrians per hour (14 days, gaps = no data)",
-                   "% head-down pedestrians — attention proxy (daily, 95% CI)",
-                   "Failure-to-yield & conflicts (daily)",
-                   "Heatmap: pedestrians by hour × weekday",
-                   "Camera health & failover"],
-        "healthnote": "The failover pool watches ONE crossing: primary + backup.",
-    }}[lang]
-    kpis = "".join(f'<div class="kpi"><div class="kpi-v" id="kpi{i}">—</div>'
-                   f'<div class="kpi-l">{l}</div></div>' for i, l in enumerate(t["kpi"]))
-    return head(lang, "dashboard") + f"""
-<h1>{t['h1']}</h1>
-<p class="note">🧪 {t['note']}</p>
-<div class="kpis">{kpis}</div>
-<div class="card"><h2>{t['charts'][0]}</h2><canvas id="c_ped" height="90"></canvas></div>
-<div class="card"><h2>{t['charts'][1]}</h2><canvas id="c_head" height="90"></canvas></div>
-<div class="card"><h2>{t['charts'][2]}</h2><canvas id="c_yield" height="90"></canvas></div>
-<div class="card"><h2>{t['charts'][3]}</h2><div id="heatmap"></div></div>
-<div class="card"><h2>{t['charts'][4]}</h2>
- <p>{t['healthnote']}</p>
- <div id="pool"></div><table class="health" id="health"></table>
- <p class="fine" id="freshness"></p></div>
-<script src="/assets/chart.umd.min.js"></script>
-<script>window.DASH_LANG={'"pl"' if lang == 'pl' else '"en"'};</script>
-<script src="/assets/dashboard.js"></script>
-""" + foot(lang)
+        live = f"""
+<section id="live" class="live-wrap">
+ <div class="live-head">
+  <h2>Live camera — AI counts in real time</h2>
+  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
+ </div>
+ <p class="muted" id="live-source">Public crossing camera (PL) · 24/7</p>
+ <div class="live-stage">
+  <img id="live-img" alt="Live preview with AI analysis (faces and plates blurred)">
+  <div class="live-offline" id="live-offline"><span>Camera temporarily unavailable — reconnecting…</span></div>
+ </div>
+ <div id="ticker" class="ticker"></div>
+ <div class="stats">
+  {stat_card("st-ped", "pedestrians (session)", "")}
+  {stat_card("st-veh", "vehicles (session)", "")}
+  {stat_card("st-ev", "flagged events", "")}
+  {stat_card("st-acc", "human-rated accuracy", "from user votes")}
+ </div>
+ <p class="muted small" id="st-inframe"></p>
+</section>
+<section class="verify">
+ <h2>Help us check the AI — confirm or refute an event</h2>
+ <p class="lead">The AI only <strong>flags</strong> suspicious situations (a vehicle on the crossing with a
+ pedestrian present). Real violation or false alarm? You decide. From your votes we compute the
+ model's <strong>true accuracy</strong> — more honest than a vendor's claim.</p>
+ <div id="events" class="events"><p class="muted pad">Waiting for the first detected event…</p></div>
+</section>"""
+        why = """
+<section class="hooks">
+ <h2>Why this matters to government</h2>
+ <div class="hook-grid">
+  <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
+  One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
+  crossings −59% before/after). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
+  <span class="src">Polish Road Safety Observatory</span></p></div>
+  <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
+  We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
+ </div>
+ <h2 class="mt">What we do · what we'll add · how we change things</h2>
+ <div class="cols3">
+  <div><h3>Today</h3><ul><li>Count pedestrians and vehicles from a real camera.</li>
+   <li>Flag crossing conflicts and save a snapshot for verification.</li>
+   <li>Measure true accuracy from human ratings.</li><li>Blur faces and plates at ingest.</li></ul></div>
+  <div><h3>We'll add</h3><ul><li>Conflict times in seconds (PET/TTC) on a calibrated camera.</li>
+   <li>City ranking of the most dangerous crossings + before/after reports.</li>
+   <li>Night and weather analysis, threshold alerts.</li><li>Active learning from human votes.</li></ul></div>
+  <div><h3>How we change things</h3><p>Measure → pinpoint the worst crossings → recommend an
+   intervention (refuge, raised table, lighting) → measure the effect in numbers. Pedestrian
+   safety turns from guesswork into a measurable, repeatable process.</p></div>
+ </div>
+</section>"""
+        contact = f"""
+<section id="kontakt" class="contact">
+ <h2>Let's talk about your crossing</h2>
+ <p class="lead">For a municipality, road authority, company or research project. I reply within 1–2 business days.</p>
+ {lead_form_html("en")}
+</section>"""
+    extra = (JSONLD.replace("%BASE%", BASE) + FAQ_PL +
+             '\n<script defer src="/assets/live.js"></script>')
+    return head(lang, "index", extra) + hero + live + why + contact + foot(lang)
 
 
 def page_how(lang):
@@ -366,99 +324,136 @@ def page_how(lang):
         body = """
 <h1>Jak to działa — i czego celowo NIE robimy</h1>
 <ol class="pipeline">
- <li><strong>Źródło wideo</strong> — kamera z pisemną zgodą właściciela lub własna
- kamera. Pula failover (primary + backup) obserwuje jedno i to samo przejście.</li>
- <li><strong>Analiza w RAM</strong> — detekcja (model o licencji Apache-2.0),
- pikselizacja twarzy i tablic natychmiast po detekcji, tracking z efemerycznymi ID.</li>
- <li><strong>Topologia stref</strong> — liczniki przekroczeń linii (piesi, pojazdy),
- zajętość pasów przejścia, zdarzenie «pojazd nie ustąpił» wyznaczane topologicznie
- (przejazd przez strefę konfliktu bez zatrzymania, gdy pieszy jest na przejściu).</li>
- <li><strong>Na dysk — tylko liczniki</strong> — stats_bucket + coverage_bucket
- (rzeczywisty czas obserwacji) + camera_health. Żadnych klatek, żadnych embeddingów.</li>
- <li><strong>Dashboard</strong> — wykresy zagregowane, pokrycie, stan failover.</li>
+ <li><strong>Źródło:</strong> publiczna kamera przejścia (24/7). Analiza działa na żywo; kadr istnieje tylko w pamięci.</li>
+ <li><strong>Detekcja:</strong> model <code>YOLOX</code> (licencja Apache-2.0, bez AGPL) na CPU wykrywa pieszych i pojazdy.</li>
+ <li><strong>Prywatność:</strong> twarze i tablice są rozmywane natychmiast po detekcji, przed czymkolwiek innym.</li>
+ <li><strong>Śledzenie:</strong> efemeryczne ID w pamięci — liczymy nowych pieszych/pojazdy, bez zapisywania kadrów.</li>
+ <li><strong>Zdarzenia:</strong> gdy pojazd i pieszy są jednocześnie w strefie przejścia — flagujemy kandydata i zapisujemy rozmyty zrzut.</li>
+ <li><strong>Weryfikacja ludzi:</strong> użytkownicy potwierdzają/odrzucają. Realną trafność liczymy z głosów.</li>
 </ol>
-<h2>Uczciwe ograniczenia metody</h2>
-<ul>
- <li><strong>% «głowa w dół»</strong> to <em>próbkowany wskaźnik proxy</em> uwagi
- z szerokim przedziałem ufności — NIE stwierdzenie «pieszy korzystał z telefonu».</li>
- <li><strong>PET / TTC (czasy konfliktów w sekundach)</strong> — wyłącznie na kamerze
- skalibrowanej metrycznie. Bez kalibracji pokazujemy bezwymiarowe zdarzenia konfliktu.</li>
- <li><strong>Ujęcia panoramiczne</strong> (piesi = kilka pikseli) → tylko zliczanie,
- metryki behawioralne są wyłączane automatycznie.</li>
- <li><strong>Noc, deszcz, śnieg</strong> obniżają czułość detekcji — dlatego każdy
- wskaźnik nosi ze sobą czas rzeczywistej obserwacji (coverage).</li>
- <li><strong>Pomiar prędkości</strong> z kamery to warstwa przesiewowa (screening) —
- nigdy dowód. Egzekwowanie wymaga certyfikowanych urządzeń organów państwa.</li>
-</ul>"""
-        extra = JSONLD_FAQ_PL
+<p class="note">To <strong>narzędzie przesiewowe</strong>, nie przyrząd pomiarowy. Liczby to estymaty,
+zdarzenia to kandydaci potwierdzani przez ludzi. Nigdy nie podajemy „wskaźnika naruszeń” jako twardej liczby —
+szczegóły na stronie <a href="/accuracy.html">Skuteczność</a>.</p>"""
+        extra = FAQ_PL
     else:
         body = """
 <h1>How it works — and what we deliberately do NOT do</h1>
 <ol class="pipeline">
- <li><strong>Video source</strong> — a camera with the owner's written permission or
- our own camera. The failover pool (primary + backup) watches one and the same crossing.</li>
- <li><strong>In-RAM analysis</strong> — detection (Apache-2.0-licensed model),
- pixelation of faces and plates right after detection, tracking with ephemeral IDs.</li>
- <li><strong>Zone topology</strong> — line-crossing counters (pedestrians, vehicles),
- crosswalk occupancy, “driver failed to yield” derived topologically (transit of the
- conflict zone without stopping while a pedestrian occupies the crossing).</li>
- <li><strong>Disk = counters only</strong> — stats_bucket + coverage_bucket (actually
- observed time) + camera_health. No frames, no embeddings.</li>
- <li><strong>Dashboard</strong> — aggregate charts, coverage, failover status.</li>
+ <li><strong>Source:</strong> a public 24/7 crossing camera. Analysis runs live; the frame exists only in RAM.</li>
+ <li><strong>Detection:</strong> a <code>YOLOX</code> model (Apache-2.0, no AGPL) on CPU finds pedestrians and vehicles.</li>
+ <li><strong>Privacy:</strong> faces and plates are blurred immediately after detection, before anything else.</li>
+ <li><strong>Tracking:</strong> ephemeral in-RAM IDs — we count new pedestrians/vehicles, storing no frames.</li>
+ <li><strong>Events:</strong> when a vehicle and a pedestrian are in the crossing zone at once, we flag a candidate and save a blurred snapshot.</li>
+ <li><strong>Human verification:</strong> users confirm/refute. True accuracy is computed from the votes.</li>
 </ol>
-<h2>Honest limitations</h2>
-<ul>
- <li><strong>% “head-down”</strong> is a <em>sampled proxy indicator</em> of attention
- with a wide confidence interval — NOT a claim that “the pedestrian used a phone”.</li>
- <li><strong>PET / TTC (conflict times in seconds)</strong> — only on a metrically
- calibrated camera. Without calibration we show unitless conflict events.</li>
- <li><strong>Panoramic framings</strong> (pedestrians a few pixels tall) → counting
- only; behavioural metrics switch off automatically.</li>
- <li><strong>Night, rain, snow</strong> reduce detection sensitivity — which is why
- every metric carries its actually-observed time (coverage).</li>
- <li><strong>Camera-based speed</strong> is a screening layer — never evidence.
- Enforcement requires certified state instruments.</li>
-</ul>"""
-        extra = JSONLD_FAQ_EN
+<p class="note">This is a <strong>screening tool</strong>, not a measurement instrument. Counts are estimates,
+events are human-confirmed candidates. We never state a "violation rate" as a hard number — see
+<a href="/en/accuracy.html">Accuracy</a>.</p>"""
+        extra = FAQ_PL
     return head(lang, "how-it-works", extra) + body + foot(lang)
 
 
+def page_accuracy(lang):
+    if lang == "pl":
+        body = """
+<h1>Skuteczność i ryzyko błędów — uczciwie</h1>
+<p class="note"><strong>Najważniejsze:</strong> to narzędzie przesiewowe. Z jednej nieskalibrowanej
+kamery nie da się podać obronnego „wskaźnika naruszeń”. Dlatego: liczby podajemy jako estymaty,
+zdarzenia jako kandydatów, a prawdziwą trafność liczymy z weryfikacji ludzi.</p>
+<h2>Gdzie AI się myli i dlaczego</h2>
+<ul>
+ <li><strong>Przesłonięcia:</strong> na przejściu trajektorie się przecinają — pieszy zasłonięty przez pojazd
+ to najtrudniejszy przypadek; tracker gubi ID, licznik zaniża.</li>
+ <li><strong>Perspektywa jednej kamery:</strong> skrót perspektywiczny sprawia, że pojazd jeszcze przed pasami
+ „nakłada się” w obrazie na strefę przejścia — to <strong>główne źródło fałszywych alarmów</strong>.</li>
+ <li><strong>Małe obiekty / panorama:</strong> daleki pieszy ma kilkadziesiąt pikseli — skuteczność dla małych
+ obiektów bywa 2–3× niższa (COCO).</li>
+ <li><strong>Noc, deszcz, odblaski:</strong> obraz spoza rozkładu treningowego — gwałtowny spadek trafności; te okresy traktujemy jako niskiej pewności.</li>
+ <li><strong>Brak metryki (głębi):</strong> bez homografii pracujemy w pikselach — stąd niepewne prędkości i „czy zdążył zahamować”.</li>
+</ul>
+<h2>Czego się realnie spodziewać</h2>
+<ul>
+ <li>Detekcja pieszych/pojazdów w dzień, dobre ujęcie: użyteczna, ale niedoskonała (małe obiekty i tłok obniżają recall).</li>
+ <li>Zdarzenie „nie ustąpił” z pojedynczej kamery bez kalibracji: <strong>dużo fałszywych alarmów</strong> — dlatego weryfikacja ludzi jest obowiązkowa.</li>
+</ul>
+<h2>Jak liczymy prawdziwą trafność</h2>
+<p>Każde sflagowane zdarzenie ma zrzut. Ludzie głosują potwierdź/odrzuć. Precyzja = potwierdzone / ocenione.
+Ten wskaźnik widać na żywo na stronie głównej — rośnie wiarygodnie w miarę głosów.</p>
+<h2>Co doprowadzi do maksimum</h2>
+<ol>
+ <li><strong>Kalibracja metryczna (homografia)</strong> — największy zysk: odblokowuje prędkość, PET/TTC, poprawne „nie ustąpił”.</li>
+ <li><strong>Wyższe fps + wygładzanie czasowe</strong> — mniej zgubionych ID.</li>
+ <li><strong>Większy model / dobór kamery</strong> (tight framing) — wyższy recall.</li>
+ <li><strong>Aktywne uczenie z głosów ludzi</strong> — model uczy się na własnych błędach.</li>
+ <li><strong>Ograniczenie twierdzeń do tego, co pewne</strong> — uczciwość jako przewaga przed audytem.</li>
+</ol>"""
+    else:
+        body = """
+<h1>Accuracy & error risk — honestly</h1>
+<p class="note"><strong>Bottom line:</strong> this is a screening tool. From one uncalibrated camera you
+cannot state a defensible "violation rate". So: counts are estimates, events are candidates, and true
+accuracy is computed from human verification.</p>
+<h2>Where the AI is wrong, and why</h2>
+<ul>
+ <li><strong>Occlusion:</strong> at a crossing trajectories intersect — a pedestrian hidden by a vehicle is
+ the hardest case; the tracker loses the ID, the count undershoots.</li>
+ <li><strong>Single-camera perspective:</strong> foreshortening makes a vehicle still short of the stop line
+ <em>appear</em> to overlap the crossing in image space — the <strong>biggest source of false positives</strong>.</li>
+ <li><strong>Small objects / panorama:</strong> a distant pedestrian is tens of pixels — small-object accuracy is
+ routinely 2–3× lower (COCO).</li>
+ <li><strong>Night, rain, glare:</strong> out-of-distribution imagery — a steep accuracy cliff; we treat those periods as low-confidence.</li>
+ <li><strong>No metric depth:</strong> without homography we work in pixels — hence uncertain speeds and "did it stop in time".</li>
+</ul>
+<h2>What to realistically expect</h2>
+<ul>
+ <li>Daytime pedestrian/vehicle detection on a good view: useful but imperfect (small objects and crowding lower recall).</li>
+ <li>"Failure to yield" from a single uncalibrated camera: <strong>many false positives</strong> — which is why human verification is mandatory.</li>
+</ul>
+<h2>How we compute true accuracy</h2>
+<p>Every flagged event has a snapshot. Humans vote confirm/refute. Precision = confirmed / judged.
+That figure is shown live on the home page and grows trustworthy as votes accumulate.</p>
+<h2>What pushes it to the maximum</h2>
+<ol>
+ <li><strong>Metric calibration (homography)</strong> — biggest win: unlocks speed, PET/TTC, correct "did not yield".</li>
+ <li><strong>Higher fps + temporal smoothing</strong> — fewer ID switches.</li>
+ <li><strong>Bigger model / camera choice</strong> (tight framing) — higher recall.</li>
+ <li><strong>Active learning from human votes</strong> — the model learns from its own mistakes.</li>
+ <li><strong>Restricting claims to what's reliable</strong> — honesty as an advantage in front of an audit.</li>
+</ol>"""
+    return head(lang, "accuracy") + body + foot(lang)
+
+
 def page_resources(lang):
-    rows = [
-        ("MVP (demo)", "2–4", "CPU offline", "≈ €0"),
-        ("Pilot", "10–20", "1× dedykowany serwer (AX41)" if lang == "pl" else "1× dedicated server (AX41)", "~€40 / mies." if lang == "pl" else "~€40 / month"),
-        ("Miasto" if lang == "pl" else "City", "~100", "1× GPU (GEX44, RTX 4000)", "~€184 / mies." if lang == "pl" else "~€184 / month"),
-    ]
-    tr = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td></tr>"
-                 for a, b, c, d in rows)
+    rows = [("MVP (demo)", "1–4", "CPU offline / 1 mały serwer" if lang == "pl" else "CPU / 1 small server", "≈ €0–40 / mies." if lang == "pl" else "≈ €0–40 / mo"),
+            ("Pilot", "10–20", "1× serwer dedykowany (AX41)", "~€40 / mies." if lang == "pl" else "~€40 / mo"),
+            ("Miasto" if lang == "pl" else "City", "~100", "1× GPU (GEX44, RTX 4000)", "~€184 / mies." if lang == "pl" else "~€184 / mo")]
+    tr = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td></tr>" for a, b, c, d in rows)
     if lang == "pl":
         body = f"""
-<h1>Zasoby i koszty — uczciwie</h1>
-<p>Analiza działa na CPU; GPU staje się potrzebne dopiero od ~50 strumieni.
-Poniżej rzędy wielkości (infrastruktura, bez pracy wdrożeniowej):</p>
-<table class="tbl"><tr><th>Skala</th><th>Strumienie</th><th>Sprzęt</th><th>Koszt infra</th></tr>{tr}</table>
-<h2>Co dostaje klient</h2>
-<ul><li>Dashboard zagregowanych wskaźników bezpieczeństwa (PL/EN).</li>
-<li>Raporty przed/po zmianie infrastruktury.</li>
-<li>Wdrożenie privacy-by-design z dokumentacją (LIA/DPIA po stronie prawnej klienta
-lub we współpracy).</li>
-<li>Doradztwo computer vision / integracje (podwykonawstwo).</li></ul>
-<p class="note">Wycena wdrożenia zależy od liczby przejść, jakości kamer i wymagań
-prawnych — <a href="/contact.html">napisz</a>.</p>"""
+<h1>Wdrożenie i koszty — dla samorządów, GDDKiA, KRBRD</h1>
+<p>Analiza działa na CPU; GPU potrzebny dopiero od ~50 strumieni. Rzędy wielkości (sama infrastruktura):</p>
+<table class="tbl"><tr><th>Skala</th><th>Strumienie</th><th>Sprzęt</th><th>Koszt</th></tr>{tr}</table>
+<h2>Ścieżka do ЛПР</h2>
+<ul>
+ <li><strong>KRBRD / Sekretariat</strong> (Min. Infrastruktury) — cel: −50% do 2030; dostarczamy metodę skalowalną i spójną z Safe System.</li>
+ <li><strong>ZDM / zarząd dróg miejskich</strong> — ranking najgroźniejszych przejść i uzasadnienie budżetu.</li>
+ <li><strong>Prezydent / rada miasta</strong> — bezpieczeństwo mieszkańców jako widoczny efekt + gotowość pod granty.</li>
+ <li><strong>GDDKiA / GITD / Policja (SEWIK)</strong> — obiektywne dane behawioralne, których dziś brak.</li>
+</ul>
+<p class="note">Wycena wdrożenia zależy od liczby przejść i jakości kamer — <a href="/#kontakt">napisz</a>.</p>"""
     else:
         body = f"""
-<h1>Resources & costs — honestly</h1>
-<p>Inference runs on CPU; a GPU only becomes necessary at ~50 streams.
-Orders of magnitude below (infrastructure only, excluding integration work):</p>
-<table class="tbl"><tr><th>Scale</th><th>Streams</th><th>Hardware</th><th>Infra cost</th></tr>{tr}</table>
-<h2>What the client gets</h2>
-<ul><li>Aggregate safety-metrics dashboard (PL/EN).</li>
-<li>Before/after reports for infrastructure changes.</li>
-<li>Privacy-by-design deployment with documentation (LIA/DPIA on the client's legal
-side or jointly).</li>
-<li>Computer-vision consulting / integrations (subcontract).</li></ul>
-<p class="note">Deployment pricing depends on the number of crossings, camera quality
-and legal requirements — <a href="/en/contact.html">get in touch</a>.</p>"""
+<h1>Deployment & costs — for road authorities</h1>
+<p>Analysis runs on CPU; a GPU is only needed from ~50 streams. Orders of magnitude (infrastructure only):</p>
+<table class="tbl"><tr><th>Scale</th><th>Streams</th><th>Hardware</th><th>Cost</th></tr>{tr}</table>
+<h2>Path to decision-makers</h2>
+<ul>
+ <li><strong>National road-safety council</strong> — target −50% by 2030; we provide a scalable method aligned with Safe System.</li>
+ <li><strong>City road authority</strong> — a ranking of the most dangerous crossings and budget justification.</li>
+ <li><strong>Mayor / city council</strong> — resident safety as a visible win + grant-readiness.</li>
+ <li><strong>National roads / enforcement / police crash DB</strong> — objective behavioural data that's missing today.</li>
+</ul>
+<p class="note">Deployment pricing depends on crossings and camera quality — <a href="/en/#kontakt">get in touch</a>.</p>"""
     return head(lang, "resources") + body + foot(lang)
 
 
@@ -466,99 +461,53 @@ def page_compliance(lang):
     if lang == "pl":
         body = """
 <h1>Zgodność: RODO i AI Act — privacy by design</h1>
-<p class="note">Nasza teza produktowa: <strong>tożsamości nie są utrwalane,
-rejestr nie jest prowadzony, klatki nie są zapisywane, twarze i tablice są
-pikselizowane, a egzekwowanie prawa pozostaje przy właściwym organie.</strong></p>
-<h2>Jak projektujemy zgodność</h2>
+<p class="note">Teza: <strong>twarze i tablice rozmywane, kadry nieprzechowywane, brak identyfikacji i rejestru;
+zapisywane tylko liczniki i rozmyte zrzuty zdarzeń do weryfikacji. Egzekwowanie zostaje przy organie.</strong></p>
 <ul>
- <li><strong>Minimalizacja (art. 5 ust. 1 lit. c RODO):</strong> na dysk trafiają
- wyłącznie zagregowane liczniki na minutę; dane wyjściowe nie zawierają danych osobowych.</li>
- <li><strong>Pikselizacja twarzy/tablic na etapie analizy;</strong> klatka źródłowa
- istnieje wyłącznie ulotnie w pamięci RAM podczas przetwarzania i nie jest utrwalana.</li>
- <li><strong>Zero biometrii:</strong> twarz jest wyłącznie regionem do pikselizacji —
- nie liczymy i nie przechowujemy żadnych embeddingów ani wzorców biometrycznych.
- System nie wykonuje zdalnej identyfikacji biometrycznej (AI Act, art. 5).</li>
- <li><strong>Podstawa prawna przetwarzania w czasie analizy:</strong> prawnie
- uzasadniony interes (art. 6 ust. 1 lit. f RODO; cel = bezpieczeństwo ruchu) —
- z wykonaną oceną LIA oraz DPIA <em>przed</em> uruchomieniem na rzeczywistej kamerze.</li>
- <li><strong>Żadnych decyzji zautomatyzowanych wobec osób (art. 22)</strong> —
- wynik to statystyka infrastruktury, nie ocena człowieka.</li>
- <li><strong>Brak rejestru wykroczeń (art. 10 RODO)</strong> — system nie przypisuje
- zdarzeń osobom i nie tworzy list.</li>
- <li><strong>Retencja:</strong> liczniki zagregowane bez danych osobowych; logi
- techniczne rotowane automatycznie.</li>
+ <li><strong>Rozmycie twarzy/tablic</strong> na etapie analizy; kadr istnieje tylko ulotnie w RAM.</li>
+ <li><strong>Zero biometrii:</strong> twarz to jedynie region do rozmycia — bez embeddingów (AI Act art. 5).</li>
+ <li><strong>Minimalizacja (art. 5 RODO):</strong> na dysk trafiają liczniki + rozmyte zrzuty zdarzeń, bez danych osobowych w wyniku.</li>
+ <li><strong>Podstawa przetwarzania w chwili analizy:</strong> uzasadniony interes (art. 6 ust. 1 lit. f, cel = bezpieczeństwo ruchu) — LIA + DPIA przed wdrożeniem produkcyjnym na własnej/permissioned kamerze.</li>
+ <li><strong>Brak decyzji zautomatyzowanych wobec osób (art. 22)</strong> i brak rejestru wykroczeń (art. 10).</li>
+ <li><strong>Rola:</strong> Andrii Shramko (JDG, NIP PL7543116302) jako administrator (demo); wdrożenie u organu = podmiot przetwarzający (art. 28) na jego podstawie prawnej.</li>
 </ul>
-<h2>Rola i status</h2>
-<p>Demonstrator prowadzi Andrii Shramko (JDG, NIP PL7543116302) jako
-<strong>administrator danych (demo)</strong>. Wdrożenie produkcyjne u klienta
-publicznego odbywa się na podstawie prawnej organu (art. 6 ust. 1 lit. e) i umowy
-powierzenia (art. 28) — wtedy dostawca działa jako podmiot przetwarzający.</p>
-<h2>Czego ten system NIE robi</h2>
-<ul>
- <li>nie identyfikuje osób ani pojazdów, nie rozpoznaje twarzy;</li>
- <li>nie nakłada kar i nie wspiera nakładania kar;</li>
- <li>nie prowadzi żadnego rejestru zdarzeń przypisanych osobom;</li>
- <li>nie transmituje i nie archiwizuje wideo.</li>
-</ul>"""
+<p class="note">Ten demonstrator działa na publicznej kamerze w celach pokazu technologii; wdrożenie klienckie
+wymaga zgody właściciela kamery i podpisu prawnika (LIA/DPIA).</p>"""
     else:
         body = """
 <h1>Compliance: GDPR & AI Act — privacy by design</h1>
-<p class="note">Our product thesis: <strong>identities are not retained, no register
-is kept, frames are not stored, faces and plates are pixelated, and law enforcement
-stays with the competent authority.</strong></p>
-<h2>How compliance is designed in</h2>
+<p class="note">Thesis: <strong>faces and plates blurred, frames not stored, no identification and no register;
+only counters and blurred event snapshots are saved for verification. Enforcement stays with the authority.</strong></p>
 <ul>
- <li><strong>Minimisation (GDPR Art. 5(1)(c)):</strong> only per-minute aggregate
- counters reach disk; the output data contains no personal data.</li>
- <li><strong>Pixelation of faces/plates at the analysis stage;</strong> the source
- frame exists only transiently in RAM during processing and is never persisted.</li>
- <li><strong>Zero biometrics:</strong> a face is only a region to pixelate — we never
- compute or store embeddings or biometric templates. The system performs no remote
- biometric identification (AI Act Art. 5).</li>
- <li><strong>Legal basis for the processing moment:</strong> legitimate interest
- (GDPR Art. 6(1)(f); purpose = road safety) — with an LIA and DPIA completed
- <em>before</em> any run on a real camera.</li>
- <li><strong>No automated decisions about individuals (Art. 22)</strong> — the output
- is infrastructure statistics, not an assessment of a person.</li>
- <li><strong>No register of offences (GDPR Art. 10)</strong> — the system attributes
- nothing to persons and keeps no lists.</li>
- <li><strong>Retention:</strong> aggregate counters carry no personal data; technical
- logs rotate automatically.</li>
+ <li><strong>Face/plate blur</strong> at the analysis stage; the frame exists only transiently in RAM.</li>
+ <li><strong>Zero biometrics:</strong> a face is only a region to blur — no embeddings (AI Act Art. 5).</li>
+ <li><strong>Minimisation (GDPR Art. 5):</strong> disk holds counters + blurred event snapshots, no personal data in the output.</li>
+ <li><strong>Basis for the processing moment:</strong> legitimate interest (Art. 6(1)(f), road safety) — LIA + DPIA before any production deployment on an own/permissioned camera.</li>
+ <li><strong>No automated decisions about individuals (Art. 22)</strong> and no register of offences (Art. 10).</li>
+ <li><strong>Role:</strong> Andrii Shramko (sole trader, VAT PL7543116302) as controller (demo); an authority deployment = processor (Art. 28) on their legal basis.</li>
 </ul>
-<h2>Role and status</h2>
-<p>The demonstrator is run by Andrii Shramko (sole trader, VAT PL7543116302) as
-<strong>data controller (demo)</strong>. A production deployment for a public client
-runs on the authority's own legal basis (Art. 6(1)(e)) with a processing agreement
-(Art. 28) — the supplier then acts as processor.</p>
-<h2>What this system does NOT do</h2>
-<ul>
- <li>does not identify persons or vehicles, no face recognition;</li>
- <li>does not impose penalties, nor support imposing them;</li>
- <li>keeps no register of events attributed to persons;</li>
- <li>does not stream or archive video.</li>
-</ul>"""
+<p class="note">This demonstrator runs on a public camera to show the technology; a client deployment requires
+the camera owner's permission and a lawyer's sign-off (LIA/DPIA).</p>"""
     return head(lang, "compliance") + body + foot(lang)
 
 
 def lead_form_html(lang):
     if lang == "pl":
         f = {"name": "Imię i nazwisko*", "org": "Organizacja", "role": "Rola",
-             "seg": "Segment", "segs": ["Samorząd", "Firma", "Projekt UE / nauka", "Inne"],
+             "seg": "Segment", "segs": ["Samorząd / zarząd dróg", "KRBRD / administracja", "Firma", "Projekt UE / nauka", "Inne"],
              "email": "E-mail*", "msg": "Wiadomość*",
-             "consent": ("Wyrażam zgodę na przetwarzanie podanych danych w celu obsługi "
-                         "zapytania (administrator: Andrii Shramko, JDG; szczegóły w "
-                         "<a href='/privacy.html'>polityce prywatności</a>).*"),
+             "consent": ("Zgadzam się na przetwarzanie danych w celu obsługi zapytania (administrator: "
+                         "Andrii Shramko, JDG; <a href='/privacy.html'>polityka prywatności</a>).*"),
              "send": "Wyślij", "ok": "Dziękuję! Zapytanie dotarło — odezwę się wkrótce.",
-             "err": "Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com"}
+             "err": "Nie udało się wysłać. Napisz: zmei116@gmail.com"}
     else:
         f = {"name": "Full name*", "org": "Organisation", "role": "Role",
-             "seg": "Segment", "segs": ["Government", "Company", "EU project / research", "Other"],
+             "seg": "Segment", "segs": ["Municipality / road authority", "National road-safety body", "Company", "EU project / research", "Other"],
              "email": "E-mail*", "msg": "Message*",
-             "consent": ("I consent to the processing of the data provided in order to "
-                         "handle this inquiry (controller: Andrii Shramko, sole trader; "
-                         "details in the <a href='/en/privacy.html'>privacy policy</a>).*"),
+             "consent": ("I consent to processing my data to handle this inquiry (controller: Andrii "
+                         "Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*"),
              "send": "Send", "ok": "Thank you! Your inquiry arrived — I'll be in touch soon.",
-             "err": "Sending failed. Please write directly: zmei116@gmail.com"}
+             "err": "Sending failed. Write to: zmei116@gmail.com"}
     opts = "".join(f"<option>{s}</option>" for s in f["segs"])
     return f"""<form id="leadform" autocomplete="on">
  <label>{f['name']}<input name="name" type="text" required autocomplete="name"></label>
@@ -566,9 +515,9 @@ def lead_form_html(lang):
  <label>{f['role']}<input name="role" type="text" autocomplete="organization-title"></label>
  <label>{f['seg']}<select name="segment">{opts}</select></label>
  <label>{f['email']}<input name="email" type="email" required autocomplete="email"></label>
- <label>{f['msg']}<textarea name="message" rows="5" required></textarea></label>
+ <label class="wide">{f['msg']}<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>{f['consent']}</span></label>
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>{f['consent']}</span></label>
  <input type="hidden" name="lang" value="{lang}">
  <button type="submit">{f['send']}</button>
 </form>
@@ -578,31 +527,10 @@ def lead_form_html(lang):
 
 
 def page_contact(lang):
-    if lang == "pl":
-        f = {"h1": "Kontakt", "lead": "Odpowiadam zwykle w 1–2 dni robocze.",
-             "name": "Imię i nazwisko*", "org": "Organizacja", "role": "Rola",
-             "seg": "Segment", "segs": ["Samorząd", "Firma", "Projekt UE / nauka", "Inne"],
-             "email": "E-mail*", "msg": "Wiadomość*",
-             "consent": ("Wyrażam zgodę na przetwarzanie podanych danych w celu "
-                         "obsługi zapytania (administrator: Andrii Shramko, JDG; "
-                         "szczegóły w <a href='/privacy.html'>polityce prywatności</a>).*"),
-             "send": "Wyślij", "ok": "Dziękuję! Zapytanie dotarło — odezwę się wkrótce.",
-             "err": "Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com"}
-    else:
-        f = {"h1": "Contact", "lead": "I usually reply within 1–2 business days.",
-             "name": "Full name*", "org": "Organisation", "role": "Role",
-             "seg": "Segment", "segs": ["Government", "Company", "EU project / research", "Other"],
-             "email": "E-mail*", "msg": "Message*",
-             "consent": ("I consent to the processing of the data provided in order to "
-                         "handle this inquiry (controller: Andrii Shramko, sole trader; "
-                         "details in the <a href='/en/privacy.html'>privacy policy</a>).*"),
-             "send": "Send", "ok": "Thank you! Your inquiry arrived — I'll be in touch soon.",
-             "err": "Sending failed. Please write directly: zmei116@gmail.com"}
-    body = f"""
-<h1>{f['h1']}</h1>
-<p>{f['lead']}</p>
-{lead_form_html(lang)}
-<p>E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+    t = ({"h1": "Kontakt", "lead": "Odpowiadam zwykle w 1–2 dni robocze."} if lang == "pl"
+         else {"h1": "Contact", "lead": "I usually reply within 1–2 business days."})
+    body = f"""<h1>{t['h1']}</h1><p class="lead">{t['lead']}</p>{lead_form_html(lang)}
+<p class="muted">E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
 LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p>"""
     return head(lang, "contact") + body + foot(lang)
 
@@ -611,134 +539,172 @@ def page_privacy(lang):
     if lang == "pl":
         body = """
 <h1>Polityka prywatności i nota prawna</h1>
-<h2>Administrator</h2>
-<p>Andrii Shramko, jednoosobowa działalność gospodarcza (Polska), NIP PL7543116302,
-e-mail: zmei116@gmail.com.</p>
-<h2>Ta strona</h2>
-<ul>
- <li>Nie używa cookies śledzących ani analityki behawioralnej.</li>
- <li>Wszystkie dane na dashboardzie są syntetyczne (demo) i nie dotyczą żadnych osób.</li>
- <li>Formularz kontaktowy przetwarza podane dane (imię, e-mail, treść) wyłącznie w celu
- obsługi zapytania — podstawa: art. 6 ust. 1 lit. b/f RODO; retencja: do 12 miesięcy od
- zamknięcia korespondencji; odbiorcą technicznym jest komunikator Telegram (powiadomienie
- o zapytaniu). Przysługuje Ci dostęp, sprostowanie, usunięcie, ograniczenie, sprzeciw
- oraz skarga do PUODO.</li>
-</ul>
-<h2>Demonstrator analityki</h2>
-<p>Zasady privacy-by-design opisuje strona <a href="/compliance.html">Zgodność</a>.
-Wynik działania systemu (liczniki zagregowane) nie zawiera danych osobowych. Żaden
-wynik nie może być traktowany jako zarzut lub dowód wykroczenia wobec kogokolwiek.</p>"""
+<h2>Administrator</h2><p>Andrii Shramko, JDG (Polska), NIP PL7543116302, zmei116@gmail.com.</p>
+<h2>Strona i demonstrator</h2>
+<ul><li>Brak cookies śledzących i analityki behawioralnej.</li>
+<li>Analiza działa na publicznej kamerze; twarze i tablice są rozmywane, kadry nie są przechowywane,
+nie powstają embeddingi. Zapisywane są liczniki i rozmyte zrzuty zdarzeń do weryfikacji — bez danych osobowych w wyniku.</li>
+<li>Głosy weryfikacyjne (potwierdź/odrzuć) zapisujemy anonimowo (bez danych osobowych) do liczenia trafności.</li>
+<li>Formularz kontaktowy: dane (imię, e-mail, treść) przetwarzane wyłącznie do obsługi zapytania —
+art. 6 ust. 1 lit. b/f RODO; retencja do 12 mies.; powiadomienie technicznie przez Telegram. Prawa: dostęp,
+sprostowanie, usunięcie, sprzeciw, skarga do PUODO.</li></ul>
+<p class="note">Żaden wynik nie może być traktowany jako zarzut lub dowód wykroczenia wobec kogokolwiek.</p>"""
     else:
         body = """
 <h1>Privacy policy & legal notice</h1>
-<h2>Controller</h2>
-<p>Andrii Shramko, sole trader (Poland), VAT PL7543116302,
-e-mail: zmei116@gmail.com.</p>
-<h2>This website</h2>
-<ul>
- <li>Uses no tracking cookies and no behavioural analytics.</li>
- <li>All dashboard data is synthetic (demo) and relates to no persons.</li>
- <li>The contact form processes the submitted data (name, e-mail, message) solely to
- handle your inquiry — basis: GDPR Art. 6(1)(b)/(f); retention: up to 12 months after
- the correspondence closes; the technical recipient is the Telegram messenger (inquiry
- notification). You have the right of access, rectification, erasure, restriction,
- objection, and complaint to the Polish DPA (PUODO).</li>
-</ul>
-<h2>The analytics demonstrator</h2>
-<p>Privacy-by-design principles are described on the <a href="/en/compliance.html">
-Compliance</a> page. The system's output (aggregate counters) contains no personal
-data. No output may be treated as an accusation of, or evidence for, any offence.</p>"""
+<h2>Controller</h2><p>Andrii Shramko, sole trader (Poland), VAT PL7543116302, zmei116@gmail.com.</p>
+<h2>Site & demonstrator</h2>
+<ul><li>No tracking cookies and no behavioural analytics.</li>
+<li>Analysis runs on a public camera; faces and plates are blurred, frames are not stored, no embeddings are
+computed. Only counters and blurred event snapshots are saved for verification — no personal data in the output.</li>
+<li>Verification votes (confirm/refute) are stored anonymously (no personal data) to compute accuracy.</li>
+<li>Contact form: data (name, e-mail, message) processed solely to handle the inquiry — GDPR Art. 6(1)(b)/(f);
+retention up to 12 months; technical notification via Telegram. Rights: access, rectification, erasure,
+objection, complaint to the Polish DPA.</li></ul>
+<p class="note">No output may be treated as an accusation of, or evidence for, any offence.</p>"""
     return head(lang, "privacy") + body + foot(lang)
 
 
 CSS = """
-:root{--navy:#12314f;--blue:#1668b0;--bg:#f6f8fa;--warn:#fff3cd;--txt:#20262c}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;
-color:var(--txt);background:var(--bg);line-height:1.55}
-.disclaimer{background:var(--warn);border-bottom:1px solid #e6d9a8;padding:.5rem 1rem;
-font-size:.85rem;text-align:center}
-header{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between;
-padding:.7rem 1.2rem;background:var(--navy);color:#fff}
-.brand a{color:#fff;text-decoration:none;font-weight:700;font-size:1.05rem}
-.demo-badge{background:#e8b409;color:#1c1c1c;font-size:.65rem;font-weight:800;
-border-radius:4px;padding:.1rem .4rem;margin-left:.5rem;vertical-align:middle}
-nav{display:flex;flex-wrap:wrap;gap:.9rem}nav a{color:#d9e6f2;text-decoration:none;font-size:.9rem}
-nav a:hover{color:#fff}.lang{border:1px solid #5b7f9f;border-radius:4px;padding:.05rem .45rem}
-main{max-width:1000px;margin:0 auto;padding:1.2rem}
-.hero h1{font-size:1.9rem;color:var(--navy);margin:.8rem 0 .4rem}
-.lead{font-size:1.05rem}.cta{display:inline-block;background:var(--blue);color:#fff;
-padding:.6rem 1.1rem;border-radius:6px;text-decoration:none;margin:.3rem .4rem .3rem 0}
-.cta.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue)}
-.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin:1.4rem 0}
-.cols3 div{background:#fff;border:1px solid #e2e8ee;border-radius:8px;padding:1rem}
-.note{background:#eaf3fb;border-left:4px solid var(--blue);padding:.6rem .9rem;border-radius:4px}
-.card{background:#fff;border:1px solid #e2e8ee;border-radius:8px;padding:1rem;margin:1rem 0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin:1rem 0}
-.kpi{background:#fff;border:1px solid #e2e8ee;border-radius:8px;padding:.8rem;text-align:center}
-.kpi-v{font-size:1.6rem;font-weight:800;color:var(--navy)}.kpi-l{font-size:.8rem;color:#5a6672}
-table.tbl,{border-collapse:collapse}table.tbl td,table.tbl th{border:1px solid #d7dee5;
-padding:.5rem .7rem;text-align:left}table.tbl th{background:#eef3f8}
-table.health{width:100%;border-collapse:collapse;font-size:.85rem}
-table.health td{border-bottom:1px solid #edf1f5;padding:.3rem .5rem}
-#heatmap{display:grid;grid-template-columns:repeat(25,1fr);gap:2px;font-size:.6rem}
-#heatmap div{aspect-ratio:1;border-radius:2px;display:flex;align-items:center;justify-content:center}
-form{display:grid;gap:.7rem;max-width:540px}label{display:grid;gap:.25rem;font-size:.9rem}
-input,select,textarea{padding:.5rem;border:1px solid #c9d3dc;border-radius:6px;font:inherit;width:100%}
-.hp{position:absolute;left:-6000px;height:1px;width:1px;opacity:0}
-.consent{grid-template-columns:auto 1fr;align-items:start}.consent input{width:auto;margin-top:.25rem}
-button{background:var(--blue);color:#fff;border:0;border-radius:6px;padding:.6rem 1.2rem;
-font:inherit;cursor:pointer}button:disabled{opacity:.6}
-.ok{color:#176b2c}.err{color:#a3251c}.fine{font-size:.78rem;color:#68737e}
-.pipeline li{margin:.45rem 0}
-footer{border-top:1px solid #dde4ea;background:#fff;margin-top:2rem;padding:1rem 1.2rem;
-font-size:.85rem;color:#4c5760}footer a{color:var(--blue)}
-@media(max-width:640px){.hero h1{font-size:1.4rem}#heatmap{font-size:.45rem}}
+:root{--bg:#0a0e14;--bg2:#0f1620;--panel:#141c28;--panel2:#1a2432;--line:#233044;
+--tx:#e6edf3;--mut:#8b97a7;--acc:#2ee6a6;--acc2:#37b6ff;--hot:#ff5d6c;--warn:#ffcf5c}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;
+-webkit-font-smoothing:antialiased}
+a{color:var(--acc2);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:clamp(1.7rem,4vw,2.6rem);line-height:1.12;letter-spacing:-.02em;margin:.2em 0 .5em}
+h2{font-size:clamp(1.3rem,2.6vw,1.9rem);letter-spacing:-.01em;margin:1.8rem 0 .8rem}
+h3{font-size:1.1rem;margin:.6rem 0}
+.mt{margin-top:2.6rem}
+main{max-width:1160px;margin:0 auto;padding:1.4rem}
+.muted{color:var(--mut)}.small{font-size:.85rem}.pad{padding:1rem}
+.nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:1rem;
+padding:.7rem 1.4rem;background:rgba(10,14,20,.85);backdrop-filter:blur(10px);
+border-bottom:1px solid var(--line)}
+.logo{color:var(--tx);font-weight:800;font-size:1.05rem;display:flex;gap:.4rem;align-items:center}
+.logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.nav nav{display:flex;gap:1.1rem;flex-wrap:wrap;margin-left:auto;font-size:.9rem}
+.nav nav a{color:var(--mut)}.nav nav a:hover,.nav nav a.cur{color:var(--tx);text-decoration:none}
+.lang{border:1px solid var(--line);border-radius:7px;padding:.15rem .5rem;color:var(--tx);font-size:.8rem}
+.disclaimer{background:linear-gradient(90deg,#20160a,#1a1206);color:#e8c98a;
+font-size:.82rem;padding:.55rem 1.4rem;text-align:center;border-bottom:1px solid #3a2c12}
+.hero{display:grid;grid-template-columns:1.6fr 1fr;gap:2rem;align-items:center;
+padding:2.4rem 0 1.4rem}
+.kicker{color:var(--acc);font-weight:700;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.6rem}
+.hero .hot{color:var(--hot)}
+.lead{font-size:1.08rem;color:#cdd6e0;max-width:60ch}
+.hero-cta{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.3rem}
+.btn{display:inline-block;background:linear-gradient(90deg,var(--acc),#25c98f);color:#04120c;
+font-weight:700;padding:.7rem 1.2rem;border-radius:10px}
+.btn:hover{text-decoration:none;filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--tx);box-shadow:inset 0 0 0 1px var(--line)}
+.hero-facts{display:grid;gap:.7rem}
+.fact{background:var(--panel);border-radius:12px;padding:.9rem 1rem}
+.fact b{display:block;font-size:1.5rem;color:var(--warn);letter-spacing:-.01em}
+.fact span{font-size:.85rem;color:var(--mut)}
+.live-wrap{background:var(--bg2);border-radius:18px;padding:1.2rem;margin:1.2rem 0}
+.live-head{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.live-badge{font-weight:800;font-size:.8rem;padding:.2rem .6rem;border-radius:20px}
+.live-badge.on{color:#04120c;background:var(--acc)}
+.live-badge.off{color:#ffb3b8;background:#2a1418}
+.live-stage{position:relative;margin-top:.7rem;border-radius:14px;overflow:hidden;
+background:#000;aspect-ratio:16/9}
+.live-stage img{width:100%;height:100%;object-fit:contain;display:block}
+.live-offline{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+color:var(--mut);background:#05080d}
+.ticker{display:flex;gap:.5rem;overflow:hidden;margin:.7rem 0;flex-wrap:wrap}
+.tick{background:var(--panel);border-radius:8px;padding:.25rem .6rem;font-size:.82rem;color:var(--mut)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-top:.6rem}
+.stat{background:var(--panel);border-radius:12px;padding:1rem;text-align:center}
+.stat .big{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;
+background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .lbl{font-size:.82rem;margin-top:.2rem}.stat .sub{font-size:.72rem;color:var(--mut);min-height:1em}
+.verify{margin:2rem 0}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1rem}
+.ev{margin:0;background:var(--panel);border-radius:14px;overflow:hidden}
+.ev img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#000}
+.ev figcaption{padding:.8rem}
+.ev-desc{font-size:.82rem;color:var(--mut);margin-bottom:.5rem;min-height:2.4em}
+.ev-q{font-weight:700;margin-bottom:.5rem}
+.ev-actions{display:flex;gap:.5rem}
+.vbtn{flex:1;border:0;border-radius:9px;padding:.55rem;font-weight:700;cursor:pointer;font-size:.85rem}
+.vbtn.confirm{background:#22301f;color:#7fe08a}.vbtn.refute{background:#2f1c1f;color:#ff9aa2}
+.vbtn.mine{outline:2px solid var(--acc)}
+.vbtn:disabled{opacity:.55;cursor:default}
+.ev-tally{font-size:.78rem;color:var(--mut);margin-top:.5rem}
+.hooks{margin:2.4rem 0}
+.hook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.hook{background:linear-gradient(160deg,var(--panel),var(--bg2));border-radius:14px;padding:1.1rem}
+.hook b{display:block;font-size:1.7rem;color:var(--warn);letter-spacing:-.02em;margin-bottom:.3rem}
+.hook p{font-size:.9rem;color:#cdd6e0;margin:0}
+.hook .src{display:block;font-size:.72rem;color:var(--mut);margin-top:.5rem}
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+.cols3>div{background:var(--panel);border-radius:14px;padding:1.1rem}
+.cols3 ul{margin:.4rem 0 0;padding-left:1.1rem}.cols3 li{margin:.3rem 0;font-size:.92rem}
+.note{background:var(--panel2);border-left:3px solid var(--acc);border-radius:10px;padding:.8rem 1rem;color:#cdd6e0}
+.pipeline{padding-left:1.2rem}.pipeline li{margin:.5rem 0}
+code{background:var(--panel);padding:.1rem .4rem;border-radius:5px;font-size:.9em}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0}
+.tbl th,.tbl td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line)}
+.tbl th{color:var(--mut);font-weight:600;font-size:.85rem}
+.contact{background:var(--bg2);border-radius:18px;padding:1.4rem;margin:2rem 0}
+form{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;max-width:680px;margin-top:1rem}
+label{display:grid;gap:.3rem;font-size:.85rem;color:var(--mut)}
+label.wide{grid-column:1/-1}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+padding:.6rem;color:var(--tx);font:inherit;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);border-color:transparent}
+.hp{position:absolute;left:-9999px}
+.consent{grid-template-columns:auto 1fr;align-items:start;color:var(--mut);font-size:.82rem}
+.consent input{width:auto;margin-top:.2rem}
+button[type=submit]{grid-column:1/-1;background:linear-gradient(90deg,var(--acc),#25c98f);
+color:#04120c;font-weight:800;border:0;border-radius:10px;padding:.75rem;cursor:pointer;font-size:1rem}
+button[type=submit]:disabled{opacity:.6}
+.ok{color:var(--acc)}.err{color:var(--hot)}
+footer{border-top:1px solid var(--line);margin-top:3rem;padding:1.6rem 1.4rem;color:var(--mut);font-size:.85rem}
+.foot-grid{max-width:1160px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr;gap:1.4rem}
+.fine{max-width:1160px;margin:1.2rem auto 0;font-size:.78rem}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}
+form{grid-template-columns:1fr}.foot-grid{grid-template-columns:1fr}.nav nav{display:none}}
 """
 
 ROBOTS = """User-agent: *
 Allow: /
-
 User-agent: GPTBot
 Allow: /
-
 User-agent: Google-Extended
 Allow: /
-
 User-agent: ClaudeBot
 Allow: /
-
 User-agent: PerplexityBot
 Allow: /
-
 Sitemap: %BASE%/sitemap.xml
 """.replace("%BASE%", BASE)
 
 LLMS = """# Bezpieczne Przejścia / SafeCross
 
-> Privacy-first, aggregate-only pedestrian-crossing safety analytics demonstrator
-> (Poland). It is NOT law enforcement: it identifies no persons, keeps no register,
-> imposes no penalties, and stores no video frames. All published dashboard data is
-> synthetic. Author: Andrii Shramko (computer vision / VR / 3D specialist, Poland).
+> Live, privacy-first pedestrian-crossing safety demonstrator (Poland). A real public
+> crossing camera is analysed in real time by a computer-vision model that counts
+> pedestrians and vehicles and flags potential conflicts; humans confirm/refute each
+> flagged event, and true accuracy is computed from their votes. Faces and licence
+> plates are blurred at ingest; frames are not stored; no biometrics. It is NOT
+> enforcement — it imposes nothing and keeps no register. Author: Andrii Shramko
+> (computer vision / VR / 3D specialist, Poland).
 
 Facts:
-- The system counts aggregate behaviours only: pedestrians/hour, vehicles/hour,
-  % head-down pedestrians (sampled attention proxy with confidence intervals),
-  drivers failing to yield (topological event), conflict events.
-- Faces and licence plates are pixelated during analysis; frames exist only in RAM.
-- No face embeddings are ever computed; track IDs are ephemeral (RAM only).
-- Disk storage = aggregate counters only: stats_bucket, coverage_bucket
-  (actually-observed seconds; gaps render as no-data, never zeros), camera_health.
-- Camera failover: a pool of sources watches one and the same crossing.
-- Detector licensing: Apache-2.0 (YOLOX / RT-DETR class); no AGPL components.
-- Enforcement stays with competent authorities (Policja / GITD) — this is analytics.
+- Live camera + YOLOX (Apache-2.0) detector on CPU; ByteTrack/centroid tracking.
+- Faces and plates pixelated before display or storage; no face embeddings; ephemeral track IDs.
+- Disk holds counters + blurred event snapshots only; no personal data in the output.
+- Events are candidates, verified by the public; the shown accuracy is human-derived.
+- Honest limits: single uncalibrated camera => many false positives on "did not yield";
+  small objects, night, rain reduce accuracy. It is a screening tool, not a measurement instrument.
+- Polish context: only ~2% of drivers stop for a pedestrian at the crossing; 458 pedestrians
+  killed in 2023 (131 on marked crossings); a fatality costs Poland PLN 2.57M; the 2021 law cut
+  crossing accidents by 23.6%. Vision Zero: -50% deaths by 2030.
 
-Pages:
-- %BASE%/ (PL), %BASE%/en/ (EN)
-- %BASE%/dashboard.html — aggregate charts (synthetic demo data)
-- %BASE%/how-it-works.html — method + honest limitations
-- %BASE%/compliance.html — GDPR / AI Act design
-- %BASE%/resources.html — deployment scale & costs
-- %BASE%/contact.html — contact form
+Pages: %BASE%/ (PL live), %BASE%/en/ (EN live), /how-it-works.html, /accuracy.html,
+/resources.html, /compliance.html, /contact.html
 
 Contact: zmei116@gmail.com · https://www.linkedin.com/in/andriishramko
 """.replace("%BASE%", BASE)
@@ -759,14 +725,13 @@ def sitemap():
 def main():
     if os.path.isdir(PUB):
         for entry in os.listdir(PUB):
-            if entry in ("data", "assets"):
+            if entry == "assets":
                 continue
             p = os.path.join(PUB, entry)
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
     os.makedirs(os.path.join(PUB, "assets"), exist_ok=True)
     os.makedirs(os.path.join(PUB, "en"), exist_ok=True)
-
-    gen = {"index": page_index, "dashboard": page_dashboard, "how-it-works": page_how,
+    gen = {"index": page_index, "how-it-works": page_how, "accuracy": page_accuracy,
            "resources": page_resources, "compliance": page_compliance,
            "contact": page_contact, "privacy": page_privacy}
     n = 0
@@ -779,12 +744,16 @@ def main():
             n += 1
     with open(os.path.join(PUB, "assets", "style.css"), "w", encoding="utf-8") as f:
         f.write(CSS)
-    with open(os.path.join(PUB, "robots.txt"), "w", encoding="utf-8") as f:
-        f.write(ROBOTS)
-    with open(os.path.join(PUB, "llms.txt"), "w", encoding="utf-8") as f:
-        f.write(LLMS)
-    with open(os.path.join(PUB, "sitemap.xml"), "w", encoding="utf-8") as f:
-        f.write(sitemap())
+    for name, content in (("robots.txt", ROBOTS), ("llms.txt", LLMS), ("sitemap.xml", sitemap())):
+        with open(os.path.join(PUB, name), "w", encoding="utf-8") as f:
+            f.write(content)
+    # drop stale synthetic-dashboard assets if present
+    for stale in ("dashboard.js", "chart.umd.min.js"):
+        fp = os.path.join(PUB, "assets", stale)
+        if os.path.exists(fp):
+            os.remove(fp)
+    if os.path.isdir(os.path.join(PUB, "data")):
+        shutil.rmtree(os.path.join(PUB, "data"))
     print(f"built {n} pages + assets into {PUB}")
 
 

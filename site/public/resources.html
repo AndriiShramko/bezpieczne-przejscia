@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zasoby i koszty wdrożenia — dla samorządów i firm</title>
-<meta name="description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<title>Wdrożenie i koszty — dla samorządów, GDDKiA, KRBRD</title>
+<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Zasoby i koszty wdrożenia — dla samorządów i firm">
-<meta property="og:description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<meta property="og:title" content="Wdrożenie i koszty — dla samorządów, GDDKiA, KRBRD">
+<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/resources.html">
 <meta property="og:locale" content="pl_PL">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/resources.html">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/resources.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/resources.html">
@@ -19,30 +20,32 @@
 
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
-<header>
- <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
- <a class="lang" href="/en/resources.html">EN</a></nav>
+<header class="nav">
+ <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
+ <nav><a href="/">Na żywo</a><a href="/how-it-works.html">Jak to działa</a><a href="/accuracy.html">Skuteczność</a><a href="/resources.html" class=cur>Wdrożenie</a><a href="/compliance.html">Zgodność / RODO</a><a href="/contact.html">Kontakt</a></nav>
+ <a class="lang" href="/en/resources.html">EN</a>
 </header>
+<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
 <main>
-<h1>Zasoby i koszty — uczciwie</h1>
-<p>Analiza działa na CPU; GPU staje się potrzebne dopiero od ~50 strumieni.
-Poniżej rzędy wielkości (infrastruktura, bez pracy wdrożeniowej):</p>
-<table class="tbl"><tr><th>Skala</th><th>Strumienie</th><th>Sprzęt</th><th>Koszt infra</th></tr><tr><td>MVP (demo)</td><td>2–4</td><td>CPU offline</td><td>≈ €0</td></tr><tr><td>Pilot</td><td>10–20</td><td>1× dedykowany serwer (AX41)</td><td>~€40 / mies.</td></tr><tr><td>Miasto</td><td>~100</td><td>1× GPU (GEX44, RTX 4000)</td><td>~€184 / mies.</td></tr></table>
-<h2>Co dostaje klient</h2>
-<ul><li>Dashboard zagregowanych wskaźników bezpieczeństwa (PL/EN).</li>
-<li>Raporty przed/po zmianie infrastruktury.</li>
-<li>Wdrożenie privacy-by-design z dokumentacją (LIA/DPIA po stronie prawnej klienta
-lub we współpracy).</li>
-<li>Doradztwo computer vision / integracje (podwykonawstwo).</li></ul>
-<p class="note">Wycena wdrożenia zależy od liczby przejść, jakości kamer i wymagań
-prawnych — <a href="/contact.html">napisz</a>.</p></main>
+<h1>Wdrożenie i koszty — dla samorządów, GDDKiA, KRBRD</h1>
+<p>Analiza działa na CPU; GPU potrzebny dopiero od ~50 strumieni. Rzędy wielkości (sama infrastruktura):</p>
+<table class="tbl"><tr><th>Skala</th><th>Strumienie</th><th>Sprzęt</th><th>Koszt</th></tr><tr><td>MVP (demo)</td><td>1–4</td><td>CPU offline / 1 mały serwer</td><td>≈ €0–40 / mies.</td></tr><tr><td>Pilot</td><td>10–20</td><td>1× serwer dedykowany (AX41)</td><td>~€40 / mies.</td></tr><tr><td>Miasto</td><td>~100</td><td>1× GPU (GEX44, RTX 4000)</td><td>~€184 / mies.</td></tr></table>
+<h2>Ścieżka do ЛПР</h2>
+<ul>
+ <li><strong>KRBRD / Sekretariat</strong> (Min. Infrastruktury) — cel: −50% do 2030; dostarczamy metodę skalowalną i spójną z Safe System.</li>
+ <li><strong>ZDM / zarząd dróg miejskich</strong> — ranking najgroźniejszych przejść i uzasadnienie budżetu.</li>
+ <li><strong>Prezydent / rada miasta</strong> — bezpieczeństwo mieszkańców jako widoczny efekt + gotowość pod granty.</li>
+ <li><strong>GDDKiA / GITD / Policja (SEWIK)</strong> — obiektywne dane behawioralne, których dziś brak.</li>
+</ul>
+<p class="note">Wycena wdrożenia zależy od liczby przejść i jakości kamer — <a href="/#kontakt">napisz</a>.</p></main>
 <footer>
- <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
- <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
+  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>

@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SafeCross — anonymous pedestrian-crossing safety dashboard</title>
-<meta name="description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<title>SafeCross — live pedestrian-crossing safety analysis (AI + human verification)</title>
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="SafeCross — anonymous pedestrian-crossing safety dashboard">
-<meta property="og:description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<meta property="og:title" content="SafeCross — live pedestrian-crossing safety analysis (AI + human verification)">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/en/">
 <meta property="og:locale" content="en_US">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/en/">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/">
@@ -20,129 +21,130 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"Person","name":"Andrii Shramko","jobTitle":"Computer Vision / VR / 3D specialist",
-  "knowsAbout":["computer vision","pedestrian safety analytics","3D Gaussian Splatting",
-   "volumetric capture","vehicle speed estimation"],
+  "knowsAbout":["computer vision","pedestrian safety analytics","road safety","3D Gaussian Splatting","volumetric capture"],
   "sameAs":["https://www.linkedin.com/in/andriishramko"]},
- {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko",
-  "vatID":"PL7543116302"},
- {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"https://patrol.flyreelstudio.eu",
-  "inLanguage":["pl","en"]}
-]}
-</script>
+ {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko","vatID":"PL7543116302"},
+ {"@type":"SoftwareApplication","name":"Bezpieczne Przejścia / SafeCross","applicationCategory":"Computer vision, road-safety analytics","operatingSystem":"Linux","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}},
+ {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"https://patrol.flyreelstudio.eu","inLanguage":["pl","en"]}
+]}</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?","acceptedAnswer":{"@type":"Answer","text":"Nie. Twarze i tablice rejestracyjne są rozmywane na wejściu, kadry nie są przechowywane, nie powstają embeddingi twarzy. Zapisywane są tylko liczniki oraz zrzuty zdarzeń z rozmytymi danymi do weryfikacji."}},
+ {"@type":"Question","name":"Czy AI sam decyduje, że doszło do naruszenia?","acceptedAnswer":{"@type":"Answer","text":"Nie. AI FLAGUJE kandydatów na zdarzenia; ostateczną ocenę „czy kierowca ustąpił” podejmują ludzie, potwierdzając lub odrzucając każdy zrzut. Z tych głosów liczymy realną trafność."}},
+ {"@type":"Question","name":"Skąd biorą się dane na stronie?","acceptedAnswer":{"@type":"Answer","text":"Z prawdziwej publicznej kamery przejścia w Polsce, analizowanej na żywo modelem wizji komputerowej. Widać wideo z nałożonymi ramkami i licznikami."}}
+]}</script>
+<script defer src="/assets/live.js"></script>
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</div>
-<header>
- <div class="brand"><a href="/en/">🚸 SafeCross — Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/en/">Home</a><a href="/en/dashboard.html">Dashboard</a><a href="/en/how-it-works.html">How it works</a><a href="/en/resources.html">Resources</a><a href="/en/compliance.html">Compliance (GDPR/AI Act)</a><a href="/en/contact.html">Contact</a>
- <a class="lang" href="/">PL</a></nav>
+<header class="nav">
+ <a class="logo" href="/en/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/en/" class=cur>Live</a><a href="/en/how-it-works.html">How it works</a><a href="/en/accuracy.html">Accuracy</a><a href="/en/resources.html">Deployment</a><a href="/en/compliance.html">Compliance / GDPR</a><a href="/en/contact.html">Contact</a></nav>
+ <a class="lang" href="/">PL</a>
 </header>
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
 <section class="hero">
- <h1>Anonymous pedestrian-crossing safety dashboard</h1>
- <p class="lead">Camera + computer vision → <strong>aggregate behaviour counters
- only</strong>: pedestrians/hour, % head-down (attention proxy), drivers failing
- to yield, conflicts. No identification, no register, no penalties. Faces and
- plates pixelated; frames never stored.</p>
- <p><a class="cta" href="/en/dashboard.html">View the dashboard (synthetic data)</a>
-    <a class="cta ghost" href="/en/contact.html">For government / For companies</a></p>
+ <div class="hero-copy">
+  <div class="kicker">Live video analysis · real camera · human verification</div>
+  <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
+  <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
+  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live —
+  and let you judge each situation yourself.</p>
+  <div class="hero-cta">
+   <a class="btn" href="#live">Watch the live camera ↓</a>
+   <a class="btn ghost" href="#kontakt">For government</a>
+  </div>
+ </div>
+ <aside class="hero-facts">
+  <div class="fact"><b>458</b><span>pedestrians killed in 2023 — ~1 in 4 of all road deaths</span></div>
+  <div class="fact"><b>131</b><span>of them on marked crossings (2023)</span></div>
+  <div class="fact"><b>PLN 2.57M</b><span>unit cost of a single road fatality (KRBRD)</span></div>
+ </aside>
 </section>
-<section class="cols3">
- <div><h3>🔒 Privacy as the product</h3><p>Only aggregate counters ever reach disk.
- Identities are not retained; no register exists. Faces/plates pixelated at
- inference; no face embeddings; ephemeral track IDs live in RAM only.</p></div>
- <div><h3>📊 Metrics you can trust</h3><p>Every rate is normalized to actually
- observed time (coverage). Stream gaps render as “no data”, never as fake zeros.
- Camera failover is shown right on the dashboard.</p></div>
- <div><h3>🛠 Expertise, not a box</h3><p>The demonstrator sells competence:
- road-safety analytics deployments, CV/AI consulting, integrations.
- Author: Andrii Shramko — computer vision / VR / 3D specialist (Poland).</p></div>
+<section id="live" class="live-wrap">
+ <div class="live-head">
+  <h2>Live camera — AI counts in real time</h2>
+  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
+ </div>
+ <p class="muted" id="live-source">Public crossing camera (PL) · 24/7</p>
+ <div class="live-stage">
+  <img id="live-img" alt="Live preview with AI analysis (faces and plates blurred)">
+  <div class="live-offline" id="live-offline"><span>Camera temporarily unavailable — reconnecting…</span></div>
+ </div>
+ <div id="ticker" class="ticker"></div>
+ <div class="stats">
+  <div class="stat" id="st-ped"><div class="big">—</div><div class="lbl">pedestrians (session)</div><div class="sub"></div></div>
+  <div class="stat" id="st-veh"><div class="big">—</div><div class="lbl">vehicles (session)</div><div class="sub"></div></div>
+  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">flagged events</div><div class="sub"></div></div>
+  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">human-rated accuracy</div><div class="sub">from user votes</div></div>
+ </div>
+ <p class="muted small" id="st-inframe"></p>
 </section>
-<section>
- <h2>Who it is for</h2>
- <ul>
-  <li><strong>Municipalities & road authorities</strong> — objective before/after
-  data for infrastructure changes (refuge islands, lighting, raised crossings).</li>
-  <li><strong>Integrators & smart-city vendors</strong> — behavioural analytics
-  layer as a subcontract.</li>
-  <li><strong>Research projects & EU grants</strong> — measurable pedestrian-safety
-  indicators.</li>
- </ul>
+<section class="verify">
+ <h2>Help us check the AI — confirm or refute an event</h2>
+ <p class="lead">The AI only <strong>flags</strong> suspicious situations (a vehicle on the crossing with a
+ pedestrian present). Real violation or false alarm? You decide. From your votes we compute the
+ model's <strong>true accuracy</strong> — more honest than a vendor's claim.</p>
+ <div id="events" class="events"><p class="muted pad">Waiting for the first detected event…</p></div>
 </section>
-<section>
- <h2>What we can already do</h2>
- <ul>
-  <li>Count pedestrians and vehicles per hour (no camera calibration needed).</li>
-  <li>Measure crosswalk occupancy and detect <strong>failure to yield</strong> to a
-  pedestrian (topological event — a vehicle transits the crossing without stopping
-  while a pedestrian is on it).</li>
-  <li>Estimate the <strong>% of head-down pedestrians</strong> (a sampled attention
-  proxy with a confidence interval — never an accusation of a specific person).</li>
-  <li>Show hour×day trends, observation coverage, and camera failover status.</li>
-  <li>Do it privately: faces/plates pixelated, zero frames on disk, zero register.</li>
- </ul>
- <h2>What we can add</h2>
- <ul>
-  <li><strong>Conflict times in seconds (PET / TTC)</strong> and near-misses — on a
-  metrically calibrated camera: a numeric “close-call” indicator before a collision happens.</li>
-  <li><strong>Before/after reports</strong> for a specific intervention (refuge island,
-  raised table, lighting, signals) — hard proof of whether the change worked.</li>
-  <li><strong>Night-time and weather analysis</strong>, a city-wide ranking of the most
-  dangerous crossings, threshold alerts.</li>
-  <li><strong>Camera-based speed</strong> as a screening layer flagging candidates for a
-  certified authority device — never as evidence.</li>
-  <li>Integration with existing municipal cameras and dashboards.</li>
- </ul>
- <h2>How we change pedestrian safety</h2>
- <p>The causal chain is simple: <strong>measure → pinpoint the most dangerous crossings
- → recommend an intervention → measure its effect.</strong> Today, decisions about a
- refuge island, a raised table or better lighting are often made by intuition and
- without checking the result. We provide a continuous, objective, anonymous signal:
- where drivers fail to yield, where pedestrians are distracted, at which hours risk
- rises — and after an infrastructure change we show, in numbers, whether it actually
- dropped. That turns pedestrian safety from guesswork into a measurable, repeatable process.</p>
+<section class="hooks">
+ <h2>Why this matters to government</h2>
+ <div class="hook-grid">
+  <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
+  One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
+  crossings −59% before/after). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
+  <span class="src">Polish Road Safety Observatory</span></p></div>
+  <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
+  We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
+ </div>
+ <h2 class="mt">What we do · what we'll add · how we change things</h2>
+ <div class="cols3">
+  <div><h3>Today</h3><ul><li>Count pedestrians and vehicles from a real camera.</li>
+   <li>Flag crossing conflicts and save a snapshot for verification.</li>
+   <li>Measure true accuracy from human ratings.</li><li>Blur faces and plates at ingest.</li></ul></div>
+  <div><h3>We'll add</h3><ul><li>Conflict times in seconds (PET/TTC) on a calibrated camera.</li>
+   <li>City ranking of the most dangerous crossings + before/after reports.</li>
+   <li>Night and weather analysis, threshold alerts.</li><li>Active learning from human votes.</li></ul></div>
+  <div><h3>How we change things</h3><p>Measure → pinpoint the worst crossings → recommend an
+   intervention (refuge, raised table, lighting) → measure the effect in numbers. Pedestrian
+   safety turns from guesswork into a measurable, repeatable process.</p></div>
+ </div>
 </section>
-<section id="contact" class="card">
+<section id="kontakt" class="contact">
  <h2>Let's talk about your crossing</h2>
- <p>Get in touch — for a municipality, a company or a research project. I reply within 1–2 business days.</p>
+ <p class="lead">For a municipality, road authority, company or research project. I reply within 1–2 business days.</p>
  <form id="leadform" autocomplete="on">
  <label>Full name*<input name="name" type="text" required autocomplete="name"></label>
  <label>Organisation<input name="organization" type="text" autocomplete="organization"></label>
  <label>Role<input name="role" type="text" autocomplete="organization-title"></label>
- <label>Segment<select name="segment"><option>Government</option><option>Company</option><option>EU project / research</option><option>Other</option></select></label>
+ <label>Segment<select name="segment"><option>Municipality / road authority</option><option>National road-safety body</option><option>Company</option><option>EU project / research</option><option>Other</option></select></label>
  <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
- <label>Message*<textarea name="message" rows="5" required></textarea></label>
+ <label class="wide">Message*<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>I consent to the processing of the data provided in order to handle this inquiry (controller: Andrii Shramko, sole trader; details in the <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>I consent to processing my data to handle this inquiry (controller: Andrii Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
  <input type="hidden" name="lang" value="en">
  <button type="submit">Send</button>
 </form>
 <p id="formok" class="ok" style="display:none">✅ Thank you! Your inquiry arrived — I'll be in touch soon.</p>
-<p id="formerr" class="err" style="display:none">❌ Sending failed. Please write directly: zmei116@gmail.com</p>
+<p id="formerr" class="err" style="display:none">❌ Sending failed. Write to: zmei116@gmail.com</p>
 
-<script>
-(function(){
-  var f=document.getElementById('leadform'); if(!f) return;
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var btn=f.querySelector('button'); btn.disabled=true;
-    var data=Object.fromEntries(new FormData(f).entries());
-    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)})
-      .then(function(r){ if(!r.ok) throw new Error(r.status);
-        f.style.display='none';
-        document.getElementById('formok').style.display='block';})
-      .catch(function(){ btn.disabled=false;
-        document.getElementById('formerr').style.display='block';});
-  });
-})();
-</script>
+<script>(function(){var f=document.getElementById('leadform');if(!f)return;
+f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
+var d=Object.fromEntries(new FormData(f).entries());
+fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
+.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
 </section></main>
 <footer>
- <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>
- <p>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · <a href="/en/privacy.html">Privacy</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/en/privacy.html">Privacy</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>

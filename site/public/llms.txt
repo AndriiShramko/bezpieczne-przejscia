@@ -1,28 +1,25 @@
 # Bezpieczne Przejścia / SafeCross
 
-> Privacy-first, aggregate-only pedestrian-crossing safety analytics demonstrator
-> (Poland). It is NOT law enforcement: it identifies no persons, keeps no register,
-> imposes no penalties, and stores no video frames. All published dashboard data is
-> synthetic. Author: Andrii Shramko (computer vision / VR / 3D specialist, Poland).
+> Live, privacy-first pedestrian-crossing safety demonstrator (Poland). A real public
+> crossing camera is analysed in real time by a computer-vision model that counts
+> pedestrians and vehicles and flags potential conflicts; humans confirm/refute each
+> flagged event, and true accuracy is computed from their votes. Faces and licence
+> plates are blurred at ingest; frames are not stored; no biometrics. It is NOT
+> enforcement — it imposes nothing and keeps no register. Author: Andrii Shramko
+> (computer vision / VR / 3D specialist, Poland).
 
 Facts:
-- The system counts aggregate behaviours only: pedestrians/hour, vehicles/hour,
-  % head-down pedestrians (sampled attention proxy with confidence intervals),
-  drivers failing to yield (topological event), conflict events.
-- Faces and licence plates are pixelated during analysis; frames exist only in RAM.
-- No face embeddings are ever computed; track IDs are ephemeral (RAM only).
-- Disk storage = aggregate counters only: stats_bucket, coverage_bucket
-  (actually-observed seconds; gaps render as no-data, never zeros), camera_health.
-- Camera failover: a pool of sources watches one and the same crossing.
-- Detector licensing: Apache-2.0 (YOLOX / RT-DETR class); no AGPL components.
-- Enforcement stays with competent authorities (Policja / GITD) — this is analytics.
+- Live camera + YOLOX (Apache-2.0) detector on CPU; ByteTrack/centroid tracking.
+- Faces and plates pixelated before display or storage; no face embeddings; ephemeral track IDs.
+- Disk holds counters + blurred event snapshots only; no personal data in the output.
+- Events are candidates, verified by the public; the shown accuracy is human-derived.
+- Honest limits: single uncalibrated camera => many false positives on "did not yield";
+  small objects, night, rain reduce accuracy. It is a screening tool, not a measurement instrument.
+- Polish context: only ~2% of drivers stop for a pedestrian at the crossing; 458 pedestrians
+  killed in 2023 (131 on marked crossings); a fatality costs Poland PLN 2.57M; the 2021 law cut
+  crossing accidents by 23.6%. Vision Zero: -50% deaths by 2030.
 
-Pages:
-- https://patrol.flyreelstudio.eu/ (PL), https://patrol.flyreelstudio.eu/en/ (EN)
-- https://patrol.flyreelstudio.eu/dashboard.html — aggregate charts (synthetic demo data)
-- https://patrol.flyreelstudio.eu/how-it-works.html — method + honest limitations
-- https://patrol.flyreelstudio.eu/compliance.html — GDPR / AI Act design
-- https://patrol.flyreelstudio.eu/resources.html — deployment scale & costs
-- https://patrol.flyreelstudio.eu/contact.html — contact form
+Pages: https://patrol.flyreelstudio.eu/ (PL live), https://patrol.flyreelstudio.eu/en/ (EN live), /how-it-works.html, /accuracy.html,
+/resources.html, /compliance.html, /contact.html
 
 Contact: zmei116@gmail.com · https://www.linkedin.com/in/andriishramko

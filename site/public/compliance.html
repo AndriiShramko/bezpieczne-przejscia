@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zgodność: RODO i AI Act — privacy by design</title>
-<meta name="description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Zgodność: RODO i AI Act — privacy by design">
-<meta property="og:description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/compliance.html">
 <meta property="og:locale" content="pl_PL">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/compliance.html">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/compliance.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/compliance.html">
@@ -19,53 +20,34 @@
 
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
-<header>
- <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
- <a class="lang" href="/en/compliance.html">EN</a></nav>
+<header class="nav">
+ <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
+ <nav><a href="/">Na żywo</a><a href="/how-it-works.html">Jak to działa</a><a href="/accuracy.html">Skuteczność</a><a href="/resources.html">Wdrożenie</a><a href="/compliance.html" class=cur>Zgodność / RODO</a><a href="/contact.html">Kontakt</a></nav>
+ <a class="lang" href="/en/compliance.html">EN</a>
 </header>
+<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
 <main>
 <h1>Zgodność: RODO i AI Act — privacy by design</h1>
-<p class="note">Nasza teza produktowa: <strong>tożsamości nie są utrwalane,
-rejestr nie jest prowadzony, klatki nie są zapisywane, twarze i tablice są
-pikselizowane, a egzekwowanie prawa pozostaje przy właściwym organie.</strong></p>
-<h2>Jak projektujemy zgodność</h2>
+<p class="note">Teza: <strong>twarze i tablice rozmywane, kadry nieprzechowywane, brak identyfikacji i rejestru;
+zapisywane tylko liczniki i rozmyte zrzuty zdarzeń do weryfikacji. Egzekwowanie zostaje przy organie.</strong></p>
 <ul>
- <li><strong>Minimalizacja (art. 5 ust. 1 lit. c RODO):</strong> na dysk trafiają
- wyłącznie zagregowane liczniki na minutę; dane wyjściowe nie zawierają danych osobowych.</li>
- <li><strong>Pikselizacja twarzy/tablic na etapie analizy;</strong> klatka źródłowa
- istnieje wyłącznie ulotnie w pamięci RAM podczas przetwarzania i nie jest utrwalana.</li>
- <li><strong>Zero biometrii:</strong> twarz jest wyłącznie regionem do pikselizacji —
- nie liczymy i nie przechowujemy żadnych embeddingów ani wzorców biometrycznych.
- System nie wykonuje zdalnej identyfikacji biometrycznej (AI Act, art. 5).</li>
- <li><strong>Podstawa prawna przetwarzania w czasie analizy:</strong> prawnie
- uzasadniony interes (art. 6 ust. 1 lit. f RODO; cel = bezpieczeństwo ruchu) —
- z wykonaną oceną LIA oraz DPIA <em>przed</em> uruchomieniem na rzeczywistej kamerze.</li>
- <li><strong>Żadnych decyzji zautomatyzowanych wobec osób (art. 22)</strong> —
- wynik to statystyka infrastruktury, nie ocena człowieka.</li>
- <li><strong>Brak rejestru wykroczeń (art. 10 RODO)</strong> — system nie przypisuje
- zdarzeń osobom i nie tworzy list.</li>
- <li><strong>Retencja:</strong> liczniki zagregowane bez danych osobowych; logi
- techniczne rotowane automatycznie.</li>
+ <li><strong>Rozmycie twarzy/tablic</strong> na etapie analizy; kadr istnieje tylko ulotnie w RAM.</li>
+ <li><strong>Zero biometrii:</strong> twarz to jedynie region do rozmycia — bez embeddingów (AI Act art. 5).</li>
+ <li><strong>Minimalizacja (art. 5 RODO):</strong> na dysk trafiają liczniki + rozmyte zrzuty zdarzeń, bez danych osobowych w wyniku.</li>
+ <li><strong>Podstawa przetwarzania w chwili analizy:</strong> uzasadniony interes (art. 6 ust. 1 lit. f, cel = bezpieczeństwo ruchu) — LIA + DPIA przed wdrożeniem produkcyjnym na własnej/permissioned kamerze.</li>
+ <li><strong>Brak decyzji zautomatyzowanych wobec osób (art. 22)</strong> i brak rejestru wykroczeń (art. 10).</li>
+ <li><strong>Rola:</strong> Andrii Shramko (JDG, NIP PL7543116302) jako administrator (demo); wdrożenie u organu = podmiot przetwarzający (art. 28) na jego podstawie prawnej.</li>
 </ul>
-<h2>Rola i status</h2>
-<p>Demonstrator prowadzi Andrii Shramko (JDG, NIP PL7543116302) jako
-<strong>administrator danych (demo)</strong>. Wdrożenie produkcyjne u klienta
-publicznego odbywa się na podstawie prawnej organu (art. 6 ust. 1 lit. e) i umowy
-powierzenia (art. 28) — wtedy dostawca działa jako podmiot przetwarzający.</p>
-<h2>Czego ten system NIE robi</h2>
-<ul>
- <li>nie identyfikuje osób ani pojazdów, nie rozpoznaje twarzy;</li>
- <li>nie nakłada kar i nie wspiera nakładania kar;</li>
- <li>nie prowadzi żadnego rejestru zdarzeń przypisanych osobom;</li>
- <li>nie transmituje i nie archiwizuje wideo.</li>
-</ul></main>
+<p class="note">Ten demonstrator działa na publicznej kamerze w celach pokazu technologii; wdrożenie klienckie
+wymaga zgody właściciela kamery i podpisu prawnika (LIA/DPIA).</p></main>
 <footer>
- <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
- <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
+  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>

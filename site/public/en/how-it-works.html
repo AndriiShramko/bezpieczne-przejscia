@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How it works — method and honest limitations</title>
-<meta name="description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<title>How it works — pipeline, model, honest limitations</title>
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="How it works — method and honest limitations">
-<meta property="og:description" content="Anonymous, aggregate pedestrian-crossing safety dashboard: pedestrians/hour, failure to yield, attention proxy. Privacy by design (GDPR/AI Act) — no identification, no register, no penalties. A demonstrator, not enforcement.">
+<meta property="og:title" content="How it works — pipeline, model, honest limitations">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/en/how-it-works.html">
 <meta property="og:locale" content="en_US">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/en/how-it-works.html">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/how-it-works.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/how-it-works.html">
@@ -19,56 +20,39 @@
 
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
- {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?",
-  "acceptedAnswer":{"@type":"Answer","text":"Nie. System zlicza wyłącznie zagregowane zdarzenia (liczniki na minutę). Twarze i tablice są pikselizowane na etapie analizy, klatki nie są zapisywane, nie powstają żadne embeddingi twarzy ani rejestry."}},
- {"@type":"Question","name":"Czy to jest system egzekwowania prawa?",
-  "acceptedAnswer":{"@type":"Answer","text":"Nie. To demonstrator analityki bezpieczeństwa. Egzekwowanie prawa pozostaje wyłączną kompetencją Policji i GITD z certyfikowanymi urządzeniami."}},
- {"@type":"Question","name":"Co dokładnie jest zapisywane na dysku?",
-  "acceptedAnswer":{"@type":"Answer","text":"Wyłącznie liczniki zagregowane: statystyki na minutę (stats_bucket), realny czas obserwacji (coverage_bucket) i zdarzenia zdrowia kamer (camera_health). Żadnych klatek, żadnych danych osobowych."}},
- {"@type":"Question","name":"Skąd pewność, że luki w danych nie są zerami?",
-  "acceptedAnswer":{"@type":"Answer","text":"Każdy przedział ma zapisany czas rzeczywistej obserwacji (observed_sec). Wskaźniki są normalizowane do czasu obserwacji, a przedziały bez pokrycia są prezentowane jako brak danych, nigdy jako zero."}}
-]}
-</script>
+ {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?","acceptedAnswer":{"@type":"Answer","text":"Nie. Twarze i tablice rejestracyjne są rozmywane na wejściu, kadry nie są przechowywane, nie powstają embeddingi twarzy. Zapisywane są tylko liczniki oraz zrzuty zdarzeń z rozmytymi danymi do weryfikacji."}},
+ {"@type":"Question","name":"Czy AI sam decyduje, że doszło do naruszenia?","acceptedAnswer":{"@type":"Answer","text":"Nie. AI FLAGUJE kandydatów na zdarzenia; ostateczną ocenę „czy kierowca ustąpił” podejmują ludzie, potwierdzając lub odrzucając każdy zrzut. Z tych głosów liczymy realną trafność."}},
+ {"@type":"Question","name":"Skąd biorą się dane na stronie?","acceptedAnswer":{"@type":"Answer","text":"Z prawdziwej publicznej kamery przejścia w Polsce, analizowanej na żywo modelem wizji komputerowej. Widać wideo z nałożonymi ramkami i licznikami."}}
+]}</script>
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</div>
-<header>
- <div class="brand"><a href="/en/">🚸 SafeCross — Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/en/">Home</a><a href="/en/dashboard.html">Dashboard</a><a href="/en/how-it-works.html">How it works</a><a href="/en/resources.html">Resources</a><a href="/en/compliance.html">Compliance (GDPR/AI Act)</a><a href="/en/contact.html">Contact</a>
- <a class="lang" href="/how-it-works.html">PL</a></nav>
+<header class="nav">
+ <a class="logo" href="/en/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/en/">Live</a><a href="/en/how-it-works.html" class=cur>How it works</a><a href="/en/accuracy.html">Accuracy</a><a href="/en/resources.html">Deployment</a><a href="/en/compliance.html">Compliance / GDPR</a><a href="/en/contact.html">Contact</a></nav>
+ <a class="lang" href="/how-it-works.html">PL</a>
 </header>
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
 <h1>How it works — and what we deliberately do NOT do</h1>
 <ol class="pipeline">
- <li><strong>Video source</strong> — a camera with the owner's written permission or
- our own camera. The failover pool (primary + backup) watches one and the same crossing.</li>
- <li><strong>In-RAM analysis</strong> — detection (Apache-2.0-licensed model),
- pixelation of faces and plates right after detection, tracking with ephemeral IDs.</li>
- <li><strong>Zone topology</strong> — line-crossing counters (pedestrians, vehicles),
- crosswalk occupancy, “driver failed to yield” derived topologically (transit of the
- conflict zone without stopping while a pedestrian occupies the crossing).</li>
- <li><strong>Disk = counters only</strong> — stats_bucket + coverage_bucket (actually
- observed time) + camera_health. No frames, no embeddings.</li>
- <li><strong>Dashboard</strong> — aggregate charts, coverage, failover status.</li>
+ <li><strong>Source:</strong> a public 24/7 crossing camera. Analysis runs live; the frame exists only in RAM.</li>
+ <li><strong>Detection:</strong> a <code>YOLOX</code> model (Apache-2.0, no AGPL) on CPU finds pedestrians and vehicles.</li>
+ <li><strong>Privacy:</strong> faces and plates are blurred immediately after detection, before anything else.</li>
+ <li><strong>Tracking:</strong> ephemeral in-RAM IDs — we count new pedestrians/vehicles, storing no frames.</li>
+ <li><strong>Events:</strong> when a vehicle and a pedestrian are in the crossing zone at once, we flag a candidate and save a blurred snapshot.</li>
+ <li><strong>Human verification:</strong> users confirm/refute. True accuracy is computed from the votes.</li>
 </ol>
-<h2>Honest limitations</h2>
-<ul>
- <li><strong>% “head-down”</strong> is a <em>sampled proxy indicator</em> of attention
- with a wide confidence interval — NOT a claim that “the pedestrian used a phone”.</li>
- <li><strong>PET / TTC (conflict times in seconds)</strong> — only on a metrically
- calibrated camera. Without calibration we show unitless conflict events.</li>
- <li><strong>Panoramic framings</strong> (pedestrians a few pixels tall) → counting
- only; behavioural metrics switch off automatically.</li>
- <li><strong>Night, rain, snow</strong> reduce detection sensitivity — which is why
- every metric carries its actually-observed time (coverage).</li>
- <li><strong>Camera-based speed</strong> is a screening layer — never evidence.
- Enforcement requires certified state instruments.</li>
-</ul></main>
+<p class="note">This is a <strong>screening tool</strong>, not a measurement instrument. Counts are estimates,
+events are human-confirmed candidates. We never state a "violation rate" as a hard number — see
+<a href="/en/accuracy.html">Accuracy</a>.</p></main>
 <footer>
- <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>
- <p>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · <a href="/en/privacy.html">Privacy</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/en/privacy.html">Privacy</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>

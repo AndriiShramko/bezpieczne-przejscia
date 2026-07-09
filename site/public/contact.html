@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kontakt — Bezpieczne Przejścia</title>
-<meta name="description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Kontakt — Bezpieczne Przejścia">
-<meta property="og:description" content="Anonimowy, zagregowany dashboard bezpieczeństwa przejść dla pieszych: piesi/godz., nieustąpienie pierwszeństwa, proxy uwagi. Privacy by design (RODO/AI Act) — bez identyfikacji, bez rejestru, bez kar. Demonstrator, nie egzekwowanie.">
+<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator dla samorządów i KRBRD, prywatność by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/contact.html">
 <meta property="og:locale" content="pl_PL">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/contact.html">
 <link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/contact.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/contact.html">
@@ -19,54 +20,43 @@
 
 </head>
 <body>
-<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
-<header>
- <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
- <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
- <a class="lang" href="/en/contact.html">EN</a></nav>
+<header class="nav">
+ <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
+ <nav><a href="/">Na żywo</a><a href="/how-it-works.html">Jak to działa</a><a href="/accuracy.html">Skuteczność</a><a href="/resources.html">Wdrożenie</a><a href="/compliance.html">Zgodność / RODO</a><a href="/contact.html" class=cur>Kontakt</a></nav>
+ <a class="lang" href="/en/contact.html">EN</a>
 </header>
-<main>
-<h1>Kontakt</h1>
-<p>Odpowiadam zwykle w 1–2 dni robocze.</p>
-<form id="leadform" autocomplete="on">
+<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
+<main><h1>Kontakt</h1><p class="lead">Odpowiadam zwykle w 1–2 dni robocze.</p><form id="leadform" autocomplete="on">
  <label>Imię i nazwisko*<input name="name" type="text" required autocomplete="name"></label>
  <label>Organizacja<input name="organization" type="text" autocomplete="organization"></label>
  <label>Rola<input name="role" type="text" autocomplete="organization-title"></label>
- <label>Segment<select name="segment"><option>Samorząd</option><option>Firma</option><option>Projekt UE / nauka</option><option>Inne</option></select></label>
+ <label>Segment<select name="segment"><option>Samorząd / zarząd dróg</option><option>KRBRD / administracja</option><option>Firma</option><option>Projekt UE / nauka</option><option>Inne</option></select></label>
  <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
- <label>Wiadomość*<textarea name="message" rows="5" required></textarea></label>
+ <label class="wide">Wiadomość*<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>Wyrażam zgodę na przetwarzanie podanych danych w celu obsługi zapytania (administrator: Andrii Shramko, JDG; szczegóły w <a href='/privacy.html'>polityce prywatności</a>).*</span></label>
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>Zgadzam się na przetwarzanie danych w celu obsługi zapytania (administrator: Andrii Shramko, JDG; <a href='/privacy.html'>polityka prywatności</a>).*</span></label>
  <input type="hidden" name="lang" value="pl">
  <button type="submit">Wyślij</button>
 </form>
 <p id="formok" class="ok" style="display:none">✅ Dziękuję! Zapytanie dotarło — odezwę się wkrótce.</p>
-<p id="formerr" class="err" style="display:none">❌ Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com</p>
+<p id="formerr" class="err" style="display:none">❌ Nie udało się wysłać. Napisz: zmei116@gmail.com</p>
 
-<script>
-(function(){
-  var f=document.getElementById('leadform'); if(!f) return;
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var btn=f.querySelector('button'); btn.disabled=true;
-    var data=Object.fromEntries(new FormData(f).entries());
-    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)})
-      .then(function(r){ if(!r.ok) throw new Error(r.status);
-        f.style.display='none';
-        document.getElementById('formok').style.display='block';})
-      .catch(function(){ btn.disabled=false;
-        document.getElementById('formerr').style.display='block';});
-  });
-})();
-</script>
-<p>E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+<script>(function(){var f=document.getElementById('leadform');if(!f)return;
+f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
+var d=Object.fromEntries(new FormData(f).entries());
+fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
+.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
+<p class="muted">E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
 LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p></main>
 <footer>
- <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
- <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
- <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
- <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
- <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+ <div class="foot-grid">
+  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
+  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
 </footer>
 </body></html>
