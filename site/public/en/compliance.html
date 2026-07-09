@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compliance: GDPR & AI Act — privacy by design</title>
+<meta name="description" content="Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offence">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/en/compliance.html">
+<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/compliance.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/compliance.html">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/compliance.html">
+<link rel="stylesheet" href="/assets/style.css">
+
+</head>
+<body>
+<div class="disclaimer" role="note">⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</div>
+<header>
+ <div class="brand"><a href="/en/">🚸 SafeCross — Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
+ <nav><a href="/en/">Home</a><a href="/en/dashboard.html">Dashboard</a><a href="/en/how-it-works.html">How it works</a><a href="/en/resources.html">Resources</a><a href="/en/compliance.html">Compliance (GDPR/AI Act)</a><a href="/en/contact.html">Contact</a>
+ <a class="lang" href="/compliance.html">PL</a></nav>
+</header>
+<main>
+<h1>Compliance: GDPR & AI Act — privacy by design</h1>
+<p class="note">Our product thesis: <strong>identities are not retained, no register
+is kept, frames are not stored, faces and plates are pixelated, and law enforcement
+stays with the competent authority.</strong></p>
+<h2>How compliance is designed in</h2>
+<ul>
+ <li><strong>Minimisation (GDPR Art. 5(1)(c)):</strong> only per-minute aggregate
+ counters reach disk; the output data contains no personal data.</li>
+ <li><strong>Pixelation of faces/plates at the analysis stage;</strong> the source
+ frame exists only transiently in RAM during processing and is never persisted.</li>
+ <li><strong>Zero biometrics:</strong> a face is only a region to pixelate — we never
+ compute or store embeddings or biometric templates. The system performs no remote
+ biometric identification (AI Act Art. 5).</li>
+ <li><strong>Legal basis for the processing moment:</strong> legitimate interest
+ (GDPR Art. 6(1)(f); purpose = road safety) — with an LIA and DPIA completed
+ <em>before</em> any run on a real camera.</li>
+ <li><strong>No automated decisions about individuals (Art. 22)</strong> — the output
+ is infrastructure statistics, not an assessment of a person.</li>
+ <li><strong>No register of offences (GDPR Art. 10)</strong> — the system attributes
+ nothing to persons and keeps no lists.</li>
+ <li><strong>Retention:</strong> aggregate counters carry no personal data; technical
+ logs rotate automatically.</li>
+</ul>
+<h2>Role and status</h2>
+<p>The demonstrator is run by Andrii Shramko (sole trader, VAT PL7543116302) as
+<strong>data controller (demo)</strong>. A production deployment for a public client
+runs on the authority's own legal basis (Art. 6(1)(e)) with a processing agreement
+(Art. 28) — the supplier then acts as processor.</p>
+<h2>What this system does NOT do</h2>
+<ul>
+ <li>does not identify persons or vehicles, no face recognition;</li>
+ <li>does not impose penalties, nor support imposing them;</li>
+ <li>keeps no register of events attributed to persons;</li>
+ <li>does not stream or archive video.</li>
+</ul></main>
+<footer>
+ <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>
+ <p>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · <a href="/en/privacy.html">Privacy</a> ·
+ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+ <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
+ <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+</footer>
+</body></html>

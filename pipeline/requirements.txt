@@ -1,0 +1,9 @@
+# License policy: 0 copyleft (no AGPL/GPL) — verified by pip-licenses in CI.
+numpy
+opencv-python-headless   # Apache-2.0
+supervision              # MIT (ByteTrack)
+onnxruntime              # MIT
+shapely                  # BSD
+requests                 # Apache-2.0
+pytest                   # MIT (dev)
+pip-licenses             # MIT (dev)

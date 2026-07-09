@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeCross — anonymous pedestrian-crossing safety dashboard</title>
+<meta name="description" content="Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offence">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/en/">
+<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/">
+<link rel="stylesheet" href="/assets/style.css">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Person","name":"Andrii Shramko","jobTitle":"Computer Vision / VR / 3D specialist",
+  "knowsAbout":["computer vision","pedestrian safety analytics","3D Gaussian Splatting",
+   "volumetric capture","vehicle speed estimation"],
+  "sameAs":["https://www.linkedin.com/in/andriishramko"]},
+ {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko",
+  "vatID":"PL7543116302"},
+ {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"https://patrol.flyreelstudio.eu",
+  "inLanguage":["pl","en"]}
+]}
+</script>
+</head>
+<body>
+<div class="disclaimer" role="note">⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</div>
+<header>
+ <div class="brand"><a href="/en/">🚸 SafeCross — Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
+ <nav><a href="/en/">Home</a><a href="/en/dashboard.html">Dashboard</a><a href="/en/how-it-works.html">How it works</a><a href="/en/resources.html">Resources</a><a href="/en/compliance.html">Compliance (GDPR/AI Act)</a><a href="/en/contact.html">Contact</a>
+ <a class="lang" href="/">PL</a></nav>
+</header>
+<main>
+<section class="hero">
+ <h1>Anonymous pedestrian-crossing safety dashboard</h1>
+ <p class="lead">Camera + computer vision → <strong>aggregate behaviour counters
+ only</strong>: pedestrians/hour, % head-down (attention proxy), drivers failing
+ to yield, conflicts. No identification, no register, no penalties. Faces and
+ plates pixelated; frames never stored.</p>
+ <p><a class="cta" href="/en/dashboard.html">View the dashboard (synthetic data)</a>
+    <a class="cta ghost" href="/en/contact.html">For government / For companies</a></p>
+</section>
+<section class="cols3">
+ <div><h3>🔒 Privacy as the product</h3><p>Only aggregate counters ever reach disk.
+ Identities are not retained; no register exists. Faces/plates pixelated at
+ inference; no face embeddings; ephemeral track IDs live in RAM only.</p></div>
+ <div><h3>📊 Metrics you can trust</h3><p>Every rate is normalized to actually
+ observed time (coverage). Stream gaps render as “no data”, never as fake zeros.
+ Camera failover is shown right on the dashboard.</p></div>
+ <div><h3>🛠 Expertise, not a box</h3><p>The demonstrator sells competence:
+ road-safety analytics deployments, CV/AI consulting, integrations.
+ Author: Andrii Shramko — computer vision / VR / 3D specialist (Poland).</p></div>
+</section>
+<section>
+ <h2>Who it is for</h2>
+ <ul>
+  <li><strong>Municipalities & road authorities</strong> — objective before/after
+  data for infrastructure changes (refuge islands, lighting, raised crossings).</li>
+  <li><strong>Integrators & smart-city vendors</strong> — behavioural analytics
+  layer as a subcontract.</li>
+  <li><strong>Research projects & EU grants</strong> — measurable pedestrian-safety
+  indicators.</li>
+ </ul>
+</section></main>
+<footer>
+ <p>⚠️ Technical demonstrator — NOT official surveillance or law enforcement; it imposes no penalties, identifies no persons and keeps no register of offences. All data shown is synthetic (demo).</p>
+ <p>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302 · <a href="/en/privacy.html">Privacy</a> ·
+ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+ <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
+ <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+</footer>
+</body></html>

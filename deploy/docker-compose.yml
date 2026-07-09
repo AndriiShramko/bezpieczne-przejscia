@@ -1,0 +1,55 @@
+# Bezpieczne Przejścia / patrol.flyreelstudio.eu — additive, isolated stack.
+# Prime directive: do NOT disturb co-hosted neighbour services — own network,
+# no host ports, hard caps everywhere.
+#
+# Publication happens ONLY through the operator-managed reverse proxy
+# (additive vhost) or a separate proxy/Cloudflare — see README-deploy.md.
+
+services:
+  patrol-web:
+    image: nginx:alpine
+    container_name: patrol-web
+    volumes:
+      - ../site/public:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=32m
+      - /var/run:size=4m
+    depends_on:
+      - patrol-form
+    networks: [patrol]
+    restart: unless-stopped
+    mem_limit: 128m
+    memswap_limit: 128m          # == mem_limit: no swap creep
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  patrol-form:
+    image: python:3.12-alpine
+    container_name: patrol-form
+    command: ["python", "/app/server.py"]
+    volumes:
+      - ../form-proxy/server.py:/app/server.py:ro
+    env_file: ./config.env       # TG_BOT_TOKEN / TG_CHAT_ID — chmod 600, NEVER in git
+    environment:
+      - PORT=8087
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    networks: [patrol]
+    restart: unless-stopped
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  patrol:
+    driver: bridge

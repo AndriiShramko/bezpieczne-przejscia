@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontakt — Bezpieczne Przejścia</title>
+<meta name="description" content="Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykrocze">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/contact.html">
+<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/contact.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/contact.html">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/contact.html">
+<link rel="stylesheet" href="/assets/style.css">
+
+</head>
+<body>
+<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
+<header>
+ <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
+ <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
+ <a class="lang" href="/en/contact.html">EN</a></nav>
+</header>
+<main>
+<h1>Kontakt</h1>
+<p>Odpowiadam zwykle w 1–2 dni robocze.</p>
+<form id="leadform" autocomplete="on">
+ <label>Imię i nazwisko*<input name="name" type="text" required autocomplete="name"></label>
+ <label>Organizacja<input name="organization" type="text" autocomplete="organization"></label>
+ <label>Rola<input name="role" type="text" autocomplete="organization-title"></label>
+ <label>Segment<select name="segment"><option>Samorząd</option><option>Firma</option><option>Projekt UE / nauka</option><option>Inne</option></select></label>
+ <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
+ <label>Wiadomość*<textarea name="message" rows="5" required></textarea></label>
+ <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
+ <label class="consent"><input name="consent" type="checkbox" required value="yes"> <span>Wyrażam zgodę na przetwarzanie podanych danych w celu obsługi zapytania (administrator: Andrii Shramko, JDG; szczegóły w <a href='/privacy.html'>polityce prywatności</a>).*</span></label>
+ <input type="hidden" name="lang" value="pl">
+ <button type="submit">Wyślij</button>
+</form>
+<p id="formok" class="ok" style="display:none">✅ Dziękuję! Zapytanie dotarło — odezwę się wkrótce.</p>
+<p id="formerr" class="err" style="display:none">❌ Nie udało się wysłać. Napisz proszę bezpośrednio: zmei116@gmail.com</p>
+
+<script>
+(function(){
+  var f=document.getElementById('leadform'); if(!f) return;
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn=f.querySelector('button'); btn.disabled=true;
+    var data=Object.fromEntries(new FormData(f).entries());
+    fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error(r.status);
+        f.style.display='none';
+        document.getElementById('formok').style.display='block';})
+      .catch(function(){ btn.disabled=false;
+        document.getElementById('formerr').style.display='block';});
+  });
+})();
+</script>
+<p>E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p></main>
+<footer>
+ <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
+ <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
+ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+ <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
+ <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+</footer>
+</body></html>

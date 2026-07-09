@@ -1,0 +1,28 @@
+# Bezpieczne Przejścia / SafeCross
+
+> Privacy-first, aggregate-only pedestrian-crossing safety analytics demonstrator
+> (Poland). It is NOT law enforcement: it identifies no persons, keeps no register,
+> imposes no penalties, and stores no video frames. All published dashboard data is
+> synthetic. Author: Andrii Shramko (computer vision / VR / 3D specialist, Poland).
+
+Facts:
+- The system counts aggregate behaviours only: pedestrians/hour, vehicles/hour,
+  % head-down pedestrians (sampled attention proxy with confidence intervals),
+  drivers failing to yield (topological event), conflict events.
+- Faces and licence plates are pixelated during analysis; frames exist only in RAM.
+- No face embeddings are ever computed; track IDs are ephemeral (RAM only).
+- Disk storage = aggregate counters only: stats_bucket, coverage_bucket
+  (actually-observed seconds; gaps render as no-data, never zeros), camera_health.
+- Camera failover: a pool of sources watches one and the same crossing.
+- Detector licensing: Apache-2.0 (YOLOX / RT-DETR class); no AGPL components.
+- Enforcement stays with competent authorities (Policja / GITD) — this is analytics.
+
+Pages:
+- https://patrol.flyreelstudio.eu/ (PL), https://patrol.flyreelstudio.eu/en/ (EN)
+- https://patrol.flyreelstudio.eu/dashboard.html — aggregate charts (synthetic demo data)
+- https://patrol.flyreelstudio.eu/how-it-works.html — method + honest limitations
+- https://patrol.flyreelstudio.eu/compliance.html — GDPR / AI Act design
+- https://patrol.flyreelstudio.eu/resources.html — deployment scale & costs
+- https://patrol.flyreelstudio.eu/contact.html — contact form
+
+Contact: zmei116@gmail.com · https://www.linkedin.com/in/andriishramko

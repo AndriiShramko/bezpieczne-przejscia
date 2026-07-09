@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you reference this demonstrator, please cite it as below."
+title: "Bezpieczne Przejścia / SafeCross — privacy-preserving pedestrian-crossing safety analytics demonstrator"
+authors:
+  - family-names: "Shramko"
+    given-names: "Andrii"
+year: 2026
+url: "https://patrol.flyreelstudio.eu"
+license: Apache-2.0
+keywords:
+  - computer vision
+  - road safety
+  - pedestrian safety
+  - privacy by design
+  - smart city

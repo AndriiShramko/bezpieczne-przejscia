@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jak to działa — metoda i uczciwe ograniczenia</title>
+<meta name="description" content="Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykrocze">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/how-it-works.html">
+<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/how-it-works.html">
+<link rel="stylesheet" href="/assets/style.css">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?",
+  "acceptedAnswer":{"@type":"Answer","text":"Nie. System zlicza wyłącznie zagregowane zdarzenia (liczniki na minutę). Twarze i tablice są pikselizowane na etapie analizy, klatki nie są zapisywane, nie powstają żadne embeddingi twarzy ani rejestry."}},
+ {"@type":"Question","name":"Czy to jest system egzekwowania prawa?",
+  "acceptedAnswer":{"@type":"Answer","text":"Nie. To demonstrator analityki bezpieczeństwa. Egzekwowanie prawa pozostaje wyłączną kompetencją Policji i GITD z certyfikowanymi urządzeniami."}},
+ {"@type":"Question","name":"Co dokładnie jest zapisywane na dysku?",
+  "acceptedAnswer":{"@type":"Answer","text":"Wyłącznie liczniki zagregowane: statystyki na minutę (stats_bucket), realny czas obserwacji (coverage_bucket) i zdarzenia zdrowia kamer (camera_health). Żadnych klatek, żadnych danych osobowych."}},
+ {"@type":"Question","name":"Skąd pewność, że luki w danych nie są zerami?",
+  "acceptedAnswer":{"@type":"Answer","text":"Każdy przedział ma zapisany czas rzeczywistej obserwacji (observed_sec). Wskaźniki są normalizowane do czasu obserwacji, a przedziały bez pokrycia są prezentowane jako brak danych, nigdy jako zero."}}
+]}
+</script>
+</head>
+<body>
+<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
+<header>
+ <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
+ <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
+ <a class="lang" href="/en/how-it-works.html">EN</a></nav>
+</header>
+<main>
+<h1>Jak to działa — i czego celowo NIE robimy</h1>
+<ol class="pipeline">
+ <li><strong>Źródło wideo</strong> — kamera z pisemną zgodą właściciela lub własna
+ kamera. Pula failover (primary + backup) obserwuje jedno i to samo przejście.</li>
+ <li><strong>Analiza w RAM</strong> — detekcja (model o licencji Apache-2.0),
+ pikselizacja twarzy i tablic natychmiast po detekcji, tracking z efemerycznymi ID.</li>
+ <li><strong>Topologia stref</strong> — liczniki przekroczeń linii (piesi, pojazdy),
+ zajętość pasów przejścia, zdarzenie «pojazd nie ustąpił» wyznaczane topologicznie
+ (przejazd przez strefę konfliktu bez zatrzymania, gdy pieszy jest na przejściu).</li>
+ <li><strong>Na dysk — tylko liczniki</strong> — stats_bucket + coverage_bucket
+ (rzeczywisty czas obserwacji) + camera_health. Żadnych klatek, żadnych embeddingów.</li>
+ <li><strong>Dashboard</strong> — wykresy zagregowane, pokrycie, stan failover.</li>
+</ol>
+<h2>Uczciwe ograniczenia metody</h2>
+<ul>
+ <li><strong>% «głowa w dół»</strong> to <em>próbkowany wskaźnik proxy</em> uwagi
+ z szerokim przedziałem ufności — NIE stwierdzenie «pieszy korzystał z telefonu».</li>
+ <li><strong>PET / TTC (czasy konfliktów w sekundach)</strong> — wyłącznie na kamerze
+ skalibrowanej metrycznie. Bez kalibracji pokazujemy bezwymiarowe zdarzenia konfliktu.</li>
+ <li><strong>Ujęcia panoramiczne</strong> (piesi = kilka pikseli) → tylko zliczanie,
+ metryki behawioralne są wyłączane automatycznie.</li>
+ <li><strong>Noc, deszcz, śnieg</strong> obniżają czułość detekcji — dlatego każdy
+ wskaźnik nosi ze sobą czas rzeczywistej obserwacji (coverage).</li>
+ <li><strong>Pomiar prędkości</strong> z kamery to warstwa przesiewowa (screening) —
+ nigdy dowód. Egzekwowanie wymaga certyfikowanych urządzeń organów państwa.</li>
+</ul></main>
+<footer>
+ <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
+ <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
+ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+ <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
+ <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+</footer>
+</body></html>

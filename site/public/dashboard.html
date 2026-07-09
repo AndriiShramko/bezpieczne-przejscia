@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard bezpieczeństwa przejścia — dane zagregowane (demo)</title>
+<meta name="description" content="Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykrocze">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/dashboard.html">
+<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/dashboard.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/dashboard.html">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/dashboard.html">
+<link rel="stylesheet" href="/assets/style.css">
+
+</head>
+<body>
+<div class="disclaimer" role="note">⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</div>
+<header>
+ <div class="brand"><a href="/">🚸 Bezpieczne Przejścia</a><span class="demo-badge">DEMO</span></div>
+ <nav><a href="/">Start</a><a href="/dashboard.html">Dashboard</a><a href="/how-it-works.html">Jak to działa</a><a href="/resources.html">Zasoby</a><a href="/compliance.html">Zgodność (RODO/AI Act)</a><a href="/contact.html">Kontakt</a>
+ <a class="lang" href="/en/dashboard.html">EN</a></nav>
+</header>
+<main>
+<h1>Dashboard bezpieczeństwa przejścia (dane syntetyczne)</h1>
+<p class="note">🧪 Prezentowane dane są w całości <strong>syntetyczne</strong> — służą demonstracji produktu. Luki = «brak danych» (nigdy zera). Wskaźniki znormalizowane do czasu obserwacji.</p>
+<div class="kpis"><div class="kpi"><div class="kpi-v" id="kpi0">—</div><div class="kpi-l">Pokrycie obserwacją</div></div><div class="kpi"><div class="kpi-v" id="kpi1">—</div><div class="kpi-l">Piesi / dzień (śr.)</div></div><div class="kpi"><div class="kpi-v" id="kpi2">—</div><div class="kpi-l">Nieustąpienia / dzień</div></div><div class="kpi"><div class="kpi-v" id="kpi3">—</div><div class="kpi-l">% głowa w dół (7 dni)</div></div></div>
+<div class="card"><h2>Piesi na godzinę (14 dni, luki = brak danych)</h2><canvas id="c_ped" height="90"></canvas></div>
+<div class="card"><h2>% pieszych z głową w dół — proxy uwagi (dzienne, 95% CI)</h2><canvas id="c_head" height="90"></canvas></div>
+<div class="card"><h2>Nieustąpienie pierwszeństwa i konflikty (dziennie)</h2><canvas id="c_yield" height="90"></canvas></div>
+<div class="card"><h2>Mapa cieplna: piesi wg godziny × dnia tygodnia</h2><div id="heatmap"></div></div>
+<div class="card"><h2>Stan kamer i failover</h2>
+ <p>Pula failover obserwuje JEDNO przejście: primary + backup.</p>
+ <div id="pool"></div><table class="health" id="health"></table>
+ <p class="fine" id="freshness"></p></div>
+<script src="/assets/chart.umd.min.js"></script>
+<script>window.DASH_LANG="pl";</script>
+<script src="/assets/dashboard.js"></script>
+</main>
+<footer>
+ <p>⚠️ Demonstrator techniczny — NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób, nie prowadzi rejestru wykroczeń. Wszystkie prezentowane dane są syntetyczne (demo).</p>
+ <p>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302 · <a href="/privacy.html">Prywatność</a> ·
+ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+ <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></p>
+ <p class="fine">Bezpieczne Przejścia / SafeCross — privacy-first road-safety analytics demonstrator · Andrii Shramko / Shramko Research Team</p>
+</footer>
+</body></html>
