@@ -71,6 +71,8 @@ BLUR = os.environ.get("BLUR", "1") not in ("0", "false", "off")
 # arrive in 2-3 s clumps). 960px @ 6 fps ≈ 3-4 Mbit/s and stays smooth.
 LIVE_WIDTH = int(os.environ.get("LIVE_WIDTH", "960"))
 LIVE_FPS = float(os.environ.get("LIVE_FPS", "6"))
+# constant playout latency: must cover one HLS segment + processing burst
+LIVE_DELAY_S = float(os.environ.get("LIVE_DELAY_S", "4.5"))
 EPISODE_COOLDOWN_S = float(os.environ.get("EPISODE_COOLDOWN_S", "20"))
 SPEED_LIMIT_KMH = float(os.environ.get("SPEED_LIMIT_KMH", "50"))
 # monocular speed is ±30%: flag only well above the limit to avoid slander
@@ -1013,13 +1015,9 @@ class Publisher:
     a schedule derived from its CONTENT timestamp + a fixed delay — the public
     stream advances perfectly evenly."""
 
-    MARGIN = 0.35  # published this much after the worst recent pipeline lag
-
     def __init__(self):
-        self.q = deque(maxlen=90)
+        self.q = deque(maxlen=120)
         self.lock = threading.Lock()
-        self.off = None
-        self.lags = deque(maxlen=120)    # recent (wall - cts) pipeline lags
         self.stop = False
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -1028,30 +1026,20 @@ class Publisher:
             self.q.append((cts, jpg))
 
     def _run(self):
+        # deterministic playout: a frame is shown exactly LIVE_DELAY_S after
+        # its content time. No adaptive state = nothing to oscillate: earlier
+        # adaptive designs alternated long-wait -> queue-overflow -> frame
+        # dumps and the stream updated once per 3-10 s.
         while not self.stop:
+            time.sleep(0.08)
+            tgt = time.time() - LIVE_DELAY_S
+            newest = None
             with self.lock:
-                item = self.q.popleft() if self.q else None
-            if item is None:
-                time.sleep(0.02)
-                continue
-            cts_i, jpg = item
-            lag = time.time() - cts_i
-            if self.lags and abs(lag - self.lags[-1]) > 6:
-                self.lags.clear()                # clock re-anchor -> fresh window
-            self.lags.append(lag)
-            # playout offset = 90th percentile of recent pipeline lags + margin:
-            # covers HLS segment bursts without letting one restart spike freeze
-            # the stream at max-lag forever. Frames later than that (≤10%) are
-            # shown immediately.
-            sl = sorted(self.lags)
-            self.off = sl[int(0.9 * (len(sl) - 1))] + self.MARGIN
-            while not self.stop:                 # wait out the FULL delay
-                d = cts_i + self.off - time.time()
-                if d <= 0:
-                    break
-                time.sleep(min(d, 0.5))
-            with S.lock:
-                S.jpeg = jpg
+                while self.q and self.q[0][0] <= tgt:
+                    newest = self.q.popleft()
+            if newest is not None:
+                with S.lock:
+                    S.jpeg = newest[1]
 
 
 def _run_camera(det, cam, frame_interval, cfg, grab, pub):
@@ -1103,10 +1091,17 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         crossing AND cyclist crossing the AI scene-context found — so ALL
         painted crossings in view are monitored. Refuge islands come back as
         EXCLUSION polygons (a person standing there is not on any crossing)."""
+        # When an AI/admin zone map exists, it is the ONLY source of live zones
+        # — otherwise the editor shows one thing and the stream another (the
+        # bootstrap polygon from cameras.json haunted the overlay). The manual
+        # polygon is just the fallback for an uncalibrated camera.
         zs = []
-        mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
-        zs.append({"id": "main", "kind": "ped", "poly": mp, "zone": PolygonZone(mp),
-                   "bbox": poly_bbox(mp, w, h)})
+        scene_has_zones = isinstance(scene, dict) and bool(
+            (scene.get("crossings") or []) + (scene.get("bike_crossings") or []))
+        if not scene_has_zones:
+            mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
+            zs.append({"id": "main", "kind": "ped", "poly": mp,
+                       "zone": PolygonZone(mp), "bbox": poly_bbox(mp, w, h)})
         isl = []
         if isinstance(scene, dict):
             def add(items, prefix, kind):
@@ -1208,12 +1203,20 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # one-time scene context per camera (AI) — run in a BACKGROUND thread so a
         # slow local LLM never blocks the frame loop. Result lands on disk; the
         # main loop reloads it below.
-        if scene is None and now - scene_try_ts > 120 and ai_analyst.enabled():
+        recal_flag = os.path.join(SCENE_DIR, f"recal_{cam_id}.flag")
+        if scene is None and ai_analyst.enabled() \
+                and (now - scene_try_ts > 120 or os.path.exists(recal_flag)):
             scene_try_ts = now
+            try:
+                os.remove(recal_flag)
+            except OSError:
+                pass
             ok2, jb = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             if ok2:
                 threading.Thread(target=_scene_worker, args=(cam_id, jb.tobytes()),
                                  daemon=True).start()
+                with S.lock:
+                    S.ticker.appendleft("AI kalibruje strefy… (~1-2 min)")
         # hot-reload: the admin zone editor (or AI recalibration) rewrites the
         # scene file — pick it up within ~10 s without a restart
         if now - scene_mtime_check > 10:
@@ -1685,7 +1688,13 @@ class H(BaseHTTPRequestHandler):
         if p == "/scene.json":
             cam = S.cam_id or cams_load().get("active", "")
             sc = load_scene(cam)
-            return self._json(200 if sc else 404, sc or {"ok": False})
+            if not sc:
+                calibrating = (os.path.exists(os.path.join(SCENE_DIR, f"recal_{cam}.flag"))
+                               or cam in _scene_busy)
+                return self._json(404, {"ok": False, "cam": cam,
+                                        "calibrating": calibrating})
+            sc["cam"] = cam
+            return self._json(200, sc)
         if p in ("/frame.jpg", "/frame_raw.jpg"):
             # /frame_raw.jpg = CLEAN frame (no zones/boxes) — the zone editor
             # must never show baked-in overlays that look like editable zones
@@ -1769,6 +1778,12 @@ class H(BaseHTTPRequestHandler):
             cam = S.cam_id or cams_load().get("active", "")
             try:
                 os.remove(scene_path(cam))
+            except OSError:
+                pass
+            # flag makes the worker start calibration IMMEDIATELY (no 120 s
+            # debounce) and lets the editor show a "calibrating…" status
+            try:
+                open(os.path.join(SCENE_DIR, f"recal_{cam}.flag"), "w").write("1")
             except OSError:
                 pass
             return self._json(200, {"ok": True, "cam": cam})

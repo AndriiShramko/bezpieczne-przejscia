@@ -32,7 +32,10 @@ td,th{border-bottom:1px solid #233044;padding:.4rem;text-align:left}
 </div>
 <h2>Niezawodność kamer (up / down / failover)</h2><div id="health"></div>
 
-<h2>Strefy przejść — edytor (AI rysuje, Ty poprawiasz)</h2>
+<h2>Strefy przejść — edytor (AI rysuje, Ty poprawiasz) <span id="zcam" class="tag"></span></h2>
+<p class="muted"><b>Uwaga:</b> edytor zawsze dotyczy kamery <b>AKTYWNEJ</b> (tej, która jest na
+stronie głównej). Chcesz edytować inną? Najpierw „Pokaż publicznie" przy tej kamerze wyżej.
+To, co tu widzisz po zapisie = dokładnie to, co rysuje się w transmisji (żadnych innych stref).</p>
 <p class="muted">AI kalibruje strefy automatycznie (siatka współrzędnych + runda samokontroli). Tutaj możesz
 poprawić każdy wielokąt: <b>przeciągnij punkt</b>, <b>klik na odcinku</b> dodaje punkt, <b>prawy klik na
 punkcie</b> usuwa go, „+" dodaje nową strefę (klikaj rogi, dwuklik kończy). Możesz też edytować reguły
@@ -104,8 +107,14 @@ function zeLoad(){
   Z.img.onload=function(){var c=zc();c.width=Z.img.naturalWidth;c.height=Z.img.naturalHeight;Z.W=c.width;Z.H=c.height;zeRender();};
   Z.img.src='/cv/frame_raw.jpg?'+Date.now();
   fetch('/cv/scene.json').then(r=>r.json()).then(function(sc){
-    if(sc&&sc.crossings!==undefined){Z.scene=sc;}
-    else{Z.scene={crossings:[],bike_crossings:[],islands:[],ignore_regions:[],event_rules:''};}
+    if(sc&&sc.cam)document.getElementById('zcam').textContent='kamera: '+sc.cam;
+    if(sc&&sc.crossings!==undefined){Z.scene=sc;zmsg('');}
+    else{
+      Z.scene={crossings:[],bike_crossings:[],islands:[],ignore_regions:[],event_rules:''};
+      if(sc&&sc.calibrating){zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
+        setTimeout(zeLoad,10000);}
+      else zmsg('Brak mapy stref — narysuj ręcznie lub użyj „Rekalibruj AI".');
+    }
     ['crossings','bike_crossings','islands','ignore_regions'].forEach(k=>{if(!Array.isArray(Z.scene[k]))Z.scene[k]=[];});
     var er=Z.scene.event_rules;document.getElementById('zrules').value=typeof er==='string'?er:JSON.stringify(er||'',null,1);
     zeList();zeRender();}).catch(function(){zmsg('Brak mapy stref — AI jeszcze nie skalibrowało lub użyj Rekalibruj.');});
@@ -172,6 +181,9 @@ function zeSave(){Z.scene.event_rules=document.getElementById('zrules').value;
     .then(r=>r.json()).then(function(d){zmsg(d.ok?'Zapisano ✔ — system przeładuje strefy w ~10 s.':'Błąd: '+(d.error||'token?'));});}
 function zeRecal(){if(!confirm('Usunąć mapę i pozwolić AI narysować ją od nowa?'))return;
   fetch('/cv/admin/scene/recalibrate',{method:'POST',headers:h(),body:'{}'})
-    .then(r=>r.json()).then(function(d){zmsg(d.ok?'Mapa usunięta — AI skalibruje na nowo w ~2 min.':'Błąd tokenu.');});}
+    .then(r=>r.json()).then(function(d){
+      if(!d.ok){zmsg('Błąd tokenu.');return;}
+      zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
+      setTimeout(zeLoad,15000);});}
 zeLoad();
 </script></body></html>

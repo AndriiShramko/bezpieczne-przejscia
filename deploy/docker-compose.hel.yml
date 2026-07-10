@@ -54,7 +54,7 @@ services:
       # OLLAMA_URL at a GPU box — no code change needed.
       - AI_BACKEND=gemini
       - GEMINI_MODEL=gemini-3.1-flash-lite
-      - AI_DAILY_CAP=500       # free-tier budget, spread over the day
+      - AI_DAILY_CAP=700       # free-tier budget, spread over the day
       - AI_HOURLY_CAP=25       # a busy morning can no longer burn it all
       - EPISODE_COOLDOWN_S=20  # mute a zone briefly after an episode (dedup)
       - SPEED_LIMIT_KMH=50
