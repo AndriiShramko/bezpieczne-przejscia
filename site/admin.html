@@ -30,6 +30,16 @@ td,th{border-bottom:1px solid #233044;padding:.4rem;text-align:left}
  <label>Metrów na 1 piksel przy pełnej szerokości (do prędkości, np. <code>0.075</code>)<input id="c_mpp" value="0.075"></label>
  <button onclick="saveCam()">Zapisz kamerę</button>
 </div>
+<h2>Playlista kamer (automatyczna rotacja na stronie głównej)</h2>
+<div class="card">
+ <p class="muted">Zaznacz kamery w tabeli wyżej (kolumna „Playlista"), ustaw interwał i włącz.
+ System sam przełącza kamerę AKTYWNĄ po kolei — na wszystkich węzłach jednocześnie.</p>
+ <label style="max-width:260px">Zmieniaj kamerę co (minut)<input id="pl_iv" type="number" min="1" value="10"></label>
+ <button id="pl_btn" onclick="plToggle()">▶ Włącz playlistę</button>
+ <button class="sec" onclick="plSave(null)">💾 Zapisz ustawienia</button>
+ <span id="pl_status" class="muted"></span>
+</div>
+
 <h2>Niezawodność kamer (up / down / failover)</h2><div id="health"></div>
 
 <h2>Strefy przejść — edytor (AI rysuje, Ty poprawiasz) <span id="zcam" class="tag"></span></h2>
@@ -54,7 +64,7 @@ zdarzeń, które AI czyta przy każdym werdykcie. Zapis działa bez restartu (ho
   </div>
   <div id="zlist" style="max-height:240px;overflow:auto;margin-top:8px"></div>
   <h3 style="margin:10px 0 4px;font-size:.95rem">Reguły zdarzeń (czyta AI przy werdyktach)</h3>
-  <textarea id="zrules" rows="5"></textarea>
+  <textarea id="zrules" rows="5" oninput="zeDirty()"></textarea>
   <div style="margin-top:8px">
    <button onclick="zeSave()">💾 Zapisz strefy</button>
    <button class="sec" onclick="zeRecal()">🤖 Rekalibruj AI</button>
@@ -71,14 +81,19 @@ function loadAll(){
   fetch('/cv/admin/cameras',{headers:h()}).then(r=>r.json()).then(function(cfg){
     if(cfg.ok===false){document.getElementById('cams').innerHTML='<p class="muted">Błędny token.</p>';return;}
     window._cfg=cfg;
+    var pl=cfg.playlist||{enabled:false,interval_min:10,cameras:[]};
     var rows=cfg.cameras.map(function(c){var act=cfg.active===c.id;
+      var inPl=(pl.cameras||[]).indexOf(c.id)>=0;
       return '<tr><td>'+(act?'<span class="tag">AKTYWNA</span> ':'')+'<b>'+c.id+'</b></td><td>'+c.label+'</td>'+
         '<td class="muted">'+c.url.slice(0,46)+'…</td>'+
+        '<td style="text-align:center"><input type="checkbox" class="plcam" data-id="'+c.id+'" '+(inPl?'checked':'')+' onchange="plSave(null)" style="width:auto"></td>'+
         '<td><button class="sec" onclick="setActive(\''+c.id+'\')">Pokaż publicznie</button> '+
         '<button class="sec" onclick="edit(\''+c.id+'\')">Edytuj</button> '+
         '<button class="sec" onclick="del(\''+c.id+'\')">Usuń</button></td></tr>';}).join('');
-    document.getElementById('cams').innerHTML='<table><tr><th>ID</th><th>Etykieta</th><th>URL</th><th></th></tr>'+rows+'</table>'+
+    document.getElementById('cams').innerHTML='<table><tr><th>ID</th><th>Etykieta</th><th>URL</th><th>Playlista</th><th></th></tr>'+rows+'</table>'+
       '<p class="muted">Failover: aktywna → reszta. Gdy strumień padnie, system przełącza na następną żywą (każda ma własną statystykę).</p>';
+    document.getElementById('pl_iv').value=pl.interval_min||10;
+    plRender(pl);
   });
   fetch('/cv/admin/health',{headers:h()}).then(r=>r.json()).then(function(d){
     if(d.ok===false)return;
@@ -97,13 +112,41 @@ function saveCam(){var cam={id:c_id.value.trim(),label:c_label.value.trim(),url:
 function setActive(id){fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({active:id})}).then(r=>r.json()).then(loadAll);}
 function del(id){if(!confirm('Usunąć '+id+'?'))return;fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({delete:id})}).then(r=>r.json()).then(loadAll);}
 
+/* ================= camera playlist ================= */
+function plRender(pl){
+  var b=document.getElementById('pl_btn'),s=document.getElementById('pl_status');
+  if(!b)return;
+  b.textContent=pl.enabled?'⏸ Zatrzymaj playlistę':'▶ Włącz playlistę';
+  var n=(pl.cameras||[]).length;
+  s.textContent=pl.enabled
+    ? ('DZIAŁA: '+n+' kamer, zmiana co '+(pl.interval_min||10)+' min.')
+    : ('zatrzymana ('+n+' kamer wybranych)');
+}
+function plCollect(enabled){
+  var cams=[].slice.call(document.querySelectorAll('.plcam:checked')).map(function(x){return x.getAttribute('data-id');});
+  return {enabled:enabled,interval_min:parseFloat(document.getElementById('pl_iv').value)||10,cameras:cams};
+}
+function plSave(enabled){
+  var cur=(window._cfg&&window._cfg.playlist)||{enabled:false};
+  var pl=plCollect(enabled===null?cur.enabled:enabled);
+  fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({playlist:pl})})
+    .then(r=>r.json()).then(function(cfg){window._cfg=cfg;plRender(cfg.playlist||pl);});
+}
+function plToggle(){
+  var cur=(window._cfg&&window._cfg.playlist)||{enabled:false};
+  plSave(!cur.enabled);
+}
+
 /* ================= zone editor ================= */
-var Z={scene:null,img:new Image(),sel:null,drag:null,draw:null,W:1280,H:720};
+var Z={scene:null,img:new Image(),sel:null,drag:null,draw:null,W:1280,H:720,dirty:false};
+function zeDirty(){Z.dirty=true;var m=document.getElementById('zmsg');
+  if(m&&!m.textContent.includes('niezapisane'))m.textContent='✏️ Masz niezapisane zmiany — kliknij „Zapisz strefy".';}
 var ZTYPES={crossings:'#ffd24d',bike_crossings:'#37e6e6',islands:'#ff5dc8',ignore_regions:'#8b97a7'};
 var ZNAME={crossings:'przejście',bike_crossings:'przejazd rower.',islands:'wysepka',ignore_regions:'ignoruj'};
 function zc(){return document.getElementById('zc');}
 function zmsg(s){document.getElementById('zmsg').textContent=s;}
 function zeLoad(){
+  Z.dirty=false;
   Z.img.onload=function(){var c=zc();c.width=Z.img.naturalWidth;c.height=Z.img.naturalHeight;Z.W=c.width;Z.H=c.height;zeRender();};
   Z.img.src='/cv/frame_raw.jpg?'+Date.now();
   fetch('/cv/scene.json').then(r=>r.json()).then(function(sc){
@@ -111,8 +154,10 @@ function zeLoad(){
     if(sc&&sc.crossings!==undefined){Z.scene=sc;zmsg('');}
     else{
       Z.scene={crossings:[],bike_crossings:[],islands:[],ignore_regions:[],event_rules:''};
-      if(sc&&sc.calibrating){zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
-        setTimeout(zeLoad,10000);}
+      if(sc&&sc.calibrating){
+        if(sc.ai_available===false)zmsg('⏳ AI czeka na budżet zapytań (dzienny/godzinowy limit) — kalibracja ruszy automatycznie, gdy budżet się odnowi. Możesz narysować strefy ręcznie już teraz.');
+        else zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
+        if(!Z.dirty)setTimeout(function(){if(!Z.dirty)zeLoad();},12000);}
       else zmsg('Brak mapy stref — narysuj ręcznie lub użyj „Rekalibruj AI".');
     }
     ['crossings','bike_crossings','islands','ignore_regions'].forEach(k=>{if(!Array.isArray(Z.scene[k]))Z.scene[k]=[];});
@@ -143,7 +188,7 @@ function zeList(){var el=document.getElementById('zlist');
       '<button class="sec" style="padding:.1rem .4rem" onclick="zeSel(\''+p.k+'\','+p.i+')">wybierz</button> '+
       '<button class="sec" style="padding:.1rem .4rem" onclick="zeDel(\''+p.k+'\','+p.i+')">usuń</button></div>';}).join('')||'<p class="muted">brak stref</p>';}
 function zeSel(k,i){Z.sel={k:k,i:i};zeRender();}
-function zeDel(k,i){Z.scene[k].splice(i,1);Z.sel=null;zeList();zeRender();}
+function zeDel(k,i){Z.scene[k].splice(i,1);Z.sel=null;zeDirty();zeList();zeRender();}
 function zeAdd(k){Z.draw={k:k,pts:[]};zmsg('Klikaj rogi nowej strefy, DWUKLIK kończy.');}
 function zeXY(ev){var r=zc().getBoundingClientRect();
   return [(ev.clientX-r.left)/r.width,(ev.clientY-r.top)/r.height].map(v=>Math.max(0,Math.min(1,v)));}
@@ -151,7 +196,7 @@ document.getElementById('zc').addEventListener('mousedown',function(ev){
   if(Z.draw)return;var xy=zeXY(ev),c=zc();
   var ps=zePolys();if(Z.sel){var p=ps.find(q=>q.k===Z.sel.k&&q.i===Z.sel.i);
     if(p){for(var j=0;j<p.poly.length;j++){var dx=(p.poly[j][0]-xy[0])*c.width,dy=(p.poly[j][1]-xy[1])*c.height;
-      if(dx*dx+dy*dy<120){if(ev.button===2){if(p.poly.length>3){p.poly.splice(j,1);zeRender();}return;}
+      if(dx*dx+dy*dy<120){if(ev.button===2){if(p.poly.length>3){p.poly.splice(j,1);zeDirty();zeRender();}return;}
         Z.drag={k:p.k,i:p.i,j:j};return;}}}}
   for(var q=0;q<ps.length;q++){var pp=ps[q];for(var j2=0;j2<pp.poly.length;j2++){
     var dx2=(pp.poly[j2][0]-xy[0])*c.width,dy2=(pp.poly[j2][1]-xy[1])*c.height;
@@ -165,7 +210,7 @@ document.getElementById('zc').addEventListener('mousemove',function(ev){
     var xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);
     arr[Z.drag.i].bbox=[Math.min.apply(0,xs),Math.min.apply(0,ys),Math.max.apply(0,xs),Math.max.apply(0,ys)];}
   else{arr[Z.drag.i].polygon[Z.drag.j]=[xy[0],xy[1]];}
-  zeRender();});
+  zeDirty();zeRender();});
 document.addEventListener('mouseup',function(){Z.drag=null;});
 document.getElementById('zc').addEventListener('click',function(ev){
   if(!Z.draw)return;Z.draw.pts.push(zeXY(ev));zeRender();});
@@ -175,10 +220,10 @@ document.getElementById('zc').addEventListener('dblclick',function(ev){
   if(k==='ignore_regions'){var xs=Z.draw.pts.map(p=>p[0]),ys=Z.draw.pts.map(p=>p[1]);
     Z.scene[k].push({label:id||'ign',bbox:[Math.min.apply(0,xs),Math.min.apply(0,ys),Math.max.apply(0,xs),Math.max.apply(0,ys)]});}
   else{Z.scene[k].push({id:id||k,polygon:Z.draw.pts});}
-  Z.draw=null;zeList();zeRender();zmsg('Strefa dodana — pamiętaj Zapisz.');});
+  Z.draw=null;zeDirty();zeList();zeRender();zmsg('Strefa dodana — pamiętaj Zapisz.');});
 function zeSave(){Z.scene.event_rules=document.getElementById('zrules').value;
   fetch('/cv/admin/scene',{method:'POST',headers:h(),body:JSON.stringify({scene:Z.scene})})
-    .then(r=>r.json()).then(function(d){zmsg(d.ok?'Zapisano ✔ — system przeładuje strefy w ~10 s.':'Błąd: '+(d.error||'token?'));});}
+    .then(r=>r.json()).then(function(d){if(d.ok){Z.dirty=false;zmsg('Zapisano ✔ — system przeładuje strefy w ~10 s.');}else zmsg('Błąd: '+(d.error||'token?'));});}
 function zeRecal(){if(!confirm('Usunąć mapę i pozwolić AI narysować ją od nowa?'))return;
   fetch('/cv/admin/scene/recalibrate',{method:'POST',headers:h(),body:'{}'})
     .then(r=>r.json()).then(function(d){

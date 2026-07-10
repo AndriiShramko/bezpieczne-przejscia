@@ -323,6 +323,87 @@ class ConfirmBook:
         return bool(e and (e["ok"] or e["fg"] > 0))
 
 
+class AutoScale:
+    """Self-calibrating meters-per-pixel, per image row — no buttons, no AI
+    calls, works on ANY camera. Every confirmed moving object is a ruler:
+    a pedestrian is ~1.7 m tall, a car's shorter silhouette side is ~1.75 m.
+    Medians per horizontal band converge within minutes of normal traffic and
+    persist to disk. Fallback order: measured bands -> AI-horizon model ->
+    constant configured scale."""
+
+    BANDS = 8
+    PED_M = 1.70
+    VEH_M = 1.75
+    MIN_SAMPLES = 25
+
+    def __init__(self, cam_id, h, fallback):
+        self.cam_id = cam_id
+        self.h = h
+        self.fallback = fallback            # scale_fn(y) or None
+        self.samples = [deque(maxlen=300) for _ in range(self.BANDS)]
+        self.path = os.path.join(SCENE_DIR, f"autoscale_{cam_id}.json")
+        self._scale_cache = {}
+        self._last_save = 0.0
+        try:
+            data = json.load(open(self.path, encoding="utf-8"))
+            for i, vals in enumerate(data.get("samples", [])[:self.BANDS]):
+                self.samples[i].extend(float(v) for v in vals[-300:])
+        except (OSError, ValueError):
+            pass
+
+    def _band(self, y):
+        return max(0, min(self.BANDS - 1, int(y / self.h * self.BANDS)))
+
+    def feed(self, dets_peds, dets_vehs):
+        for d in dets_peds:
+            x1, y1, x2, y2 = d.xyxy
+            hh = y2 - y1
+            if hh > 14:
+                self.samples[self._band((y1 + y2) / 2)].append(self.PED_M / hh)
+        for d in dets_vehs:
+            x1, y1, x2, y2 = d.xyxy
+            side = min(x2 - x1, y2 - y1)
+            if side > 14:
+                self.samples[self._band((y1 + y2) / 2)].append(self.VEH_M / side)
+        self._scale_cache = {}
+        if time.time() - self._last_save > 300:
+            self._last_save = time.time()
+            try:
+                json.dump({"samples": [list(s) for s in self.samples]},
+                          open(self.path, "w", encoding="utf-8"))
+            except OSError:
+                pass
+
+    def _band_scale(self, i):
+        if i in self._scale_cache:
+            return self._scale_cache[i]
+        s = self.samples[i]
+        out = None
+        if len(s) >= self.MIN_SAMPLES:
+            out = sorted(s)[len(s) // 2]
+        self._scale_cache[i] = out
+        return out
+
+    def scale(self, y):
+        i = self._band(y)
+        v = self._band_scale(i)
+        if v is None:
+            # nearest calibrated band, corrected by the perspective prior
+            for off in range(1, self.BANDS):
+                for j in (i - off, i + off):
+                    if 0 <= j < self.BANDS:
+                        vj = self._band_scale(j)
+                        if vj is not None:
+                            if self.fallback:
+                                yc_i = (i + 0.5) * self.h / self.BANDS
+                                yc_j = (j + 0.5) * self.h / self.BANDS
+                                fj = self.fallback(yc_j)
+                                return vj * (self.fallback(yc_i) / fj) if fj else vj
+                            return vj
+            return self.fallback(y) if self.fallback else None
+        return v
+
+
 def make_scale(zones, scene, h, m_per_px):
     """Perspective model anchored at the main crossing: meters-per-pixel grows
     toward the horizon and shrinks toward the camera. horizon_y comes from the
@@ -847,6 +928,36 @@ def config_sync_loop():
             print("config_sync:", e, flush=True)
 
 
+# ---------------- camera playlist ----------------
+def playlist_loop():
+    """Rotates the ACTIVE camera through a configured list every N minutes.
+    Runs ONLY on the config-authority node — secondary nodes follow via
+    config_sync, so both nodes always show the same camera."""
+    while True:
+        time.sleep(20)
+        try:
+            cfg = cams_load()
+            pl = cfg.get("playlist") or {}
+            if not pl.get("enabled"):
+                continue
+            ids = {c["id"] for c in cfg["cameras"]}
+            rota = [c for c in (pl.get("cameras") or []) if c in ids]
+            if len(rota) < 2:
+                continue
+            iv = max(1.0, float(pl.get("interval_min", 10))) * 60.0
+            if time.time() - float(pl.get("last_switch", 0)) < iv:
+                continue
+            cur = cfg.get("active")
+            nxt = rota[(rota.index(cur) + 1) % len(rota)] if cur in rota else rota[0]
+            cfg["active"] = nxt
+            pl["last_switch"] = time.time()
+            cfg["playlist"] = pl
+            cams_save(cfg)
+            print(f"playlist: -> {nxt}", flush=True)
+        except Exception as e:
+            print("playlist:", e, flush=True)
+
+
 # ---------------- disk guard ----------------
 _disk = {"alerted": 0.0}
 
@@ -1198,7 +1309,12 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             m_full = cam.get("m_per_px_fullw", 0.075)
             m_per_px = m_full * (1920.0 / w)  # config is per full-width pixel
 
-            speeds = SpeedBook(m_per_px, make_scale(zones, scene, h, m_per_px))
+            autoscale = AutoScale(cam_id, h, make_scale(zones, scene, h, m_per_px))
+
+            def _sfn(y, _m=m_per_px, _a=autoscale):
+                v = _a.scale(y)
+                return v if v else _m
+            speeds = SpeedBook(m_per_px, _sfn)
 
         # one-time scene context per camera (AI) — run in a BACKGROUND thread so a
         # slow local LLM never blocks the frame loop. Result lands on disk; the
@@ -1231,11 +1347,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                 zones, islands = build_zones(w, h)
                 zones_have_scene = bool(scene)
                 if speeds is not None:
-                    sfn = make_scale(zones, scene, h, m_per_px)
-                    speeds.scale_fn = sfn
-                    for b in ("_pedbook", "_bikebook"):
-                        if hasattr(speeds, b):
-                            getattr(speeds, b).scale_fn = sfn
+                    autoscale.fallback = make_scale(zones, scene, h, m_per_px)
                 if scene:
                     with S.lock:
                         S.ticker.appendleft("Strefy przejść zaktualizowane ✔")
@@ -1410,6 +1522,9 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         active_peds = [d for d in peds if det_active(d)]
         active_vehs = [d for d in vehs if det_active(d)]
         active_bikes = [d for d in bikes if det_active(d)]
+        # every moving person/car doubles as a measuring stick — the speed
+        # scale self-calibrates per image row, no manual steps on any camera
+        autoscale.feed(active_peds, active_vehs)
 
         def _tid_near(d, tracks):
             ax, ay = d.anchor
@@ -1692,7 +1807,9 @@ class H(BaseHTTPRequestHandler):
                 calibrating = (os.path.exists(os.path.join(SCENE_DIR, f"recal_{cam}.flag"))
                                or cam in _scene_busy)
                 return self._json(404, {"ok": False, "cam": cam,
-                                        "calibrating": calibrating})
+                                        "calibrating": calibrating,
+                                        "ai_available": ai_analyst.enabled(),
+                                        "ai_calls_today": db.ai_calls_today()})
             sc["cam"] = cam
             return self._json(200, sc)
         if p in ("/frame.jpg", "/frame_raw.jpg"):
@@ -1801,6 +1918,15 @@ class H(BaseHTTPRequestHandler):
                 cfg["cameras"] = others + [cam]
             if data.get("active"):
                 cfg["active"] = data["active"]
+            if isinstance(data.get("playlist"), dict):
+                p = data["playlist"]
+                cfg["playlist"] = {
+                    "enabled": bool(p.get("enabled")),
+                    "interval_min": max(1.0, float(p.get("interval_min", 10) or 10)),
+                    "cameras": [str(x) for x in (p.get("cameras") or [])][:20],
+                    "last_switch": float((cfg.get("playlist") or {})
+                                         .get("last_switch", 0)),
+                }
             cams_save(cfg)
             return self._json(200, cfg)
         return self._json(404, {"ok": False})
@@ -1891,6 +2017,9 @@ def main():
     threading.Thread(target=disk_guard, daemon=True).start()
     if CONFIG_SYNC_URL:
         threading.Thread(target=config_sync_loop, daemon=True).start()
+    else:
+        # camera playlist rotates only on the config authority
+        threading.Thread(target=playlist_loop, daemon=True).start()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), H)
     print(f"cv-service v2 on :{PORT}", flush=True)
     srv.serve_forever()

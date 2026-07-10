@@ -222,7 +222,7 @@
       eventChart("chart-events", d.hourly || []);
     }).catch(function () {});
   }
-  function svgEl(w, h) { return '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" style="width:100%;height:100%">'; }
+  function svgEl(w, h) { return '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" style="width:100%;height:150px;display:block">'; }
   function lineChart(id, hourly) {
     var e = el(id); if (!e) return;
     var W = 600, H = 150, n = hourly.length;
@@ -233,6 +233,15 @@
       return hourly.map(function (x, i) {
         return (i * W / Math.max(1, n - 1)).toFixed(1) + "," + (H - 12 - (H - 24) * x[key] / m).toFixed(1);
       }).join(" ");
+    }
+    // a fresh database has 1-2 hourly points — a polyline is invisible then,
+    // so draw dots as well
+    function dots(key, m, col) {
+      if (n > 3) return "";
+      return hourly.map(function (x, i) {
+        return '<circle cx="' + (i * W / Math.max(1, n - 1)).toFixed(1) + '" cy="' +
+          (H - 12 - (H - 24) * x[key] / m).toFixed(1) + '" r="4" fill="' + col + '"/>';
+      }).join("");
     }
     var mb = Math.max.apply(null, hourly.map(function (x) { return x.bike || 0; }).concat([1]));
     // invisible hover strips with native tooltips (hour + values)
@@ -246,7 +255,7 @@
       '<polyline fill="none" stroke="#2ee6a6" stroke-width="2" points="' + pts("ped", mp) + '"/>' +
       '<polyline fill="none" stroke="#ffcf5c" stroke-width="1.5" points="' + hourly.map(function (x, i) {
         return (i * W / Math.max(1, n - 1)).toFixed(1) + "," + (H - 12 - (H - 24) * (x.bike || 0) / mb).toFixed(1);
-      }).join(" ") + '"/>' + hov +
+      }).join(" ") + '"/>' + dots("veh", mv, "#37b6ff") + dots("ped", mp, "#2ee6a6") + hov +
       "</svg>" +
       '<div class="legend"><i style="background:#37b6ff"></i>' + T.veh + " (max " + mv + "/h)" +
       '<i style="background:#2ee6a6"></i>' + T.ped + " (max " + mp + "/h)" +
@@ -279,6 +288,7 @@
     var W = 600, H = 150, n = hourly.length || 1;
     var m = Math.max.apply(null, hourly.map(function (x) { return x.ev; }).concat([1]));
     var bw = W / n;
+    bw = Math.min(bw, 56);   // fresh DB with 1-2 hours -> avoid one giant bar
     var bars = hourly.map(function (x, i) {
       var bh = (H - 26) * x.ev / m, vh = (H - 26) * (x.viol || 0) / m;
       var hr = (x.h || "").slice(0, 13);
