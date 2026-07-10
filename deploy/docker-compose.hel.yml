@@ -1,0 +1,85 @@
+name: patrol
+
+# 65.108.85.27 (cx33, 4 vCPU / 8 GB): heavy compute — CV worker + local VLM.
+# The public site/TLS stays on the 65.109 nginx which reverse-proxies /cv/ here.
+# Co-hosted with the neighbour (Teleportour/virtualproduction.business) — hard caps.
+
+services:
+  # OPTIONAL / DORMANT. A local vision-LLM is too slow on this 4-vCPU CPU box
+  # (2-3 min/call, measured). Kept here, not auto-started, so a local backend can
+  # be switched on the moment a GPU host is available: start this service, set the
+  # CV service AI_BACKEND=local and OLLAMA_URL. Until then the CV service uses
+  # Gemini free-tier and this container stays stopped (restart: "no").
+  patrol-ollama:
+    image: ollama/ollama:latest
+    container_name: patrol-ollama
+    restart: "no"
+    profiles: ["gpu-llm"]
+    environment:
+      - OLLAMA_KEEP_ALIVE=30m       # unload model after idle to free RAM
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_LOADED_MODELS=1
+    volumes:
+      - ./ollama:/root/.ollama
+    networks: [patrol-internal]
+    mem_limit: 5500m
+    memswap_limit: 5500m
+    # The VLM is background-only; cap it to 2 cores so a verdict call can't take
+    # the whole box from the live CV. Thread count is also bound per-request.
+    cpus: 2.0
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  patrol-cv:
+    build: ./cv-service
+    image: patrol-cv:latest
+    container_name: patrol-cv
+    restart: unless-stopped
+    environment:
+      - PROC_WIDTH=1280        # full sensitivity (960 was missing far/small objects)
+      - CONF=0.30              # user feedback: 0.34 dropped real cars/people
+      - TARGET_FPS=6           # 4 vCPU; real fps is CPU-bound, this is the ceiling
+      - ONNX_THREADS=0         # 0 = all cores: live CV maxes fps when the VLM is idle (~95% of time)
+      - CV_THREADS=0
+      - CLIP_WIDTH=720
+      - CLIP_FPS=4
+      - MOVE_KMH_MIN=4
+      # AI backend. On this 4-vCPU box a local vision-LLM (qwen2.5-vl / moondream)
+      # measured 2-3 MIN per call on CPU — unusable for timely verdicts. So the
+      # active path is Gemini free-tier (gemini-3.1-flash-lite): $0 within the
+      # 1000/day free quota, ~0.5 s, high quality. The local-first chain in
+      # ai_analyst.py stays wired up: to enable it, set AI_BACKEND=local and point
+      # OLLAMA_URL at a GPU box — no code change needed.
+      - AI_BACKEND=gemini
+      - GEMINI_MODEL=gemini-3.1-flash-lite
+      - AI_DAILY_CAP=150       # stays well under the 1000/day free quota -> $0
+      - OLLAMA_URL=http://patrol-ollama:11434
+      - OLLAMA_MODEL=moondream
+      - LOCAL_NUM_THREAD=2
+      - LOCAL_IMG_WIDTH=384
+      - LOCAL_MAX_IMAGES=3
+      - LOCAL_MAX_TOKENS=700
+      - LOCAL_TIMEOUT=180
+      - CLIPS_MAX_GB=6.0
+      - DISK_MIN_FREE_GB=3.0
+    env_file: ./cv.env           # ADMIN_TOKEN, TG_BOT_TOKEN, TG_CHAT_ID, (GEMINI_API_KEY fallback)
+    volumes:
+      - ./cv-data:/data
+    ports:
+      - "8090:8090"             # proxied from 65.109 nginx; firewalled to 65.109 only
+    # No hard dependency on ollama: the active AI backend is Gemini. ollama is
+    # kept as an optional, separately-managed service for a future GPU host.
+    networks: [patrol-internal]
+    mem_limit: 1600m
+    memswap_limit: 1600m
+    # Live CV owns the whole box — all 4 cores — for maximum analysis fps.
+    cpus: 4.0
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  patrol-internal:

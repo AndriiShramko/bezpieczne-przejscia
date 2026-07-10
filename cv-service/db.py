@@ -43,6 +43,13 @@ CREATE TABLE IF NOT EXISTS ai_usage(
 """)
 _C.commit()
 
+# migrations for DBs created before the bike counter existed
+try:
+    _C.execute("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0")
+    _C.commit()
+except sqlite3.OperationalError:
+    pass  # column already there
+
 
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -132,13 +139,14 @@ def vote(event_id, verdict, ip):
     return True
 
 
-def bump_counts(cam_id, ped=0, veh=0, observed_s=0.0):
+def bump_counts(cam_id, ped=0, veh=0, observed_s=0.0, bike=0):
     with _LOCK:
         _C.execute(
-            "INSERT INTO hourly(cam_id,hour_utc,ped,veh,observed_s) VALUES(?,?,?,?,?) "
+            "INSERT INTO hourly(cam_id,hour_utc,ped,veh,observed_s,bike) VALUES(?,?,?,?,?,?) "
             "ON CONFLICT(cam_id,hour_utc) DO UPDATE SET ped=ped+excluded.ped,"
-            "veh=veh+excluded.veh,observed_s=observed_s+excluded.observed_s",
-            (cam_id, _hour(), ped, veh, observed_s))
+            "veh=veh+excluded.veh,observed_s=observed_s+excluded.observed_s,"
+            "bike=bike+excluded.bike",
+            (cam_id, _hour(), ped, veh, observed_s, bike))
         _C.commit()
 
 
@@ -206,15 +214,16 @@ def stats(cam_id=None):
 def charts(cam_id, hours=48):
     with _LOCK:
         rows = _C.execute(
-            "SELECT hour_utc,ped,veh,events,violations_ai,speed_sum,speed_n,max_kmh,observed_s "
-            "FROM hourly WHERE cam_id=? ORDER BY hour_utc DESC LIMIT ?",
+            "SELECT hour_utc,ped,veh,events,violations_ai,speed_sum,speed_n,max_kmh,observed_s,"
+            "bike FROM hourly WHERE cam_id=? ORDER BY hour_utc DESC LIMIT ?",
             (cam_id, hours)).fetchall()
         sp = [r[0] for r in _C.execute(
             "SELECT kmh FROM speeds WHERE cam_id=? AND kind='vehicle' "
             "ORDER BY rowid DESC LIMIT 3000", (cam_id,)).fetchall()]
     hourly = [{"h": r[0], "ped": r[1], "veh": r[2], "ev": r[3], "viol": r[4],
                "avg_kmh": round(r[5] / r[6], 1) if r[6] else None,
-               "max_kmh": r[7], "obs_s": round(r[8])} for r in reversed(rows)]
+               "max_kmh": r[7], "obs_s": round(r[8]), "bike": r[9] or 0}
+              for r in reversed(rows)]
     hist = [0] * 14  # 0-5,5-10,...,65-70+
     clean = []
     for v in sp:

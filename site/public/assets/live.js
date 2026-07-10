@@ -5,7 +5,7 @@
   var T = {
     pl: {
       live: "NA ŻYWO", off: "OFFLINE", perHour: "/godz.",
-      ped: "pieszych", veh: "pojazdów", inFrame: "w kadrze",
+      ped: "pieszych", veh: "pojazdów", bike: "rowerów", inFrame: "w kadrze",
       q: "Czy to realne naruszenie?", yes: "✓ Naruszenie", no: "✗ Fałszywy alarm",
       noev: "Brak zdarzeń w tej zakładce — system nagrywa epizody, gdy pojazd W RUCHU spotyka pieszego w strefie przejścia.",
       conf: "głosów „naruszenie”", ref: "głosów „fałszywy alarm”",
@@ -18,7 +18,7 @@
     },
     en: {
       live: "LIVE", off: "OFFLINE", perHour: "/h",
-      ped: "pedestrians", veh: "vehicles", inFrame: "in frame",
+      ped: "pedestrians", veh: "vehicles", bike: "bikes", inFrame: "in frame",
       q: "Is this a real violation?", yes: "✓ Violation", no: "✗ False alarm",
       noev: "No events in this tab — the system records an episode when a MOVING vehicle meets a pedestrian in the crossing zone.",
       conf: "votes “violation”", ref: "votes “false alarm”",
@@ -65,7 +65,8 @@
       num(d.stats.human_judged) + (L === "pl" ? " ocen ludzi" : " human ratings"));
     var inf = el("st-inframe");
     if (inf) {
-      var bits = [d.in_frame.ped + " " + T.ped + " · " + d.in_frame.veh + " " + T.veh + " " + T.inFrame];
+      var bits = [d.in_frame.ped + " " + T.ped + " · " + (d.in_frame.bike || 0) + " " + T.bike + " · " + d.in_frame.veh + " " + T.veh + " " + T.inFrame];
+      if (d.bike_total != null) bits.push(num(d.bike_total) + " " + T.bike + " (" + num(d.bike_per_hour) + T.perHour + ")");
       if (d.speeds && d.speeds.veh_kmh) bits.push(T.vmax + " ~" + d.speeds.veh_kmh + " km/h");
       var tls = Object.keys(d.tl || {}).map(function (k) { return d.tl[k]; }).filter(function (v) { return v !== "unknown"; });
       if (tls.length) bits.push(T.tl + ": " + tls.join("/"));

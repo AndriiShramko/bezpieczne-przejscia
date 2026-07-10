@@ -18,7 +18,9 @@ import base64
 import json
 import os
 import time
+import urllib.error
 import urllib.request
+from datetime import datetime, timedelta, timezone
 
 import db
 
@@ -31,36 +33,113 @@ DAILY_CAP = int(os.environ.get("AI_DAILY_CAP", "150"))
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 # local (Ollama) — recommended: qwen2.5vl:3b (Apache-2.0) on a 4c/8GB box,
-# fallback moondream. One call per event, ~10-20 s on CPU.
+# fallback moondream. Runs in a background thread, so it never blocks the live
+# frame loop; still kept lean (few, small frames) so a verdict lands in ~tens of s.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://patrol-ollama:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5vl:3b")
+LOCAL_MAX_IMAGES = int(os.environ.get("LOCAL_MAX_IMAGES", "4"))
+LOCAL_IMG_WIDTH = int(os.environ.get("LOCAL_IMG_WIDTH", "512"))
+LOCAL_MAX_TOKENS = int(os.environ.get("LOCAL_MAX_TOKENS", "900"))
+LOCAL_TIMEOUT = int(os.environ.get("LOCAL_TIMEOUT", "300"))
+# Hard-bound the VLM to a subset of cores so it can never starve the live CV
+# worker on a small shared box. The live frame loop keeps the remaining cores.
+LOCAL_NUM_THREAD = int(os.environ.get("LOCAL_NUM_THREAD", "2"))
 
+
+def _shrink_b64_jpeg(b64, width):
+    """Downscale a base64 JPEG to `width` px to speed up CPU VLM inference.
+    Best-effort: on any failure the original is returned unchanged."""
+    try:
+        import cv2
+        import numpy as np
+        raw = base64.b64decode(b64)
+        arr = np.frombuffer(raw, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return b64
+        h, w = img.shape[:2]
+        if w > width:
+            img = cv2.resize(img, (width, max(1, int(h * width / w))),
+                             interpolation=cv2.INTER_AREA)
+        ok, jb = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        return base64.b64encode(jb.tobytes()).decode() if ok else b64
+    except Exception:
+        return b64
+
+# Circuit breaker applies to the LOCAL model only: if the self-hosted VLM is
+# slow/broken we stop hammering it and lean on the free-tier fallback.
 _breaker = {"fails": 0, "until": 0.0}
+
+# Free-tier quota guard: on HTTP 429 (RESOURCE_EXHAUSTED) we stop calling
+# Gemini until the free quota resets (midnight US-Pacific = 07:00 UTC in
+# summer), then resume automatically. Combined with DAILY_CAP this keeps
+# usage strictly inside the free tier — we never retry into paid territory.
+_quota = {"until": 0.0}
+
+
+class QuotaExhausted(Exception):
+    pass
+
+
+def _quota_reset_ts():
+    """Next 08:10 UTC. Gemini free-tier daily quota resets at midnight
+    US-Pacific = 07:00 UTC in summer (PDT) / 08:00 UTC in winter (PST).
+    Using 08:10 year-round is DST-proof: never resumes BEFORE the real reset
+    (an early resume would 429 again and mistakenly pause a whole extra day),
+    at worst resumes ~70 min late in summer."""
+    now = datetime.now(timezone.utc)
+    reset = now.replace(hour=8, minute=10, second=0, microsecond=0)
+    if now >= reset:
+        reset += timedelta(days=1)
+    return reset.timestamp()
+
+
+def _local_ok():
+    return BACKEND == "local" and time.time() >= _breaker["until"]
+
+
+def _gemini_ok():
+    return (bool(API_KEY) and time.time() >= _quota["until"]
+            and db.ai_calls_today() < DAILY_CAP)
 
 
 def enabled():
-    if time.time() < _breaker["until"]:
-        return False
-    if BACKEND == "local":
-        return True
-    return bool(API_KEY) and db.ai_calls_today() < DAILY_CAP
+    # AI is "on" if either the local VLM or the free-tier fallback can run.
+    return _local_ok() or _gemini_ok()
+
+
+def _trip_breaker():
+    _breaker["fails"] += 1
+    if _breaker["fails"] >= 3:
+        _breaker["until"] = time.time() + 1800  # 30 min off
+        _breaker["fails"] = 0
 
 
 def _call(parts, max_tokens=2000, temperature=0.2, timeout=90):
-    try:
-        if BACKEND == "local":
-            out = _call_local(parts, max_tokens, temperature, timeout=max(timeout, 180))
-        else:
-            out = _call_gemini(parts, max_tokens, temperature, timeout)
-        _breaker["fails"] = 0
-        return out
-    except Exception as e:
-        _breaker["fails"] += 1
-        if _breaker["fails"] >= 3:
-            _breaker["until"] = time.time() + 1800  # 30 min off
+    """Cooperating multi-model chain: try the free/private LOCAL model first;
+    on failure fall back to the (free-tier) cloud model so a verdict still lands.
+    When AI_BACKEND=gemini the local step is skipped entirely."""
+    # 1) local-first (self-hosted, no cost, best privacy)
+    if _local_ok():
+        try:
+            out = _call_local(parts, max_tokens, temperature, timeout=LOCAL_TIMEOUT)
             _breaker["fails"] = 0
-        print(f"ai_analyst error ({BACKEND}): {e}", flush=True)
-        return None
+            return out
+        except Exception as e:
+            _trip_breaker()
+            print(f"ai_analyst local failed, trying fallback: {e}", flush=True)
+    # 2) cloud fallback / primary (Gemini free tier, capped)
+    if _gemini_ok():
+        try:
+            return _call_gemini(parts, max_tokens, temperature, timeout)
+        except QuotaExhausted:
+            _quota["until"] = _quota_reset_ts()
+            print(f"ai_analyst: Gemini free quota exhausted (429) — paused until "
+                  f"{datetime.fromtimestamp(_quota['until'], timezone.utc):%Y-%m-%d %H:%M} UTC, "
+                  f"will resume automatically", flush=True)
+        except Exception as e:
+            print(f"ai_analyst gemini error: {e}", flush=True)
+    return None
 
 
 def _call_gemini(parts, max_tokens, temperature, timeout):
@@ -70,18 +149,34 @@ def _call_gemini(parts, max_tokens, temperature, timeout):
     req = urllib.request.Request(URL, data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json",
                                           "x-goog-api-key": API_KEY})
-    r = json.load(urllib.request.urlopen(req, timeout=timeout))
+    try:
+        r = json.load(urllib.request.urlopen(req, timeout=timeout))
+    except urllib.error.HTTPError as e:
+        if e.code == 429:  # free-tier quota hit — stop until reset, never retry into paid
+            raise QuotaExhausted() from e
+        raise
     db.ai_call_inc()
     return json.loads(r["candidates"][0]["content"]["parts"][0]["text"])
 
 
 def _call_local(parts, max_tokens, temperature, timeout):
-    """Ollama VLM (e.g. qwen2.5vl:3b / moondream). Images + one text prompt."""
+    """Ollama VLM (e.g. qwen2.5vl:3b / moondream). Images + one text prompt.
+    On CPU each image costs a lot, so keep only the most informative frames and
+    shrink them; cap generation length. Even so this runs off the frame loop."""
     images = [p["inline_data"]["data"] for p in parts if "inline_data" in p]
+    if len(images) > LOCAL_MAX_IMAGES:
+        # keep first, last, and evenly-spaced middle frames (the motion story)
+        idx = sorted({int(round(i)) for i in
+                      [j * (len(images) - 1) / (LOCAL_MAX_IMAGES - 1)
+                       for j in range(LOCAL_MAX_IMAGES)]})
+        images = [images[i] for i in idx]
+    images = [_shrink_b64_jpeg(im, LOCAL_IMG_WIDTH) for im in images]
     prompt = "\n".join(p["text"] for p in parts if "text" in p)
     body = {"model": OLLAMA_MODEL, "prompt": prompt, "images": images,
             "stream": False, "format": "json",
-            "options": {"temperature": temperature, "num_predict": max_tokens}}
+            "options": {"temperature": temperature,
+                        "num_predict": min(max_tokens, LOCAL_MAX_TOKENS),
+                        "num_thread": LOCAL_NUM_THREAD}}
     req = urllib.request.Request(OLLAMA_URL.rstrip("/") + "/api/generate",
                                  data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
@@ -135,6 +230,10 @@ SCENE CONTEXT (JSON): {scene}
 EPISODE METADATA: traffic-light state seen by pixel analysis: {tl}; max vehicle speed estimate:
 {kmh} km/h (rough, monocular); pedestrians in zone: {n_ped}; vehicles in zone: {n_veh}.
 
+Note: cyclists may also use this crossing; a moving motor vehicle must yield to them on
+a crossing-with-bike-path the same way. Judge cyclists as crossing users, not violators,
+unless they clearly entered on red.
+
 Decide what actually happened. Return ONLY JSON:
 - verdict: "violation" | "no_violation" | "uncertain";
 - violator: "driver" | "pedestrian" | "none";
@@ -142,6 +241,9 @@ Decide what actually happened. Return ONLY JSON:
   (lub czemu to fałszywy alarm detektora);
 - explanation_en: same in English;
 - confidence: 0..1 (be honest; low frame rate and blur limit certainty);
+- phone_suspect: true|false — EXPERIMENTAL: does any pedestrian's posture (bent head,
+  hand at ear/face) suggest phone use while crossing? At this resolution this is a weak
+  guess — return false unless clearly visible;
 - what_would_help: one short sentence — what extra data would make this decidable."""
 
 

@@ -32,10 +32,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 import numpy as np
 
+# Bound OpenCV's internal thread pool so decode/resize doesn't oversubscribe a
+# small box shared with a local VLM (0 = OpenCV default = all cores).
+_CV_THREADS = int(os.environ.get("CV_THREADS", "0"))
+if _CV_THREADS > 0:
+    cv2.setNumThreads(_CV_THREADS)
+
 import ai_analyst
 import db
 from safecross.blur import blur_regions, head_region
-from safecross.detect import Detection, OnnxCocoDetector, PERSON, VEHICLE
+from safecross.detect import BIKE, Detection, OnnxCocoDetector, PERSON, VEHICLE
 from safecross.runner import plate_region
 from safecross.track import CentroidTracker
 from safecross.zones import PolygonZone
@@ -120,14 +126,17 @@ class State:
         self.started = time.time()
         self.ped_total = 0
         self.veh_total = 0
+        self.bike_total = 0
         self.in_ped = 0
         self.in_veh = 0
+        self.in_bike = 0
         self.fps = 0.0
         self.tl = {}
         self.speeds_now = {"veh_kmh": None, "ped_kmh": None}
         self.ticker = deque(maxlen=8)
         self.recording_ok = True
         self.episode_active = False
+        self.last_frame_ts = 0.0
 
 
 def _placeholder(text):
@@ -209,20 +218,42 @@ class ConfirmBook:
     >=min_frames AND has actually MOVED >=min_move_px over its lifetime. This
     is what kills static false positives (a pole/sign/traffic-light misread as
     person/car never moves, so it is never confirmed and never counted) and
-    single-frame phantom flickers."""
+    single-frame phantom flickers.
+
+    Resurrection: when a confirmed track dies (detector flicker) and a NEW
+    track appears near the same spot within a few seconds, the new track
+    INHERITS the confirmed flag without being counted again — so a flickering
+    box on one car adds 1 to the counter, not 3."""
+
+    GRAVE_SEC = 5.0
+    GRAVE_PX = 70.0
 
     def __init__(self, min_frames, min_move_px):
         self.min_frames = min_frames
         self.min_move = min_move_px
         self.info = {}
         self.newly = set()
+        self.grave = deque(maxlen=64)  # (t_death, x, y) of confirmed tracks
 
-    def update(self, tracks, fg_hits):
+    def update(self, tracks, fg_hits, now=None):
+        now = now if now is not None else time.time()
         self.newly = set()
         for tid, (x, y) in tracks.items():
             e = self.info.get(tid)
             if e is None:
                 e = {"n": 0, "x0": x, "y0": y, "maxd": 0.0, "ok": False, "fg": 0}
+                # a confirmed object died here moments ago AND this new track
+                # shows motion right now? -> same object after a detector
+                # flicker: inherit confirmation, do NOT count again. The grave
+                # entry is CONSUMED (one grave = one inheritance) so a stream
+                # of distinct objects through one spot is still counted.
+                if tid in fg_hits:
+                    for i, (td, gx, gy) in enumerate(self.grave):
+                        if now - td <= self.GRAVE_SEC and \
+                           ((x - gx) ** 2 + (y - gy) ** 2) ** 0.5 <= self.GRAVE_PX:
+                            e["ok"] = True
+                            del self.grave[i]
+                            break
                 self.info[tid] = e
             e["n"] += 1
             d = ((x - e["x0"]) ** 2 + (y - e["y0"]) ** 2) ** 0.5
@@ -230,12 +261,17 @@ class ConfirmBook:
                 e["maxd"] = d
             if tid in fg_hits:
                 e["fg"] += 1
+            e["last"] = (x, y)
             if not e["ok"] and e["n"] >= self.min_frames and e["maxd"] >= self.min_move:
                 e["ok"] = True
                 self.newly.add(tid)
         for tid in list(self.info):
             if tid not in tracks:
-                del self.info[tid]
+                e = self.info.pop(tid)
+                # only tracks that EARNED confirmation by moving in this life
+                # re-arm the grave — an inherited-but-static track cannot chain
+                if e.get("ok") and e["maxd"] >= self.min_move and "last" in e:
+                    self.grave.append((now, e["last"][0], e["last"][1]))
         return self.newly
 
     def confirmed(self, tid):
@@ -273,6 +309,25 @@ class Episode:
         self.best_overlap = -1
 
 
+def _transcode_h264(path):
+    """cv2.VideoWriter writes MPEG-4 Part 2 ('mp4v') which BROWSERS CANNOT
+    PLAY. Re-encode to H.264 (avc1) + faststart via the static ffmpeg binary
+    shipped with imageio-ffmpeg. Runs in a background thread per clip."""
+    try:
+        import subprocess
+        import imageio_ffmpeg
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+        tmp = path + ".h264.mp4"
+        subprocess.run(
+            [ff, "-y", "-loglevel", "error", "-i", path,
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+             "-pix_fmt", "yuv420p", "-movflags", "+faststart", tmp],
+            check=True, timeout=180)
+        os.replace(tmp, path)
+    except Exception as e:
+        print("transcode:", e, flush=True)
+
+
 def write_clip(path, frames, fps):
     if not frames:
         return False
@@ -281,7 +336,79 @@ def write_clip(path, frames, fps):
     for _, f in frames:
         vw.write(f)
     vw.release()
-    return os.path.getsize(path) > 0
+    ok = os.path.getsize(path) > 0
+    if ok:  # make it browser-playable off the frame loop
+        threading.Thread(target=_transcode_h264, args=(path,), daemon=True).start()
+    return ok
+
+
+class Grabber:
+    """Dedicated stream-reader thread with a small thinned queue.
+
+    Live HLS delivers frames in SEGMENT BURSTS (a 2-3 s segment downloads and
+    decodes in a fraction of a second, then nothing until the next segment).
+    A keep-only-latest slot therefore yields ~1 usable frame per segment
+    (~0.3-0.8 fps). Instead we keep every Nth frame in a bounded deque: the
+    processing loop consumes them evenly at TARGET_FPS with a constant ~one
+    segment of latency — smooth video, no freezes, no multi-minute jumps."""
+
+    def __init__(self, cap, target_fps):
+        self.cap = cap
+        self.lock = threading.Lock()
+        self.q = deque(maxlen=40)          # ~3-4 s of thinned frames
+        self.t = 0.0                       # last successful read (stall detect)
+        self.reads = 0
+        self.fails = 0
+        self.stop = False
+        src = cap.get(cv2.CAP_PROP_FPS) or 0
+        src = src if 1 <= src <= 120 else 25.0
+        want = min(10.0, max(2.0, 2.0 * target_fps))   # buffer a bit above need
+        self.keep_every = max(1, int(round(src / want)))
+        self.th = threading.Thread(target=self._run, daemon=True)
+        self.th.start()
+
+    def _run(self):
+        i = 0
+        try:
+            while not self.stop:
+                ok, f = self.cap.read()
+                if ok:
+                    self.reads += 1
+                    self.t = time.time()
+                    i += 1
+                    if i % self.keep_every == 0:
+                        with self.lock:
+                            self.q.append(f)
+                else:
+                    self.fails += 1
+                    time.sleep(0.08)
+        finally:
+            # the READER owns the capture: releasing here (and only here)
+            # can never race an in-flight cap.read() — cv2.VideoCapture is
+            # not thread-safe and release-during-read can segfault natively.
+            try:
+                self.cap.release()
+            except Exception:
+                pass
+
+    def next(self):
+        """Oldest queued frame, dropping backlog if we fell behind (keeps the
+        shown video close to live while staying smooth)."""
+        with self.lock:
+            while len(self.q) > 25:        # lagging -> catch up
+                self.q.popleft()
+            return self.q.popleft() if self.q else None
+
+    def qlen(self):
+        with self.lock:
+            return len(self.q)
+
+    def close(self):
+        self.stop = True
+        self.th.join(timeout=3)
+        # if the thread is still blocked inside a network read, it will
+        # release the capture itself when the read returns (rw_timeout
+        # bounds that); never call cap.release() from this thread.
 
 
 # ---------------- helpers ----------------
@@ -322,14 +449,14 @@ def detect_roi(det, frame, bbox, up_to=900):
 def _scene_ignore(scene, w, h):
     """Pixel boxes of known STATIC scene objects (traffic lights, signs, poles,
     statues, lit shop signs) that the detector must NOT treat as car/person."""
-    if not scene:
+    if not isinstance(scene, dict):
         return []
     out = []
-    for t in scene.get("traffic_lights", []):
-        b = t.get("bbox", [])
-        if len(b) == 4:
+    for t in (scene.get("traffic_lights") or []):
+        b = t.get("bbox") if isinstance(t, dict) else None
+        if isinstance(b, (list, tuple)) and len(b) == 4:
             out.append((b[0] * w, b[1] * h, b[2] * w, b[3] * h))
-    for r in scene.get("ignore_regions", []):
+    for r in (scene.get("ignore_regions") or []):
         b = r.get("bbox", r) if isinstance(r, dict) else r
         if isinstance(b, (list, tuple)) and len(b) == 4:
             out.append((b[0] * w, b[1] * h, b[2] * w, b[3] * h))
@@ -345,6 +472,37 @@ def scene_path(cam_id):
     return os.path.join(SCENE_DIR, f"scene_{cam_id}.json")
 
 
+_scene_lock = threading.Lock()
+_scene_busy = set()
+
+
+def _scene_worker(cam_id, jpeg_bytes):
+    """Background: ask the AI to describe the scene, write it to disk."""
+    with _scene_lock:
+        if cam_id in _scene_busy:
+            return
+        _scene_busy.add(cam_id)
+    try:
+        sc = ai_analyst.scene_context(jpeg_bytes)
+        # persist ONLY a structurally sane document — a syntactically valid
+        # but off-schema model reply must never become an on-disk poison pill
+        if isinstance(sc, dict) and sc:
+            try:
+                norm_scene_coords(dict(sc))   # dry-run: must normalize cleanly
+            except Exception as e:
+                print("scene_worker: off-schema scene rejected:", e, flush=True)
+                return
+            json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
+                      ensure_ascii=False, indent=1)
+            with S.lock:
+                S.ticker.appendleft("AI opisał scenę перекрёстка (scene context) ✔")
+    except Exception as e:
+        print("scene_worker:", e, flush=True)
+    finally:
+        with _scene_lock:
+            _scene_busy.discard(cam_id)
+
+
 def load_scene(cam_id):
     p = scene_path(cam_id)
     if os.path.exists(p):
@@ -355,31 +513,70 @@ def load_scene(cam_id):
     return None
 
 
+def load_scene_safe(cam_id):
+    """load + normalize; a file that fails to normalize is deleted so it can
+    never crash-loop the worker across restarts."""
+    sc = load_scene(cam_id)
+    if not sc:
+        return None
+    try:
+        out = norm_scene_coords(sc)
+        return out or None
+    except Exception as e:
+        print("scene file rejected (self-heal, deleting):", e, flush=True)
+        try:
+            os.remove(scene_path(cam_id))
+        except OSError:
+            pass
+        return None
+
+
 def norm_scene_coords(scene):
-    """Defensive: model sometimes mixes pixels and fractions, or returns
-    malformed points. Skip anything that isn't a clean [x,y] / [x1,y1,x2,y2]."""
+    """Defensive: the model sometimes mixes pixels and fractions, returns
+    malformed points, null arrays, non-dict items or NaN. Normalize what is
+    clean, drop everything else — this must NEVER raise (a persisted
+    off-schema scene file would crash-loop the worker otherwise)."""
+    import math
+
     def nrm(v, size=1920):
         try:
             v = float(v)
         except (TypeError, ValueError):
             return 0.0
+        if not math.isfinite(v):
+            return 0.0
         return v / size if v > 1.5 else v
-    for c in scene.get("crossings", []):
+
+    def lst(key):
+        v = scene.get(key)
+        return [x for x in v if isinstance(x, dict)] if isinstance(v, list) else []
+
+    if not isinstance(scene, dict):
+        return {}
+    scene["crossings"] = lst("crossings")
+    scene["traffic_lights"] = lst("traffic_lights")
+    for c in scene["crossings"]:
         pts = []
-        for p in c.get("polygon", []):
+        poly = c.get("polygon")
+        for p in (poly if isinstance(poly, list) else []):
             if isinstance(p, (list, tuple)) and len(p) >= 2:
                 pts.append([nrm(p[0]), nrm(p[1], 1080)])
         c["polygon"] = pts
-    for t in scene.get("traffic_lights", []):
-        b = t.get("bbox", [])
+    for t in scene["traffic_lights"]:
+        b = t.get("bbox")
         if isinstance(b, (list, tuple)) and len(b) == 4:
             t["bbox"] = [nrm(b[0]), nrm(b[1], 1080), nrm(b[2]), nrm(b[3], 1080)]
-    for r in scene.get("ignore_regions", []):
+        else:
+            t["bbox"] = []
+    regs = scene.get("ignore_regions")
+    out_regs = []
+    for r in (regs if isinstance(regs, list) else []):
         b = r.get("bbox") if isinstance(r, dict) else r
         if isinstance(b, (list, tuple)) and len(b) == 4:
-            nb = [nrm(b[0]), nrm(b[1], 1080), nrm(b[2]), nrm(b[3], 1080)]
-            if isinstance(r, dict):
-                r["bbox"] = nb
+            out_regs.append({"label": (r.get("label", "") if isinstance(r, dict) else ""),
+                             "bbox": [nrm(b[0]), nrm(b[1], 1080),
+                                      nrm(b[2]), nrm(b[3], 1080)]})
+    scene["ignore_regions"] = out_regs
     return scene
 
 
@@ -428,6 +625,7 @@ def disk_guard():
 
 # ---------------- AI analyzer thread ----------------
 def analyzer_loop():
+    attempts = {}  # eid -> failed tries while AI was up (bad clip etc.)
     while True:
         row = db.next_pending_ai()
         if not row:
@@ -466,11 +664,28 @@ def analyzer_loop():
                     S.ticker.appendleft(
                         f"AI #{eid}: {'NARUSZENIE' if res['verdict']=='violation' else ('OK/fałszywy alarm' if res['verdict']=='no_violation' else 'niepewne')}")
                 print(f"AI verdict #{eid}: {res['verdict']}", flush=True)
+                attempts.pop(eid, None)
             else:
-                db.set_ai_skipped(eid)
+                # None = no verdict. If AI became unavailable DURING the call
+                # (429 tripping the quota pause, breaker) the event is fine —
+                # leave it pending, it will be analyzed after the reset.
+                if not ai_analyst.enabled():
+                    time.sleep(30)
+                    continue
+                attempts[eid] = attempts.get(eid, 0) + 1
+                if attempts.get(eid, 0) >= 3:   # genuinely unanalyzable clip
+                    db.set_ai_skipped(eid)
+                    attempts.pop(eid, None)
+                else:
+                    time.sleep(10)
         except Exception as e:
             print("analyzer:", e, flush=True)
-            db.set_ai_skipped(eid)
+            attempts[eid] = attempts.get(eid, 0) + 1
+            if attempts.get(eid, 0) >= 3:
+                db.set_ai_skipped(eid)
+                attempts.pop(eid, None)
+            else:
+                time.sleep(10)
 
 
 # ---------------- main processing loop ----------------
@@ -488,8 +703,18 @@ def worker():
         for cid in order:
             if cid in by_id:
                 cam = by_id[cid]
-                if _open_and_run(det, cam, frame_interval, by_id, cfg):
-                    break  # config changed / stream ended cleanly -> reload config
+                try:
+                    if _open_and_run(det, cam, frame_interval, by_id, cfg):
+                        break  # config changed / stream ended cleanly -> reload config
+                except Exception as e:
+                    # the frame loop must NEVER die silently: log, mark camera
+                    # down and fail over / retry — the thread itself survives.
+                    import traceback
+                    traceback.print_exc()
+                    try:
+                        db.health(cid, "down", f"loop error: {e!r}")
+                    except Exception:
+                        pass
                 db.health(cid, "down", "stream failed")
         if cam is None:
             time.sleep(5)
@@ -500,49 +725,104 @@ def worker():
 def _open_and_run(det, cam, frame_interval, by_id, cfg):
     """Run one camera until failure (False) or admin switched active (True)."""
     cam_id = cam["id"]
+    # rw_timeout bounds a single blocked FFmpeg network read (15 s) so the
+    # Grabber thread can always observe stop and release the capture itself.
+    opts = "rw_timeout;15000000"
     if cam.get("referer"):
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "referer;" + cam["referer"]
+        opts += "|referer;" + cam["referer"]
+    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = opts
     cap = cv2.VideoCapture(cam["url"], cv2.CAP_FFMPEG)
     if not cap.isOpened():
         return False
+    grab = Grabber(cap, TARGET_FPS)
+    try:
+        return _run_camera(det, cam, frame_interval, cfg, grab)
+    finally:
+        grab.close()          # idempotent; guarantees no Grabber leak on ANY exit
+        with S.lock:
+            S.live = False
+
+
+def _run_camera(det, cam, frame_interval, cfg, grab):
+    cam_id = cam["id"]
     db.health(cam_id, "up", "stream opened")
     with S.lock:
         S.cam_id, S.cam_label, S.live = cam_id, cam.get("label", cam_id), True
-        S.ped_total = S.veh_total = 0
+        S.ped_total = S.veh_total = S.bike_total = 0
         S.started = time.time()
 
     ped_tr = CentroidTracker(max_dist=90, ttl=8)
     veh_tr = CentroidTracker(max_dist=130, ttl=8)
+    bike_tr = CentroidTracker(max_dist=110, ttl=8)
     ped_cb = ConfirmBook(MIN_TRACK_FRAMES, MIN_MOVE_PX)
     veh_cb = ConfirmBook(MIN_TRACK_FRAMES, MIN_MOVE_PX)
+    bike_cb = ConfirmBook(MIN_TRACK_FRAMES, MIN_MOVE_PX)
     bgsub = cv2.createBackgroundSubtractorMOG2(history=400, varThreshold=40,
                                                detectShadows=False)
     cond_streak = 0
-    poly = None; zone = None; bbox = None
-    scene = load_scene(cam_id)
-    if scene:
-        scene = norm_scene_coords(scene)
+    zones = []               # [{id, poly, zone, bbox}] — manual poly + AI crossings
+    zones_have_scene = False
+    scene = load_scene_safe(cam_id)
     m_per_px = None
     speeds = None
     ring = deque()  # (ts, clip_frame)
     ep = None
     scene_try_ts = 0.0
     tprev = time.time()
-    fails = 0
+    idle_frames = 0
+    t_open = time.time()
     last_cfg_check = time.time()
+    dbg_t = 0.0
+    dbg_iters = 0
+
+    def build_zones(w, h):
+        """Event zones: the manually configured crossing PLUS every crossing
+        the AI scene-context found — so ALL zebras in view are monitored."""
+        zs = []
+        mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
+        zs.append({"id": "main", "poly": mp, "zone": PolygonZone(mp),
+                   "bbox": poly_bbox(mp, w, h)})
+        if isinstance(scene, dict):
+            for c in (scene.get("crossings") or []):
+                if not isinstance(c, dict):
+                    continue
+                pts = [(p[0] * w, p[1] * h) for p in (c.get("polygon") or [])
+                       if isinstance(p, (list, tuple)) and len(p) >= 2]
+                if len(pts) < 3:
+                    continue
+                bb = poly_bbox(pts, w, h)
+                if any(_iou(bb, z["bbox"]) > 0.45 for z in zs):
+                    continue  # same zebra as an existing zone
+                zs.append({"id": str(c.get("id", f"cx{len(zs)}")), "poly": pts,
+                           "zone": PolygonZone(pts), "bbox": bb})
+        return zs[:5]
 
     while True:
-        ok, frame = cap.read()
-        if not ok:
-            fails += 1
-            if fails > 40:
-                cap.release()
-                return False
-            time.sleep(0.15)
-            continue
-        fails = 0
         now = time.time()
-        if now - tprev < frame_interval:
+        dbg_iters += 1
+        if now - dbg_t > 15:
+            dbg_t = now
+            print(f"dbg iters15s={dbg_iters} reads={grab.reads} rfails={grab.fails} "
+                  f"q={grab.qlen()} idle={idle_frames} fps={S.fps:.2f}", flush=True)
+            dbg_iters = 0
+            grab.reads = 0
+            grab.fails = 0
+        if grab.t == 0.0:                       # nothing decoded yet
+            if now - t_open > 30:
+                grab.close()
+                return False
+            time.sleep(0.1)
+            continue
+        if now - grab.t > 30:                   # reader starved -> stream died
+            grab.close()
+            db.health(cam_id, "down", "stream stalled")
+            return False
+        if now - tprev < frame_interval:        # pace to TARGET_FPS
+            time.sleep(0.02)
+            continue
+        frame = grab.next()
+        if frame is None:                       # queue empty (between segments)
+            time.sleep(0.03)
             continue
         dt = now - tprev
         tprev = now
@@ -552,44 +832,69 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
             last_cfg_check = now
             c2 = cams_load()
             if c2.get("active") != cam_id or c2["cameras"] != cfg["cameras"]:
-                cap.release()
+                grab.close()
                 db.health(cam_id, "switch", "config changed")
                 return True
 
         h0, w0 = frame.shape[:2]
         if w0 > PROC_W:
             frame = cv2.resize(frame, (PROC_W, int(h0 * PROC_W / w0)))
+        else:
+            frame = frame.copy()   # never mutate the grabber's buffer in place
         h, w = frame.shape[:2]
-        if poly is None:
-            poly = [(p[0] * w, p[1] * h) for p in cam["poly"]]
-            zone = PolygonZone(poly)
-            bbox = poly_bbox(poly, w, h)
+        if not zones:
+            zones = build_zones(w, h)
+            zones_have_scene = bool(scene)
             m_full = cam.get("m_per_px_fullw", 0.075)
             m_per_px = m_full * (1920.0 / w)  # config is per full-width pixel
             speeds = SpeedBook(m_per_px)
 
-        # one-time scene context per camera (AI, cached on disk)
-        if scene is None and now - scene_try_ts > 600 and ai_analyst.enabled():
+        # one-time scene context per camera (AI) — run in a BACKGROUND thread so a
+        # slow local LLM never blocks the frame loop. Result lands on disk; the
+        # main loop reloads it below.
+        if scene is None and now - scene_try_ts > 120 and ai_analyst.enabled():
             scene_try_ts = now
             ok2, jb = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             if ok2:
-                sc = ai_analyst.scene_context(jb.tobytes())
-                if sc:
-                    json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
-                              ensure_ascii=False, indent=1)
-                    scene = norm_scene_coords(sc)
-                    with S.lock:
-                        S.ticker.appendleft("AI opisał scenę перекрёстка (scene context) ✔")
+                threading.Thread(target=_scene_worker, args=(cam_id, jb.tobytes()),
+                                 daemon=True).start()
+        if scene is None and int(now) % 10 == 0:
+            scene = load_scene_safe(cam_id)
+        if scene and not zones_have_scene:
+            zones = build_zones(w, h)   # AI crossings arrived -> monitor them all
+            zones_have_scene = True
 
         # foreground (motion) mask for this fixed camera — static objects
         # (poles, signs, traffic lights) produce ~no foreground and get gated out
         fgmask = bgsub.apply(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), learningRate=0.01)
 
-        dets = det.detect(frame)
-        roi_dets = detect_roi(det, frame, bbox)
-        for r in roi_dets:
-            if not any(_iou(r.xyxy, d.xyxy) > 0.45 and r.cls == d.cls for d in dets):
-                dets.append(r)
+        # scene completely still for a while -> skip inference entirely this
+        # frame (big CPU saving at night / empty street; hysteresis avoids
+        # flapping). MOG2 keeps learning so we wake instantly on motion.
+        frame_fg = float((fgmask > 0).mean())
+        idle_frames = idle_frames + 1 if frame_fg < 0.0004 else 0
+        if idle_frames >= 3:
+            dets = []
+        else:
+            dets = det.detect(frame)
+            # ROI-upscale pass over the (max 2) zones that show motion NOW —
+            # catches small/far pedestrians without paying for still zones
+            zx = []
+            for z in zones:
+                x1, y1, x2, y2 = z["bbox"]
+                patch = fgmask[y1:y2, x1:x2]
+                zfg = float((patch > 0).mean()) if patch.size else 0.0
+                if zfg > 0.002:
+                    zx.append((zfg, z))
+            zx.sort(key=lambda t: -t[0])
+            # ONE ROI pass per frame (the busiest zone): the full-frame pass
+            # already covers every zone; a second ROI pass costs ~0.5 s/frame
+            # on this CPU and halves the live fps at rush hour.
+            for _, z in zx[:1]:
+                for r in detect_roi(det, frame, z["bbox"]):
+                    if not any(_iou(r.xyxy, d.xyxy) > 0.45 and r.cls == d.cls
+                               for d in dets):
+                        dets.append(r)
 
         # drop detections that overlap a known STATIC scene object (traffic light /
         # sign / pole) — this is the scene-context "teaching the detector what to
@@ -605,32 +910,44 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
             kept.append(d)
         dets = kept
 
-        # privacy first
-        pboxes = [head_region(d.xyxy) for d in dets if d.cls == PERSON]
+        # privacy first (riders get head-blur too)
+        pboxes = [head_region(d.xyxy) for d in dets if d.cls in (PERSON, BIKE)]
         pboxes += [plate_region(d.xyxy) for d in dets if d.cls == VEHICLE]
         frame = blur_regions(frame, pboxes, block=10)
 
-        peds = [d for d in dets if d.cls == PERSON]
+        bikes = [d for d in dets if d.cls == BIKE]
+        # a person overlapping a MOVING bicycle is its RIDER -> one cyclist,
+        # not a pedestrian + a bike (kills double counting). A parked bike
+        # shows no foreground, so it can never suppress real pedestrians
+        # walking past it.
+        _moving_bikes = [b for b in bikes
+                         if fg_ratio_at(fgmask, *b.anchor) >= FG_MIN]
+        def _is_rider(d):
+            return any(_iou(d.xyxy, b.xyxy) > 0.18 for b in _moving_bikes)
+        peds = [d for d in dets if d.cls == PERSON and not _is_rider(d)]
         vehs = [d for d in dets if d.cls == VEHICLE]
         ped_tracks = ped_tr.update(peds)
         veh_tracks = veh_tr.update(vehs)
+        bike_tracks = bike_tr.update(bikes)
 
         # which tracks show foreground motion right now
         ped_fg = {tid for tid, p in ped_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
         veh_fg = {tid for tid, p in veh_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
+        bike_fg = {tid for tid, p in bike_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
         # confirm real objects (moved over lifetime) — count ONLY on confirmation
-        new_ped = len(ped_cb.update(ped_tracks, ped_fg))
-        new_veh = len(veh_cb.update(veh_tracks, veh_fg))
-        if new_ped or new_veh:
-            db.bump_counts(cam_id, new_ped, new_veh, 0)
+        new_ped = len(ped_cb.update(ped_tracks, ped_fg, now))
+        new_veh = len(veh_cb.update(veh_tracks, veh_fg, now))
+        new_bike = len(bike_cb.update(bike_tracks, bike_fg, now))
+        if new_ped or new_veh or new_bike:
+            db.bump_counts(cam_id, new_ped, new_veh, 0, bike=new_bike)
         db.bump_counts(cam_id, 0, 0, min(dt, 3.0))
 
         veh_kmh = speeds.update(veh_tracks, now)
-        ped_speeds = SpeedBook(m_per_px) if False else None  # ped speeds via same book:
-        # (pedestrian speeds tracked separately)
         if not hasattr(speeds, "_pedbook"):
             speeds._pedbook = SpeedBook(m_per_px)
+            speeds._bikebook = SpeedBook(m_per_px)
         ped_kmh = speeds._pedbook.update(ped_tracks, now)
+        bike_kmh = speeds._bikebook.update(bike_tracks, now)
         for tid, v in veh_kmh.items():
             if v > 1.5 and int(now * 2) % 10 == 0:  # sample, don't flood
                 db.add_speed(cam_id, "vehicle", v)
@@ -646,13 +963,28 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
                     tl_states[t.get("id", "tl")] = tl_color(frame, t["bbox"])
         tl_summary = ",".join(f"{k}:{v}" for k, v in tl_states.items()) or "unknown"
 
-        def in_bbox(p):
-            return bbox[0] <= p[0] <= bbox[2] and bbox[1] <= p[1] <= bbox[3]
-        # events use ONLY confirmed (real, moved) tracks — never phantom statics
-        ped_in = [p for tid, p in ped_tracks.items()
-                  if zone.contains(p) and ped_cb.confirmed(tid)]
-        veh_in_moving = [tid for tid, p in veh_tracks.items()
-                         if in_bbox(p) and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
+        # ---- event kinematics, checked in EVERY monitored crossing ----
+        # A conflict needs BOTH sides in the SAME zone at the same time:
+        #   pedestrian: confirmed track, WALKING (not standing on an island), and
+        #   vehicle: confirmed track, MOVING through (a car politely stopped at
+        #   the zebra/red light is stationary -> never triggers).
+        pedbook = speeds._pedbook
+        bikebook = speeds._bikebook
+        ped_in, veh_in_moving, hit_zone = [], [], None
+        for z in zones:
+            zb = z["bbox"]
+            pz = [p for tid, p in ped_tracks.items()
+                  if z["zone"].contains(p) and ped_cb.confirmed(tid)
+                  and pedbook.is_moving(tid)]
+            # cyclists are crossing users too — a moving car must yield to them
+            pz += [p for tid, p in bike_tracks.items()
+                   if z["zone"].contains(p) and bike_cb.confirmed(tid)
+                   and bikebook.is_moving(tid)]
+            vz = [tid for tid, p in veh_tracks.items()
+                  if zb[0] <= p[0] <= zb[2] and zb[1] <= p[1] <= zb[3]
+                  and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
+            if pz and vz and len(pz) + len(vz) > len(ped_in) + len(veh_in_moving):
+                ped_in, veh_in_moving, hit_zone = pz, vz, z["id"]
         instant_condition = bool(ped_in) and bool(veh_in_moving)
         cond_streak = cond_streak + 1 if instant_condition else 0
         # require the conflict to persist a few frames — kills 1-frame phantoms
@@ -665,20 +997,40 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
             return fg_ratio_at(fgmask, ax, ay) >= FG_MIN
         active_peds = [d for d in peds if det_active(d)]
         active_vehs = [d for d in vehs if det_active(d)]
+        active_bikes = [d for d in bikes if det_active(d)]
+
+        def _tid_near(d, tracks):
+            ax, ay = d.anchor
+            best, bd = None, 45.0
+            for tid, (tx, ty) in tracks.items():
+                dd = ((ax - tx) ** 2 + (ay - ty) ** 2) ** 0.5
+                if dd < bd:
+                    best, bd = tid, dd
+            return best
 
         # annotate
         ann = frame.copy()
-        cv2.polylines(ann, [np.array(poly, np.int32)], True, (60, 200, 255), 2)
-        for d in active_peds + active_vehs:
+        for z in zones:
+            col = (60, 200, 255) if z["id"] == "main" else (50, 160, 235)
+            cv2.polylines(ann, [np.array(z["poly"], np.int32)], True, col, 2)
+        for d, tracks, book, col in (
+                [(d, ped_tracks, ped_kmh, (90, 230, 120)) for d in active_peds] +
+                [(d, veh_tracks, veh_kmh, (80, 150, 255)) for d in active_vehs] +
+                [(d, bike_tracks, bike_kmh, (60, 220, 235)) for d in active_bikes]):
             x1, y1, x2, y2 = [int(v) for v in d.xyxy]
-            c = (90, 230, 120) if d.cls == PERSON else (80, 150, 255)
-            cv2.rectangle(ann, (x1, y1), (x2, y2), c, 2)
+            cv2.rectangle(ann, (x1, y1), (x2, y2), col, 2)
+            tid = _tid_near(d, tracks)
+            v = book.get(tid) if tid is not None else None
+            if v is not None and v > 1.5:
+                cv2.putText(ann, f"{v:.0f} km/h", (x1, max(12, y1 - 6)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.46, col, 1, cv2.LINE_AA)
         ann[:44] = (ann[:44] * 0.35).astype(np.uint8)
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         cv2.circle(ann, (20, 22), 7, (60, 60, 235), -1)
         vmax = max(veh_kmh.values()) if veh_kmh else 0
-        cv2.putText(ann, f"LIVE | piesi: {len(active_peds)}  pojazdy: {len(active_vehs)}"
-                         f" | max ~{vmax:.0f} km/h | sygnalizacja: {tl_summary[:28]} | {ts}",
+        cv2.putText(ann, f"LIVE | piesi: {len(active_peds)}  rowery: {len(active_bikes)}"
+                         f"  pojazdy: {len(active_vehs)}"
+                         f" | max ~{vmax:.0f} km/h | sygnalizacja: {tl_summary[:24]} | {ts}",
                     (36, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (240, 240, 240), 1, cv2.LINE_AA)
         if condition or (ep is not None):
             cv2.rectangle(ann, (0, 0), (ann.shape[1] - 1, ann.shape[0] - 1), (0, 0, 235), 5)
@@ -698,6 +1050,7 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
             ep.start = now
             ep.last_cond = now
             ep.frames = list(ring)
+            ep.zone_id = hit_zone or "main"
             with S.lock:
                 S.episode_active = True
         if ep is not None:
@@ -712,10 +1065,14 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
                 if overlap > ep.best_overlap:
                     ep.best_overlap = overlap
                     ep.best_snap = ann.copy()
-            ended = (now - ep.last_cond > EPISODE_END_S) or (now - ep.start > EPISODE_MAX_S)
-            if ended:
-                if now - ep.last_cond > EPISODE_END_S:  # keep short post-roll
-                    keep = [f for f in ep.frames if f[0] <= ep.last_cond + POST_ROLL_S]
+            ended_lapse = now - ep.last_cond > EPISODE_END_S
+            ended_max = now - ep.start > EPISODE_MAX_S
+            if ended_lapse or ended_max:
+                # ALWAYS save (a >35 s sustained conflict is the most
+                # report-worthy case — force-finalize, never discard)
+                if True:
+                    keep = ([f for f in ep.frames if f[0] <= ep.last_cond + POST_ROLL_S]
+                            if ended_lapse else list(ep.frames))
                     # honest duration = span of the recorded clip (never 0)
                     dur = max(MIN_CLIP_SEC, (keep[-1][0] - keep[0][0]) if len(keep) > 1 else 0.0)
                     stamp = int(ep.start)
@@ -726,8 +1083,9 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
                         cv2.imwrite(os.path.join(SNAP_DIR, snap_name), ep.best_snap,
                                     [cv2.IMWRITE_JPEG_QUALITY, 80])
                     tl_mode = max(set(ep.tl_states), key=ep.tl_states.count) if ep.tl_states else "unknown"
-                    desc = (f"Pojazd w ruchu i pieszy jednocześnie w strefie przejścia "
-                            f"(piesi: {ep.n_ped}, pojazdy w ruchu: {ep.n_veh}, "
+                    zlbl = getattr(ep, "zone_id", "main")
+                    desc = (f"Pojazd w ruchu i idący pieszy jednocześnie na przejściu "
+                            f"[strefa: {zlbl}] (piesi: {ep.n_ped}, pojazdy w ruchu: {ep.n_veh}, "
                             f"max ~{ep.max_kmh:.0f} km/h, sygnalizacja: {tl_mode}).")
                     eid = db.add_event(cam_id, desc, snap_name,
                                        clip_name if ok_clip else None,
@@ -742,12 +1100,16 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
         with S.lock:
             S.ped_total += new_ped
             S.veh_total += new_veh
+            S.bike_total += new_bike
             S.in_ped, S.in_veh = len(active_peds), len(active_vehs)
+            S.in_bike = len(active_bikes)
             S.fps = 0.8 * S.fps + 0.2 * (1.0 / dt if dt > 0 else 0)
+            S.last_frame_ts = now
             S.tl = tl_states
             S.speeds_now = {
                 "veh_kmh": round(max(veh_kmh.values()), 1) if veh_kmh else None,
-                "ped_kmh": round(max(ped_kmh.values()), 1) if ped_kmh else None}
+                "ped_kmh": round(max(ped_kmh.values()), 1) if ped_kmh else None,
+                "bike_kmh": round(max(bike_kmh.values()), 1) if bike_kmh else None}
             ok3, buf = cv2.imencode(".jpg", ann, [cv2.IMWRITE_JPEG_QUALITY, 70])
             if ok3:
                 S.jpeg = buf.tobytes()
@@ -792,15 +1154,21 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         p = self.path.split("?")[0]
         if p == "/healthz":
-            return self._json(200, {"ok": True, "live": S.live})
+            fresh = (time.time() - S.last_frame_ts) < 60
+            return self._json(200 if fresh else 503,
+                              {"ok": fresh, "live": S.live and fresh,
+                               "frame_age_s": round(time.time() - S.last_frame_ts, 1)
+                               if S.last_frame_ts else None})
         if p == "/state.json":
             with S.lock:
                 el = max(1e-6, (time.time() - S.started) / 3600.0)
                 d = {"live": S.live, "cam_id": S.cam_id, "source": S.cam_label,
                      "ped_total": S.ped_total, "veh_total": S.veh_total,
+                     "bike_total": S.bike_total,
                      "ped_per_hour": round(S.ped_total / el, 1),
                      "veh_per_hour": round(S.veh_total / el, 1),
-                     "in_frame": {"ped": S.in_ped, "veh": S.in_veh},
+                     "bike_per_hour": round(S.bike_total / el, 1),
+                     "in_frame": {"ped": S.in_ped, "veh": S.in_veh, "bike": S.in_bike},
                      "fps": round(S.fps, 1), "tl": S.tl, "speeds": S.speeds_now,
                      "episode_active": S.episode_active,
                      "recording_ok": S.recording_ok,

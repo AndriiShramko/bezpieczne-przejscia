@@ -1,6 +1,6 @@
 # Bezpieczne Przejścia / patrol.flyreelstudio.eu — additive, isolated stack.
-# Prime directive: do NOT disturb co-hosted neighbour services — own network,
-# no host ports, hard caps everywhere.
+# Prime directive: do NOT touch the neighbour (Teleportour) — own network,
+# no host ports, hard caps everywhere (spec-ops §3).
 #
 # Publication happens ONLY through the operator-managed reverse proxy
 # (additive vhost) or a separate proxy/Cloudflare — see README-deploy.md.

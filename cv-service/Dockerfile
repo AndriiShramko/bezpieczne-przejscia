@@ -11,8 +11,10 @@ RUN curl -fsSL -o /tmp/deno.zip \
     && unzip -q /tmp/deno.zip -d /usr/local/bin && rm /tmp/deno.zip \
     && chmod +x /usr/local/bin/deno
 
+# imageio-ffmpeg ships a static ffmpeg used to transcode event clips to H.264
+# (cv2.VideoWriter writes mp4v, which browsers cannot play)
 RUN pip install --no-cache-dir \
-      numpy opencv-python-headless onnxruntime yt-dlp
+      numpy opencv-python-headless onnxruntime yt-dlp imageio-ffmpeg
 
 WORKDIR /app
 # YOLOX-s detector weights (Apache-2.0, Megvii). Downloaded at build so the

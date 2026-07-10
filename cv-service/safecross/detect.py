@@ -12,9 +12,12 @@ import numpy as np
 
 PERSON = "person"
 VEHICLE = "vehicle"
+BIKE = "bike"
 
-# COCO ids -> our two aggregate classes
-COCO_MAP = {0: PERSON, 2: VEHICLE, 3: VEHICLE, 5: VEHICLE, 7: VEHICLE}
+# COCO ids -> aggregate classes. Bicycles are their own class (crossing users,
+# separate stats); motorcycles stay VEHICLE — a motor vehicle must yield, so it
+# participates in violation logic like a car.
+COCO_MAP = {0: PERSON, 1: BIKE, 2: VEHICLE, 3: VEHICLE, 5: VEHICLE, 7: VEHICLE}
 
 
 @dataclass
@@ -65,8 +68,18 @@ class OnnxCocoDetector:
     """
 
     def __init__(self, onnx_path: str, input_size: int = 640, conf_thres: float = 0.4):
+        import os
         import onnxruntime as ort
-        self.sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+        so = ort.SessionOptions()
+        # Bound CPU threads so the detector shares a small box with a local VLM
+        # without oversubscribing cores (context-switch thrash). ONNX_THREADS=0
+        # keeps the ORT default (all cores).
+        nthreads = int(os.environ.get("ONNX_THREADS", "0"))
+        if nthreads > 0:
+            so.intra_op_num_threads = nthreads
+            so.inter_op_num_threads = 1
+        self.sess = ort.InferenceSession(onnx_path, sess_options=so,
+                                         providers=["CPUExecutionProvider"])
         self.input_name = self.sess.get_inputs()[0].name
         self.size = input_size
         self.conf = conf_thres
