@@ -66,6 +66,11 @@ MIN_MOVE_PX = float(os.environ.get("MIN_MOVE_PX", "16"))  # on PROC-width frame
 MIN_EVENT_FRAMES = int(os.environ.get("MIN_EVENT_FRAMES", "3"))
 MIN_CLIP_SEC = float(os.environ.get("MIN_CLIP_SEC", "3"))
 BLUR = os.environ.get("BLUR", "1") not in ("0", "false", "off")
+# Live MJPEG must fit a residential uplink when the node runs at home:
+# 1280px @ 12 fps ≈ 16 Mbit/s per viewer and clogs the tunnel (frames then
+# arrive in 2-3 s clumps). 960px @ 6 fps ≈ 3-4 Mbit/s and stays smooth.
+LIVE_WIDTH = int(os.environ.get("LIVE_WIDTH", "960"))
+LIVE_FPS = float(os.environ.get("LIVE_FPS", "6"))
 EPISODE_COOLDOWN_S = float(os.environ.get("EPISODE_COOLDOWN_S", "20"))
 SPEED_LIMIT_KMH = float(os.environ.get("SPEED_LIMIT_KMH", "50"))
 # monocular speed is ±30%: flag only well above the limit to avoid slander
@@ -1030,24 +1035,21 @@ class Publisher:
                 time.sleep(0.02)
                 continue
             cts_i, jpg = item
-            now = time.time()
-            lag = now - cts_i
+            lag = time.time() - cts_i
+            if self.lags and abs(lag - self.lags[-1]) > 6:
+                self.lags.clear()                # clock re-anchor -> fresh window
             self.lags.append(lag)
-            # the playout offset must cover the WORST recent pipeline latency
-            # (HLS segment bursts + variable processing), otherwise late frames
-            # get published on arrival and the stream turns jerky again. Grow
-            # instantly when a bigger lag shows up, shrink very slowly.
-            target = max(self.lags) + self.MARGIN
-            if self.off is None or target > self.off or abs(lag - self.off) > 6:
-                self.off = target
-                if abs(lag - self.off) > 6:      # clock re-anchor -> reset window
-                    self.lags.clear()
-                    self.lags.append(lag)
-            else:
-                self.off = max(target, self.off - 0.003)
-            d = cts_i + self.off - time.time()
-            if d > 0:
-                time.sleep(min(d, 2.5))
+            # playout offset = 90th percentile of recent pipeline lags + margin:
+            # covers HLS segment bursts without letting one restart spike freeze
+            # the stream at max-lag forever. Frames later than that (≤10%) are
+            # shown immediately.
+            sl = sorted(self.lags)
+            self.off = sl[int(0.9 * (len(sl) - 1))] + self.MARGIN
+            while not self.stop:                 # wait out the FULL delay
+                d = cts_i + self.off - time.time()
+                if d <= 0:
+                    break
+                time.sleep(min(d, 0.5))
             with S.lock:
                 S.jpeg = jpg
 
@@ -1589,7 +1591,11 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                 "veh_kmh": round(max(veh_kmh.values()), 1) if veh_kmh else None,
                 "ped_kmh": round(max(ped_kmh.values()), 1) if ped_kmh else None,
                 "bike_kmh": round(max(bike_kmh.values()), 1) if bike_kmh else None}
-            ok3, buf = cv2.imencode(".jpg", ann, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            live = ann
+            if ann.shape[1] > LIVE_WIDTH:
+                live = cv2.resize(ann, (LIVE_WIDTH,
+                                        int(ann.shape[0] * LIVE_WIDTH / ann.shape[1])))
+            ok3, buf = cv2.imencode(".jpg", live, [cv2.IMWRITE_JPEG_QUALITY, 68])
             S.frame_raw = frame       # clean copy for the admin zone editor
         if ok3:
             pub.push(cts, buf.tobytes())   # constant-latency playout, not direct
@@ -1796,7 +1802,7 @@ class H(BaseHTTPRequestHandler):
                 self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\n")
                 self.wfile.write(f"Content-Length: {len(buf)}\r\n\r\n".encode())
                 self.wfile.write(buf + b"\r\n")
-                time.sleep(1.0 / max(1.0, TARGET_FPS))
+                time.sleep(1.0 / max(1.0, LIVE_FPS))
         except (BrokenPipeError, ConnectionError, OSError):
             return
 
