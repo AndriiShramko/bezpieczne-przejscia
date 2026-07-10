@@ -728,6 +728,37 @@ def _draw_scene_polys(img, scene):
     return g
 
 
+def _rules_worker(cam_id, jpeg_bytes, scene_copy):
+    """Background: generate missing event_rules for an existing zone map
+    (hand-drawn or legacy) and merge them into the scene file — unless the
+    admin edited the file meanwhile."""
+    try:
+        try:
+            mtime0 = os.path.getmtime(scene_path(cam_id))
+        except OSError:
+            return
+        rules = ai_analyst.scene_rules(jpeg_bytes, scene_copy)
+        if not rules or not isinstance(rules, str):
+            return
+        try:
+            if os.path.getmtime(scene_path(cam_id)) != mtime0:
+                return              # admin saved meanwhile — their file wins
+            sc = json.load(open(scene_path(cam_id), encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if not isinstance(sc, dict) or sc.get("event_rules"):
+            return
+        sc["event_rules"] = rules
+        sc["_rules_tried"] = time.time()
+        json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=1)
+        with S.lock:
+            S.ticker.appendleft("AI uzupełnił reguły zdarzeń dla stref ✔")
+        print(f"rules_worker: event_rules filled for {cam_id}", flush=True)
+    except Exception as e:
+        print("rules_worker:", e, flush=True)
+
+
 def _valid_scene(sc):
     if not (isinstance(sc, dict) and sc):
         return None
@@ -1030,6 +1061,11 @@ def analyzer_loop():
                 db.set_ai_result(eid, res["verdict"], res.get("violator", "none"),
                                  res.get("explanation_pl", ""), res.get("explanation_en", ""),
                                  float(res.get("confidence", 0)))
+                vul = res.get("vulnerable")
+                if isinstance(vul, dict):
+                    db.merge_flags(eid, vul)   # children / strollers / wheelchairs
+                if res.get("phone_suspect") is True:
+                    db.merge_flags(eid, {"phone": True})
                 with S.lock:
                     S.ticker.appendleft(
                         f"AI #{eid}: {'NARUSZENIE' if res['verdict']=='violation' else ('OK/fałszywy alarm' if res['verdict']=='no_violation' else 'niepewne')}")
@@ -1319,6 +1355,19 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # one-time scene context per camera (AI) — run in a BACKGROUND thread so a
         # slow local LLM never blocks the frame loop. Result lands on disk; the
         # main loop reloads it below.
+        # a zone map WITHOUT event rules (hand-drawn or legacy) weakens the AI
+        # verdicts — fill the rules in automatically, once per 6 h max
+        if isinstance(scene, dict) and scene.get("crossings") \
+                and not scene.get("event_rules") \
+                and now - float(scene.get("_rules_tried", 0)) > 21600 \
+                and ai_analyst.enabled() and cam_id not in _scene_busy:
+            scene["_rules_tried"] = now
+            ok2, jb = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if ok2:
+                threading.Thread(target=_rules_worker,
+                                 args=(cam_id, jb.tobytes(), dict(scene)),
+                                 daemon=True).start()
+
         recal_flag = os.path.join(SCENE_DIR, f"recal_{cam_id}.flag")
         if scene is None and ai_analyst.enabled() \
                 and (now - scene_try_ts > 120 or os.path.exists(recal_flag)):
@@ -1649,6 +1698,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                                   round(tx / w, 3), round(ty / h, 3)])
             if condition:
                 ep.last_cond = cts
+                ep.had_bike = getattr(ep, "had_bike", False) or bool(mark_bike)
                 # speed of the CONFLICTING vehicle(s), not the frame-wide max
                 vz_max = max((veh_kmh.get(t, 0.0) for t in veh_in_moving),
                              default=0.0)
@@ -1686,7 +1736,9 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                                        clip_name if ok_clip else None,
                                        dur, tl_mode, round(ep.max_kmh, 1),
                                        ep.n_ped, ep.n_veh,
-                                       tracks_json=ep.paths_json())
+                                       tracks_json=ep.paths_json(),
+                                       flags={"bike": True}
+                                       if getattr(ep, "had_bike", False) else None)
                     with S.lock:
                         S.ticker.appendleft(f"#{eid} epizod zapisany ({dur:.0f}s) → analiza AI…")
                 # mute this zone briefly: a busy crossing otherwise spawns a
@@ -1783,6 +1835,25 @@ class H(BaseHTTPRequestHandler):
                      "ai_calls_today": db.ai_calls_today()}
             d["stats"] = db.stats(d["cam_id"] or None)
             d["events"] = db.list_events("all", 9, cam_id=d["cam_id"] or None)
+            # camera playlist countdown for the front page
+            try:
+                cfg = cams_load()
+                pl = cfg.get("playlist") or {}
+                cur = next((c for c in cfg["cameras"] if c["id"] == d["cam_id"]), None)
+                if cur:
+                    d["source_url"] = cur.get("source_url", "")
+                ids = {c["id"]: c for c in cfg["cameras"]}
+                rota = [c for c in (pl.get("cameras") or []) if c in ids]
+                if pl.get("enabled") and len(rota) >= 2:
+                    iv = max(1.0, float(pl.get("interval_min", 10))) * 60.0
+                    left = max(0, int(float(pl.get("last_switch", 0)) + iv - time.time()))
+                    curid = cfg.get("active")
+                    nxt = rota[(rota.index(curid) + 1) % len(rota)] \
+                        if curid in rota else rota[0]
+                    d["playlist"] = {"next_in_s": left,
+                                     "next_label": ids[nxt].get("label", nxt)}
+            except Exception:
+                pass
             return self._json(200, d)
         if p == "/events.json":
             import urllib.parse

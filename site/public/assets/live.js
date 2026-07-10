@@ -88,9 +88,33 @@
       var tls = Object.keys(d.tl || {}).map(function (k) { return d.tl[k]; }).filter(function (v) { return v !== "unknown"; });
       if (tls.length) bits.push(T.tl + ": " + tls.join("/"));
       bits.push(T.aiToday + ": " + d.ai_calls_today);
+      if (d.stats) {
+        bits.push((L === "pl" ? "zdarzenia — piesi: " : "events — pedestrians: ") + (d.stats.cat_ped || 0) +
+          (L === "pl" ? " · rowerzyści: " : " · cyclists: ") + (d.stats.cat_bike || 0) +
+          (L === "pl" ? " · dzieci/wózki: " : " · children/prams: ") + (d.stats.cat_child || 0) +
+          (L === "pl" ? " · prędkość: " : " · speeding: ") + (d.stats.cat_speeding || 0));
+      }
       inf.textContent = bits.join("  ·  ");
     }
-    var src = el("live-source"); if (src && d.source) src.textContent = d.source;
+    var src = el("live-source");
+    if (src && d.source) {
+      // camera name links to the ORIGINAL public stream page (source credit)
+      if (d.source_url) src.innerHTML = '<a href="' + esc(d.source_url) + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted">' + esc(d.source) + " ↗</a>";
+      else src.textContent = d.source;
+    }
+    // playlist countdown: when does the camera change and to what
+    var pc = el("pl-countdown");
+    if (!pc && d.playlist) {
+      pc = document.createElement("div");
+      pc.id = "pl-countdown";
+      pc.style.cssText = "font-size:.8rem;color:#8b97a7;margin-top:.25rem";
+      if (src && src.parentNode) src.parentNode.insertBefore(pc, src.nextSibling);
+    }
+    if (pc) {
+      if (d.playlist) {
+        window._plNext = { t: Date.now() + d.playlist.next_in_s * 1000, label: d.playlist.next_label };
+      } else { window._plNext = null; pc.textContent = ""; }
+    }
     var epi = el("epi-badge"); if (epi) epi.style.display = d.episode_active ? "inline-block" : "none";
     var tk = el("ticker");
     if (tk && d.ticker) tk.innerHTML = d.ticker.slice(0, 5).map(function (t) { return '<span class="tick">' + esc(t) + "</span>"; }).join("");
@@ -220,6 +244,7 @@
       lineChart("chart-traffic", d.hourly || []);
       histChart("chart-speed", d.speed_hist_bins_kmh5 || [], d.speed_n || 0);
       eventChart("chart-events", d.hourly || []);
+      todChart("chart-tod", d.speeding_by_hour || []);
     }).catch(function () {});
   }
   function svgEl(w, h) { return '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" style="width:100%;height:150px;display:block">'; }
@@ -316,6 +341,28 @@
     if (rst) rst.addEventListener("click", function (ev2) { ev2.preventDefault(); curHour = null; lastSig = ""; loadEvents(); drawCharts(); });
   }
 
+  function todChart(id, tod) {
+    var e = el(id); if (!e) return;
+    if (!tod.length) { e.innerHTML = '<p class="muted small pad">…</p>'; return; }
+    var W = 600, H = 150, bw = W / 24;
+    var m = Math.max.apply(null, tod.map(function (x) { return x.per1000 || 0; }).concat([0.1]));
+    var byH = {}; tod.forEach(function (x) { byH[x.h] = x; });
+    var bars = [];
+    for (var hh = 0; hh < 24; hh++) {
+      var x = byH[hh];
+      var v = x && x.per1000 != null ? x.per1000 : 0;
+      var bh = (H - 26) * v / m;
+      var tip = ("0" + hh).slice(-2) + ":00 UTC — " + (x ? (x.speeding + (L === "pl" ? " przekroczeń / " : " speeding / ") + x.veh + (L === "pl" ? " pojazdów" : " vehicles")) : (L === "pl" ? "brak danych" : "no data"));
+      bars.push('<rect x="' + (hh * bw + 2).toFixed(1) + '" y="' + (H - 14 - bh).toFixed(1) +
+        '" width="' + (bw - 4).toFixed(1) + '" height="' + Math.max(bh, v > 0 ? 2 : 0).toFixed(1) +
+        '" rx="2" fill="#ff9d5c"><title>' + tip + "</title></rect>" +
+        (hh % 3 === 0 ? '<text x="' + (hh * bw + bw / 2).toFixed(1) + '" y="' + (H - 2) + '" font-size="9" fill="#8b97a7" text-anchor="middle">' + hh + "</text>" : ""));
+    }
+    e.innerHTML = svgEl(W, H) + bars.join("") + "</svg>" +
+      '<div class="legend"><i style="background:#ff9d5c"></i>' +
+      (L === "pl" ? "przekroczenia prędkości na 1000 pojazdów wg godziny (UTC)" : "speeding per 1000 vehicles by hour (UTC)") + "</div>";
+  }
+
   /* ---------- boot ---------- */
   var img = el("live-img");
   if (img) {
@@ -325,6 +372,15 @@
       setTimeout(function () { img.src = "/cv/live.mjpg?" + Date.now(); }, 4000);
     });
   }
+  // local 1 s ticking of the camera-rotation countdown
+  setInterval(function () {
+    var pc = el("pl-countdown");
+    if (!pc || !window._plNext) return;
+    var s = Math.max(0, Math.round((window._plNext.t - Date.now()) / 1000));
+    var mm = Math.floor(s / 60), ss = ("0" + (s % 60)).slice(-2);
+    pc.textContent = (L === "pl" ? "⏱ Zmiana kamery za " : "⏱ Camera changes in ") + mm + ":" + ss +
+      (L === "pl" ? " → następna: " : " → next: ") + window._plNext.label;
+  }, 1000);
   tick(); loadEvents(); drawCharts();
   setInterval(tick, 3000);
   setInterval(loadEvents, 7000);

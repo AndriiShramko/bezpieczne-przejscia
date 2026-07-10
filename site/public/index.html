@@ -96,9 +96,13 @@
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">Wszystkie</button>
   <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="ped">Piesi</button>
+  <button class="tab" data-tab="bike">Rowerzyści</button>
+  <button class="tab" data-tab="child">Dzieci / wózki</button>
   <button class="tab" data-tab="speeding">Prędkość (szac.)</button>
-  <button class="tab" data-tab="rejected">Odrzucone przez AI — sprawdź!</button>
+  <button class="tab" data-tab="rejected">Odrzucone przez AI</button>
   <button class="tab" data-tab="pending">Czekają na AI</button>
+  <button class="tab" data-tab="trash">🗑 Kosz</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
 </section>
@@ -106,6 +110,7 @@
  <h2>Statystyka przejścia — na żywo z bazy danych</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Przekroczenia prędkości wg pory dnia</h3><div class="chart" id="chart-tod"></div></div>
   <div class="chart-card"><h3>Rozkład prędkości pojazdów (orientacyjnie)</h3><div class="chart" id="chart-speed"></div></div>
   <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
  </div>

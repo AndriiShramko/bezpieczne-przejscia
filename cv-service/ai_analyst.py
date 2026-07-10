@@ -277,6 +277,27 @@ def scene_context(jpeg_bytes):
     return _call([_img_part(jpeg_bytes), {"text": SCENE_PROMPT}], max_tokens=5000)
 
 
+RULES_PROMPT = """This frame shows a road scene with a zone map (JSON below): pedestrian crossings,
+bike crossings, refuge islands. Write PRECISE per-crossing EVENT RULES for judging "driver failed
+to yield" incidents HERE under Polish law (since 2021: yield to a pedestrian ON the crossing or
+ENTERING it; pedestrian on a refuge island is NOT on the crossing; vehicle on the half the
+pedestrian already LEFT is not violating; red-light-crossing pedestrians have no priority).
+Name the zones by their ids. 4-8 short sentences, English.
+Return ONLY JSON: {"event_rules": "..."}"""
+
+
+def scene_rules(jpeg_bytes, scene_json):
+    """Fill in missing event_rules for an existing zone map (e.g. a map drawn
+    by hand in the admin editor) — better rules = better AI verdicts."""
+    if not enabled():
+        return None
+    parts = [_img_part(jpeg_bytes),
+             {"text": "Zone map JSON:\n" + json.dumps(scene_json, ensure_ascii=False)[:5000]
+                      + "\n\n" + RULES_PROMPT}]
+    out = _call(parts, max_tokens=1200)
+    return out.get("event_rules") if isinstance(out, dict) else None
+
+
 def scene_refine(annotated_jpeg_bytes, scene_json):
     """One self-check round: show the model its own polygons drawn on the
     frame and let it correct them. Costs one extra call per camera, hugely

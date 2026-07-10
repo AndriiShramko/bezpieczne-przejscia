@@ -26,6 +26,7 @@ td,th{border-bottom:1px solid #233044;padding:.4rem;text-align:left}
  <label>Etykieta (widoczna publicznie)<input id="c_label"></label>
  <label>URL strumienia (HLS <code>.m3u8</code> / MJPEG / RTSP / YouTube-watch)<input id="c_url"></label>
  <label>Referer (jeśli wymagany, np. <code>https://lantech.com.pl/</code>)<input id="c_ref"></label>
+ <label>Strona źródłowa kamery (link „skąd transmisja" na stronie głównej)<input id="c_src" placeholder="https://www.lubin.pl/kamery/?cam=..."></label>
  <label>Wielokąt strefy przejścia — 4–6 punktów [x,y] jako ułamki 0..1 (JSON)<textarea id="c_poly" rows="2">[[0.44,0.62],[0.77,0.60],[0.80,0.80],[0.47,0.84]]</textarea></label>
  <label>Metrów na 1 piksel przy pełnej szerokości (do prędkości, np. <code>0.075</code>)<input id="c_mpp" value="0.075"></label>
  <button onclick="saveCam()">Zapisz kamerę</button>
@@ -105,9 +106,11 @@ function loadAll(){
 }
 function edit(id){var c=window._cfg.cameras.find(x=>x.id===id);if(!c)return;
   c_id.value=c.id;c_label.value=c.label;c_url.value=c.url;c_ref.value=c.referer||'';
+  c_src.value=c.source_url||'';
   c_poly.value=JSON.stringify(c.poly);c_mpp.value=c.m_per_px_fullw||0.075;window.scrollTo(0,600);}
 function saveCam(){var cam={id:c_id.value.trim(),label:c_label.value.trim(),url:c_url.value.trim(),
-    referer:c_ref.value.trim(),poly:JSON.parse(c_poly.value),m_per_px_fullw:parseFloat(c_mpp.value)};
+    referer:c_ref.value.trim(),source_url:c_src.value.trim(),
+    poly:JSON.parse(c_poly.value),m_per_px_fullw:parseFloat(c_mpp.value)};
   fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({camera:cam})}).then(r=>r.json()).then(loadAll);}
 function setActive(id){fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({active:id})}).then(r=>r.json()).then(loadAll);}
 function del(id){if(!confirm('Usunąć '+id+'?'))return;fetch('/cv/admin/cameras',{method:'POST',headers:h(),body:JSON.stringify({delete:id})}).then(r=>r.json()).then(loadAll);}

@@ -45,7 +45,9 @@ _C.commit()
 
 # migrations for DBs created before these columns existed
 for _mig in ("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0",
-             "ALTER TABLE events ADD COLUMN tracks_json TEXT"):
+             "ALTER TABLE events ADD COLUMN tracks_json TEXT",
+             "ALTER TABLE events ADD COLUMN flags TEXT",
+             "ALTER TABLE hourly ADD COLUMN speeding INTEGER DEFAULT 0"):
     try:
         _C.execute(_mig)
         _C.commit()
@@ -64,18 +66,42 @@ def _hour():
 
 def add_event(cam_id, description, snapshot, clip, duration_s, tl_state,
               max_veh_kmh, n_ped, n_veh, kind="potential_conflict",
-              tracks_json=None):
+              tracks_json=None, flags=None):
+    import json as _json
     with _LOCK:
         cur = _C.execute(
             "INSERT INTO events(ts_utc,cam_id,kind,description,snapshot,clip,duration_s,"
-            "tl_state,max_veh_kmh,n_ped,n_veh,tracks_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            "tl_state,max_veh_kmh,n_ped,n_veh,tracks_json,flags) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (_now(), cam_id, kind, description, snapshot, clip, round(duration_s, 1),
-             tl_state, max_veh_kmh, n_ped, n_veh, tracks_json))
+             tl_state, max_veh_kmh, n_ped, n_veh, tracks_json,
+             _json.dumps(flags) if flags else None))
         _C.execute("INSERT INTO hourly(cam_id,hour_utc,events) VALUES(?,?,1) "
                    "ON CONFLICT(cam_id,hour_utc) DO UPDATE SET events=events+1",
                    (cam_id, _hour()))
+        if kind == "speeding":
+            _C.execute("INSERT INTO hourly(cam_id,hour_utc,speeding) VALUES(?,?,1) "
+                       "ON CONFLICT(cam_id,hour_utc) DO UPDATE SET speeding=speeding+1",
+                       (cam_id, _hour()))
         _C.commit()
         return cur.lastrowid
+
+
+def merge_flags(eid, extra):
+    """Merge AI-detected flags (child/stroller/wheelchair...) into the event."""
+    import json as _json
+    if not extra:
+        return
+    with _LOCK:
+        row = _C.execute("SELECT flags FROM events WHERE id=?", (eid,)).fetchone()
+        cur = {}
+        try:
+            cur = _json.loads(row[0]) if row and row[0] else {}
+        except ValueError:
+            pass
+        cur.update({k: True for k, v in extra.items() if v})
+        _C.execute("UPDATE events SET flags=? WHERE id=?", (_json.dumps(cur), eid))
+        _C.commit()
 
 
 def set_ai_result(eid, verdict, violator, expl_pl, expl_en, conf):
@@ -109,7 +135,10 @@ def next_pending_ai():
 def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     q = ("SELECT id,ts_utc,cam_id,description,snapshot,clip,duration_s,tl_state,"
          "max_veh_kmh,status,ai_verdict,ai_explanation_pl,ai_explanation_en,"
-         "ai_confidence,confirm,refute,kind FROM events")
+         "ai_confidence,confirm,refute,kind,flags FROM events")
+    # community-rejected events (people said "nothing there") go to the trash
+    # tab and disappear from every other view
+    TRASH = "(refute > confirm AND refute >= 2)"
     where, args = [], []
     if tab == "violation":
         where.append("ai_verdict='violation'")
@@ -119,6 +148,16 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
         where.append("status IN ('pending_ai','ai_skipped') AND ai_verdict IS NULL")
     elif tab == "speeding":
         where.append("kind='speeding'")
+    elif tab == "ped":
+        where.append("kind='potential_conflict' AND (flags IS NULL OR flags NOT LIKE '%\"bike\"%')")
+    elif tab == "bike":
+        where.append("flags LIKE '%\"bike\"%'")
+    elif tab == "child":
+        where.append("(flags LIKE '%\"child\"%' OR flags LIKE '%\"stroller\"%')")
+    if tab == "trash":
+        where.append(TRASH)
+    else:
+        where.append("NOT " + TRASH)
     if cam_id:
         where.append("cam_id=?"); args.append(cam_id)
     if hour:  # 'YYYY-MM-DDTHH' — click-to-filter from the hourly chart
@@ -130,7 +169,8 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     with _LOCK:
         rows = _C.execute(q, args).fetchall()
     keys = ["id", "ts", "cam", "desc", "snap", "clip", "dur", "tl", "kmh", "status",
-            "ai_verdict", "ai_pl", "ai_en", "ai_conf", "confirm", "refute", "kind"]
+            "ai_verdict", "ai_pl", "ai_en", "ai_conf", "confirm", "refute", "kind",
+            "flags"]
     return [dict(zip(keys, r)) for r in rows]
 
 
@@ -214,10 +254,24 @@ def stats(cam_id=None):
             "(ai_verdict IN ('no_violation','uncertain') AND refute>=confirm))",
             args).fetchone()[0]
         votes_n = _C.execute("SELECT COUNT(*) FROM votes").fetchone()[0]
+    with _LOCK:
+        cats = dict(_C.execute(
+            f"SELECT kind, COUNT(*) FROM events {w} GROUP BY kind",
+            args).fetchall())
+        bike_n = _C.execute(
+            f"SELECT COUNT(*) FROM events {w}{' AND' if w else ' WHERE'} flags LIKE '%\"bike\"%'",
+            args).fetchone()[0]
+        child_n = _C.execute(
+            f"SELECT COUNT(*) FROM events {w}{' AND' if w else ' WHERE'} "
+            "(flags LIKE '%\"child\"%' OR flags LIKE '%\"stroller\"%')",
+            args).fetchone()[0]
     return {"events_total": tot, "ai_analyzed": ai_done, "ai_violations": ai_viol,
             "human_judged": judged, "human_violations": human_viol,
             "ai_human_agreement_pct": round(100.0 * agree / judged, 1) if judged else None,
-            "votes_total": votes_n}
+            "votes_total": votes_n,
+            "cat_ped": int(cats.get("potential_conflict", 0)),
+            "cat_speeding": int(cats.get("speeding", 0)),
+            "cat_bike": int(bike_n), "cat_child": int(child_n)}
 
 
 def charts(cam_id, hours=48):
@@ -243,7 +297,17 @@ def charts(cam_id, hours=48):
         clean.append(fv)
         hist[min(13, max(0, int(fv // 5)))] += 1
     sp = clean
-    return {"hourly": hourly, "speed_hist_bins_kmh5": hist, "speed_n": len(sp)}
+    # time-of-day profile: speeding events per 1000 vehicles for each hour of
+    # the day, aggregated over all recorded days
+    with _LOCK:
+        tod_rows = _C.execute(
+            "SELECT substr(hour_utc,12,2) hh, SUM(speeding), SUM(veh) FROM hourly "
+            "WHERE cam_id=? GROUP BY hh ORDER BY hh", (cam_id,)).fetchall()
+    tod = [{"h": int(r[0]), "speeding": int(r[1] or 0), "veh": int(r[2] or 0),
+            "per1000": round(1000.0 * (r[1] or 0) / r[2], 2) if r[2] else None}
+           for r in tod_rows]
+    return {"hourly": hourly, "speed_hist_bins_kmh5": hist, "speed_n": len(sp),
+            "speeding_by_hour": tod}
 
 
 def ai_calls_today():

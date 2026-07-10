@@ -114,9 +114,13 @@ VERIFY_PL = """
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">Wszystkie</button>
   <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="ped">Piesi</button>
+  <button class="tab" data-tab="bike">Rowerzyści</button>
+  <button class="tab" data-tab="child">Dzieci / wózki</button>
   <button class="tab" data-tab="speeding">Prędkość (szac.)</button>
-  <button class="tab" data-tab="rejected">Odrzucone przez AI — sprawdź!</button>
+  <button class="tab" data-tab="rejected">Odrzucone przez AI</button>
   <button class="tab" data-tab="pending">Czekają na AI</button>
+  <button class="tab" data-tab="trash">🗑 Kosz</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
 </section>
@@ -124,6 +128,7 @@ VERIFY_PL = """
  <h2>Statystyka przejścia — na żywo z bazy danych</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Przekroczenia prędkości wg pory dnia</h3><div class="chart" id="chart-tod"></div></div>
   <div class="chart-card"><h3>Rozkład prędkości pojazdów (orientacyjnie)</h3><div class="chart" id="chart-speed"></div></div>
   <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
  </div>
@@ -146,9 +151,13 @@ VERIFY_EN = """
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">All</button>
   <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="ped">Pedestrians</button>
+  <button class="tab" data-tab="bike">Cyclists</button>
+  <button class="tab" data-tab="child">Children / prams</button>
   <button class="tab" data-tab="speeding">Speeding (est.)</button>
-  <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
+  <button class="tab" data-tab="rejected">AI-rejected</button>
   <button class="tab" data-tab="pending">Awaiting AI</button>
+  <button class="tab" data-tab="trash">🗑 Trash</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
 </section>
@@ -156,6 +165,7 @@ VERIFY_EN = """
  <h2>Crossing statistics — live from the database</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Traffic per hour (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Speeding by time of day</h3><div class="chart" id="chart-tod"></div></div>
   <div class="chart-card"><h3>Vehicle speed distribution (indicative)</h3><div class="chart" id="chart-speed"></div></div>
   <div class="chart-card"><h3>Episodes & AI violations per hour</h3><div class="chart" id="chart-events"></div></div>
  </div>

@@ -6,6 +6,27 @@ Poland, 24/7, on a small CPU VPS.
 
 **Live demo: [patrol.flyreelstudio.eu](https://patrol.flyreelstudio.eu)** (PL / EN)
 
+## What it looks like
+
+Live detection at day — every moving pedestrian / cyclist / vehicle is tracked,
+speeds estimated, conflicts flagged in red on the stream and in recorded clips:
+
+![Live detection with speed labels](docs/img/live-day-detections.jpg)
+
+AI-calibrated zone map at night — yellow = pedestrian crossings, cyan = bike
+crossings, magenta = refuge island (a pedestrian standing there is NOT in
+conflict with the half they already crossed). The admin corrects every polygon
+and rule in a visual editor; the AI never overwrites human edits:
+
+![AI-calibrated zones with refuge island](docs/img/live-night-zones.jpg)
+
+More on the live site: event clips with AI verdicts in Polish + English,
+one-click human verification, per-hour statistics, speeding-by-time-of-day
+charts, and an automatic camera playlist.
+
+**Contact:** the contact form on the [demo site](https://patrol.flyreelstudio.eu/#kontakt)
+or [GitHub — @AndriiShramko](https://github.com/AndriiShramko).
+
 Three "models" cooperate, each doing only what it is best at:
 
 | Layer | Model | Job | Cost |

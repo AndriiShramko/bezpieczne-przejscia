@@ -96,9 +96,13 @@
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">All</button>
   <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="ped">Pedestrians</button>
+  <button class="tab" data-tab="bike">Cyclists</button>
+  <button class="tab" data-tab="child">Children / prams</button>
   <button class="tab" data-tab="speeding">Speeding (est.)</button>
-  <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
+  <button class="tab" data-tab="rejected">AI-rejected</button>
   <button class="tab" data-tab="pending">Awaiting AI</button>
+  <button class="tab" data-tab="trash">🗑 Trash</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
 </section>
@@ -106,6 +110,7 @@
  <h2>Crossing statistics — live from the database</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Traffic per hour (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Speeding by time of day</h3><div class="chart" id="chart-tod"></div></div>
   <div class="chart-card"><h3>Vehicle speed distribution (indicative)</h3><div class="chart" id="chart-speed"></div></div>
   <div class="chart-card"><h3>Episodes & AI violations per hour</h3><div class="chart" id="chart-events"></div></div>
  </div>
