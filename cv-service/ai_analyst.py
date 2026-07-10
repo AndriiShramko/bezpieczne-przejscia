@@ -253,6 +253,8 @@ Return ONLY JSON with keys:
 - vehicle_flows: [{from, to, lanes, passes_crossing_ids, direction}] — which crossing halves each
   flow crosses and from which side;
 - scale_hints: [{feature, approx_pixels_at_full_width:number, approx_meters:number}];
+- horizon_y: number 0..1 — the y coordinate (fraction of height) of the visual horizon /
+  vanishing line of the road plane (used for perspective-correct speed estimation);
 - event_rules: PRECISE per-crossing rules for a REAL "driver failed to yield" HERE: which flow
   vs which crossing half, how the island changes it (vehicle on a half the pedestrian ALREADY
   LEFT = no violation), how signals change it;

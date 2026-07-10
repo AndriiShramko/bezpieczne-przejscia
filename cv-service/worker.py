@@ -107,8 +107,16 @@ def _default_cams():
 
 def cams_load():
     with _CAMS_LOCK:
-        if not os.path.exists(CAMS_FILE):
-            cams_save(_default_cams())
+        try:
+            with open(CAMS_FILE, encoding="utf-8") as f:
+                cfg = json.load(f)
+            if isinstance(cfg, dict) and cfg.get("cameras"):
+                return cfg
+        except (OSError, ValueError):
+            pass
+        # missing / empty / corrupt file -> self-heal with defaults (a config
+        # sync or admin edit will overwrite them shortly)
+        cams_save(_default_cams())
         with open(CAMS_FILE, encoding="utf-8") as f:
             return json.load(f)
 
@@ -187,10 +195,17 @@ class SpeedBook:
     exclude a real crosser, but we DO exclude a car waiting at a red light.
     """
     STAT_SEC = 2.2
+    JUMP_PX = 150       # one-step displacement above this = tracker jumped to
+                        # ANOTHER object -> reset history (kills fake 100 km/h)
+    MAX_KMH = 140       # urban camera: anything above is a measurement artifact
 
-    def __init__(self, m_per_px):
+    def __init__(self, m_per_px, scale_fn=None):
         self.m_per_px = m_per_px
+        self.scale_fn = scale_fn        # optional m_per_px(y) — perspective
         self.hist = {}  # tid -> deque[(t, x, y)]
+
+    def _mpp(self, y):
+        return self.scale_fn(y) if self.scale_fn else self.m_per_px
 
     def update(self, tracks, now):
         out = {}
@@ -198,13 +213,22 @@ class SpeedBook:
         stat_px = max(6.0, (MOVE_KMH_MIN / 3.6) / max(1e-6, self.m_per_px) * self.STAT_SEC)
         for tid, (x, y) in tracks.items():
             q = self.hist.setdefault(tid, deque(maxlen=16))
+            if q:
+                step = ((x - q[-1][1]) ** 2 + (y - q[-1][2]) ** 2) ** 0.5
+                if step > self.JUMP_PX:
+                    q.clear()           # identity switch — start fresh
             q.append((now, x, y))
             if len(q) >= 3 and q[-1][0] - q[0][0] >= 0.8:
                 t0, x0, y0 = q[0]
                 dt = now - t0
                 if dt > 0.2:  # never divide by a degenerate window
                     d_px = float(((x - x0) ** 2 + (y - y0) ** 2) ** 0.5)
-                    out[tid] = float((d_px / dt) * self.m_per_px * 3.6)  # km/h
+                    # perspective: meters per pixel at the MIDPOINT row of the
+                    # movement — objects near the camera (bottom) cover fewer
+                    # meters per pixel, the old constant scale inflated them
+                    kmh = float((d_px / dt) * self._mpp((y0 + y) / 2.0) * 3.6)
+                    if kmh <= self.MAX_KMH:
+                        out[tid] = kmh
             span = q[-1][0] - q[0][0]
             if span >= self.STAT_SEC:
                 xs = [p[1] for p in q]; ys = [p[2] for p in q]
@@ -290,6 +314,31 @@ class ConfirmBook:
         decide what to DRAW, so we never box a static pole."""
         e = self.info.get(tid)
         return bool(e and (e["ok"] or e["fg"] > 0))
+
+
+def make_scale(zones, scene, h, m_per_px):
+    """Perspective model anchored at the main crossing: meters-per-pixel grows
+    toward the horizon and shrinks toward the camera. horizon_y comes from the
+    AI scene calibration; without it the scale stays constant (old behavior).
+    This is what stopped roundabout traffic near the camera from reading
+    ~100 km/h."""
+    if not zones:
+        return None
+    y_ref = sum(p[1] for p in zones[0]["poly"]) / len(zones[0]["poly"])
+    hy = None
+    if isinstance(scene, dict):
+        try:
+            hv = float(scene.get("horizon_y"))
+            if 0.0 < hv < 0.9:
+                hy = hv * h
+        except (TypeError, ValueError):
+            pass
+    if hy is None or hy >= y_ref - 30:
+        return None
+    def fn(y):
+        f = (y_ref - hy) / max(25.0, y - hy)
+        return m_per_px * min(4.0, max(0.25, f))
+    return fn
 
 
 def fg_ratio_at(fgmask, x, y, r=22):
@@ -428,9 +477,11 @@ class Grabber:
                     # Measure delivered frames over a >=12 s window instead —
                     # segment bursts average out across several segments.
                     fps_win.append((now, self.seq))
-                    if len(fps_win) > 30 and now - fps_win[0][0] >= 12.0:
+                    if len(fps_win) > 60 and now - fps_win[0][0] >= 25.0 \
+                            and now - getattr(self, "_fps_sw", 0) > 60.0:
                         est = (self.seq - fps_win[0][1]) / (now - fps_win[0][0])
                         if 1.0 <= est <= 120.0 and abs(est - self.src_fps) / self.src_fps > 0.12:
+                            self._fps_sw = now
                             print(f"grabber: src_fps {self.src_fps:.1f} -> "
                                   f"{est:.1f} (measured)", flush=True)
                             # keep the content clock continuous at switch time
@@ -607,6 +658,13 @@ def _scene_worker(cam_id, jpeg_bytes):
             return
         _scene_busy.add(cam_id)
     try:
+        # remember what was on disk when we started: if the ADMIN saves a
+        # hand-edited map while the AI is still thinking, the AI result must
+        # be DISCARDED — never overwrite human corrections
+        try:
+            mtime0 = os.path.getmtime(scene_path(cam_id))
+        except OSError:
+            mtime0 = None
         arr = np.frombuffer(jpeg_bytes, np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
@@ -627,6 +685,14 @@ def _scene_worker(cam_id, jpeg_bytes):
                     sc = refined
         except Exception as e:
             print("scene refine skipped:", e, flush=True)
+        try:
+            mtime1 = os.path.getmtime(scene_path(cam_id))
+        except OSError:
+            mtime1 = None
+        if mtime1 is not None and mtime1 != mtime0:
+            print("scene_worker: admin edited the map meanwhile — AI result "
+                  "discarded", flush=True)
+            return
         json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
                   ensure_ascii=False, indent=1)
         with S.lock:
@@ -729,6 +795,49 @@ def tg_alert(text):
         urllib.request.urlopen(req, timeout=10)
     except Exception:
         pass
+
+
+# ---------------- config sync (multi-node) ----------------
+# The cloud node is the single CONFIG AUTHORITY (cameras + zone maps). A GPU
+# node behind the failover proxy syncs from it every ~15 s, so admin edits
+# apply to BOTH nodes no matter which one happens to serve the site.
+CONFIG_SYNC_URL = os.environ.get("CONFIG_SYNC_URL", "").rstrip("/")
+
+
+def config_sync_loop():
+    import urllib.request
+    while True:
+        time.sleep(15)
+        try:
+            req = urllib.request.Request(
+                CONFIG_SYNC_URL + "/admin/export",
+                headers={"X-Admin-Token": ADMIN_TOKEN})
+            data = json.load(urllib.request.urlopen(req, timeout=10))
+            cams = data.get("cameras")
+            if isinstance(cams, dict) and cams.get("cameras"):
+                try:
+                    cur = cams_load()
+                except Exception:
+                    cur = None   # broken local file must never block the sync
+                if cams != cur:
+                    cams_save(cams)
+                    print("config_sync: cameras updated from authority", flush=True)
+            for cid, sc in (data.get("scenes") or {}).items():
+                if not (isinstance(sc, dict) and sc):
+                    continue
+                p = scene_path(os.path.basename(cid))
+                cur = None
+                try:
+                    cur = json.load(open(p, encoding="utf-8"))
+                except (OSError, ValueError):
+                    pass
+                if sc != cur:
+                    json.dump(sc, open(p, "w", encoding="utf-8"),
+                              ensure_ascii=False, indent=1)
+                    print(f"config_sync: scene {cid} updated from authority",
+                          flush=True)
+        except Exception as e:
+            print("config_sync:", e, flush=True)
 
 
 # ---------------- disk guard ----------------
@@ -899,12 +1008,13 @@ class Publisher:
     a schedule derived from its CONTENT timestamp + a fixed delay — the public
     stream advances perfectly evenly."""
 
-    DELAY = 1.6   # extra seconds of playout latency (absorbs processing jitter)
+    MARGIN = 0.35  # published this much after the worst recent pipeline lag
 
     def __init__(self):
-        self.q = deque(maxlen=60)
+        self.q = deque(maxlen=90)
         self.lock = threading.Lock()
         self.off = None
+        self.lags = deque(maxlen=120)    # recent (wall - cts) pipeline lags
         self.stop = False
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -920,16 +1030,24 @@ class Publisher:
                 time.sleep(0.02)
                 continue
             cts_i, jpg = item
-            if self.off is None:
-                self.off = time.time() - cts_i + self.DELAY
+            now = time.time()
+            lag = now - cts_i
+            self.lags.append(lag)
+            # the playout offset must cover the WORST recent pipeline latency
+            # (HLS segment bursts + variable processing), otherwise late frames
+            # get published on arrival and the stream turns jerky again. Grow
+            # instantly when a bigger lag shows up, shrink very slowly.
+            target = max(self.lags) + self.MARGIN
+            if self.off is None or target > self.off or abs(lag - self.off) > 6:
+                self.off = target
+                if abs(lag - self.off) > 6:      # clock re-anchor -> reset window
+                    self.lags.clear()
+                    self.lags.append(lag)
+            else:
+                self.off = max(target, self.off - 0.003)
             d = cts_i + self.off - time.time()
-            if d > 5 or d < -5:          # clock re-anchored -> recalibrate
-                self.off = time.time() - cts_i + self.DELAY
-                d = self.DELAY
             if d > 0:
-                time.sleep(min(d, 1.5))
-            elif d < -3:
-                continue                  # hopelessly late frame -> drop
+                time.sleep(min(d, 2.5))
             with S.lock:
                 S.jpeg = jpg
 
@@ -1082,7 +1200,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             zones_have_scene = bool(scene)
             m_full = cam.get("m_per_px_fullw", 0.075)
             m_per_px = m_full * (1920.0 / w)  # config is per full-width pixel
-            speeds = SpeedBook(m_per_px)
+
+            speeds = SpeedBook(m_per_px, make_scale(zones, scene, h, m_per_px))
 
         # one-time scene context per camera (AI) — run in a BACKGROUND thread so a
         # slow local LLM never blocks the frame loop. Result lands on disk; the
@@ -1106,6 +1225,12 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                 scene = load_scene_safe(cam_id)
                 zones, islands = build_zones(w, h)
                 zones_have_scene = bool(scene)
+                if speeds is not None:
+                    sfn = make_scale(zones, scene, h, m_per_px)
+                    speeds.scale_fn = sfn
+                    for b in ("_pedbook", "_bikebook"):
+                        if hasattr(speeds, b):
+                            getattr(speeds, b).scale_fn = sfn
                 if scene:
                     with S.lock:
                         S.ticker.appendleft("Strefy przejść zaktualizowane ✔")
@@ -1213,8 +1338,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # kinematics on CONTENT time — immune to processing jitter
         veh_kmh = speeds.update(veh_tracks, cts)
         if not hasattr(speeds, "_pedbook"):
-            speeds._pedbook = SpeedBook(m_per_px)
-            speeds._bikebook = SpeedBook(m_per_px)
+            speeds._pedbook = SpeedBook(m_per_px, speeds.scale_fn)
+            speeds._bikebook = SpeedBook(m_per_px, speeds.scale_fn)
         ped_kmh = speeds._pedbook.update(ped_tracks, cts)
         bike_kmh = speeds._bikebook.update(bike_tracks, cts)
         for tid, v in veh_kmh.items():
@@ -1355,9 +1480,10 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # ---- speeding detection (rough monocular estimate, flagged only well
         # above the limit; each event gets a clip + AI sanity check + votes) ----
         for tid, v in veh_kmh.items():
-            if v >= SPEED_LIMIT_KMH * SPEED_FLAG_FACTOR and veh_cb.confirmed(tid):
+            if v >= SPEED_LIMIT_KMH * SPEED_FLAG_FACTOR and veh_cb.confirmed(tid) \
+                    and veh_cb.info.get(tid, {}).get("n", 0) >= 6:
                 speed_streak[tid] = speed_streak.get(tid, 0) + 1
-                if speed_streak[tid] >= 2 and tid not in speed_flagged \
+                if speed_streak[tid] >= 3 and tid not in speed_flagged \
                         and S.recording_ok and ep is None:
                     speed_flagged.add(tid)
                     keepf = list(ring)
@@ -1580,6 +1706,24 @@ class H(BaseHTTPRequestHandler):
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})
             return self._json(200, cams_load())
+        if p == "/admin/export":
+            # config authority endpoint: cameras + all zone maps, consumed by
+            # secondary nodes' config_sync_loop
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            scenes = {}
+            try:
+                for f in os.listdir(SCENE_DIR):
+                    if f.startswith("scene_") and f.endswith(".json"):
+                        cid = f[len("scene_"):-len(".json")]
+                        try:
+                            scenes[cid] = json.load(open(
+                                os.path.join(SCENE_DIR, f), encoding="utf-8"))
+                        except (OSError, ValueError):
+                            pass
+            except OSError:
+                pass
+            return self._json(200, {"cameras": cams_load(), "scenes": scenes})
         if p == "/admin/health":
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})
@@ -1724,6 +1868,8 @@ def main():
     threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=analyzer_loop, daemon=True).start()
     threading.Thread(target=disk_guard, daemon=True).start()
+    if CONFIG_SYNC_URL:
+        threading.Thread(target=config_sync_loop, daemon=True).start()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), H)
     print(f"cv-service v2 on :{PORT}", flush=True)
     srv.serve_forever()
