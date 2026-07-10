@@ -1,53 +1,57 @@
-# Kamery — jak dodawać i co jest wspierane
+# Cameras — how to add them and what is supported
 
-Kamery są zarządzane z panelu **`/admin.html`** (wymaga `ADMIN_TOKEN`) i zapisywane w
-`/data/cameras.json`. Zmiany wchodzą na żywo w ciągu ~5 s (worker przeładowuje konfigurację).
-Kamera „aktywna” jest pokazywana wszystkim na stronie głównej; pozostałe tworzą **pulę
-failover** (gdy aktywna padnie, system przełącza na następną żywą — każda kamera ma **własną
-statystykę** i własny wielokąt strefy).
+Cameras are managed from the **`/admin`** panel (requires `ADMIN_TOKEN`) and stored in
+`/data/cameras.json`. Changes go live within ~5 s (the worker hot-reloads the config).
+The **active** camera is what everyone sees on the main page; the rest form a **failover
+pool** (when the active stream dies, the system switches to the next live one — every
+camera keeps **its own statistics** and its own crossing polygon).
 
-## Parametry kamery
+## Camera parameters
 
-| Pole | Znaczenie |
-|------|-----------|
-| `id` | krótki identyfikator (np. `sch`), używany w nazwach plików/statystyk |
-| `label` | etykieta widoczna publicznie (miejsce + operator) |
-| `url` | adres strumienia (patrz „Typy źródeł”) |
-| `referer` | nagłówek Referer, jeśli provider go wymaga (np. LanTech: `https://lantech.com.pl/`) |
-| `poly` | wielokąt strefy przejścia — 4–6 punktów `[x,y]` jako **ułamki 0..1** szerokości/wysokości |
-| `m_per_px_fullw` | skala: metrów na 1 piksel przy pełnej szerokości kadru (do prędkości; ~0.05–0.12) |
+| Field | Meaning |
+|-------|---------|
+| `id` | short identifier (e.g. `sch`), used in file/statistics names |
+| `label` | publicly visible label (place + operator credit) |
+| `url` | stream address (see "Source types") |
+| `referer` | Referer header if the provider requires one |
+| `poly` | crossing-zone polygon — 4–6 `[x,y]` points as **fractions 0..1** of width/height |
+| `m_per_px_fullw` | scale: meters per pixel at full frame width (for speed estimates; ~0.05–0.12) |
 
-## Typy źródeł (co działa)
+## Source types (what works)
 
-1. **HLS `.m3u8` (ZALECANE)** — bezpośredni link do playlisty, np.
-   `https://host/hls/<cam>/index.m3u8`. Stabilne, działa z serwerowni. Tak podłączony jest
-   LanTech LiveSzczecin. Jak znaleźć link: otwórz stronę kamery → DevTools → Network → filtr
-   `m3u8` → skopiuj URL playlisty (i sprawdź, czy leci seria segmentów `.ts`). Jeśli provider
-   wymaga Referer — wpisz go w polu `referer`.
-2. **MJPEG (`multipart/x-mixed-replace`)** — bezpośredni URL kamery IP. Działa od ręki.
-3. **RTSP** — jeśli chcesz kamerę RTSP, podaj `rtsp://…`; OpenCV/FFmpeg zwykle sobie radzi
-   (dla kamer za NAT potrzebny publiczny relay). Dla stabilności preferuj HLS.
-4. **YouTube (`watch?v=…` lub kanał `/live`)** — **UWAGA:** YouTube blokuje adresy IP
-   serwerowni (bot-check), więc na Hetznerze **zwykle NIE działa** bez cookies/proxy. Nadaje
-   się do testów z łącza domowego. Dlatego produkcyjnie używamy bezpośredniego HLS.
+1. **HLS `.m3u8` (RECOMMENDED)** — a direct playlist link, e.g.
+   `https://host/hls/<cam>/index.m3u8`. Stable and works from datacenter IPs. How to find
+   the link: open the camera page -> DevTools -> Network -> filter `m3u8` -> copy the
+   playlist URL (and check that `.ts` segments keep flowing). If the provider requires a
+   Referer, put it in the `referer` field.
+2. **MJPEG (`multipart/x-mixed-replace`)** — a direct IP-camera URL. Works out of the box.
+3. **RTSP** — provide `rtsp://…`; OpenCV/FFmpeg usually handles it (cameras behind NAT
+   need a public relay). Prefer HLS for stability.
+4. **YouTube (`watch?v=…` or a channel `/live`)** — **WARNING:** YouTube blocks datacenter
+   IPs (bot-check), so on a VPS it **usually does NOT work** without cookies/proxy. Fine
+   for tests from a home connection. This is why production uses direct HLS.
 
-**Odrzucamy:** snapshoty `.jpg` odświeżane co N sekund (za mało klatek do analizy ruchu),
-panoramy gdzie pieszy ma <15 px, oraz `insecam`/niezabezpieczone cudze kamery.
+**Rejected:** `.jpg` snapshots refreshed every N seconds (not enough frames for motion
+analysis), panoramas where a pedestrian is <15 px tall, and `insecam`-style unsecured
+third-party cameras.
 
-## Dobór strefy `poly` i skali
+## Choosing the `poly` zone and the scale
 
-- `poly` obrysowuje **pasy przejścia** (zebrę) plus wąski pas najazdu, na którym auto mija
-  pieszego. Punkty podawaj zgodnie z ruchem wskazówek zegara.
-- `m_per_px_fullw`: zmierz coś o znanej długości (szerokość pasa PL ~3,5 m, długość zebry).
-  Prędkości są **orientacyjne** (monokularne) — do statystyki, nie do mandatów.
-- Po dodaniu kamery AI (Gemini) **raz** opisze scenę (pasy, sygnalizacja, kierunki, pułapki)
-  i zapisze do `/data/scenes/scene_<id>.json`; ten opis poprawia interpretację zdarzeń
-  (np. „auto stało na czerwonym” = fałszywy alarm).
+- `poly` outlines the **zebra stripes** plus a narrow approach strip where a car passes
+  the pedestrian. List the points clockwise.
+- `m_per_px_fullw`: measure something of known length (a PL lane is ~3.5 m wide, or the
+  zebra length). Speeds are **indicative** (monocular) — for statistics, not for fines.
+- After a camera is added, the AI calibrates the scene **once** (crossings incl. split
+  halves, bike crossings, refuge islands, traffic lights, per-crossing event rules,
+  static objects to ignore) and stores it in `/data/scenes/scene_<id>.json`. The admin
+  can then correct every polygon and rule by hand in the `/admin` zone editor
+  (drag points, add/delete zones, edit rules — hot-reloaded without a restart).
 
-## Failover i niezawodność
+## Failover and reliability
 
-- Kolejność prób: `active` → reszta listy. Padnięcie strumienia → automatyczne przełączenie
-  na następną żywą kamerę; powrót po jej odzyskaniu.
-- Panel `/admin.html` pokazuje, **które kamery często padały** (liczba down/failover/up +
-  ostatnie padnięcie) — na tej podstawie dobierasz backupy.
-- Zdarzenia i statystyki są **per-kamera**, więc przełączenie nie miesza danych różnych przejść.
+- Try order: `active` -> rest of the list. A dead stream triggers an automatic switch to
+  the next live camera, and back once it recovers.
+- The `/admin` panel shows **which cameras keep dying** (down/failover/up counts + last
+  failure) — use that to pick good backups.
+- Events and statistics are **per camera**, so switching never mixes data from
+  different crossings.

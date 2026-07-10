@@ -102,7 +102,7 @@ function zc(){return document.getElementById('zc');}
 function zmsg(s){document.getElementById('zmsg').textContent=s;}
 function zeLoad(){
   Z.img.onload=function(){var c=zc();c.width=Z.img.naturalWidth;c.height=Z.img.naturalHeight;Z.W=c.width;Z.H=c.height;zeRender();};
-  Z.img.src='/cv/frame.jpg?'+Date.now();
+  Z.img.src='/cv/frame_raw.jpg?'+Date.now();
   fetch('/cv/scene.json').then(r=>r.json()).then(function(sc){
     if(sc&&sc.crossings!==undefined){Z.scene=sc;}
     else{Z.scene={crossings:[],bike_crossings:[],islands:[],ignore_regions:[],event_rules:''};}

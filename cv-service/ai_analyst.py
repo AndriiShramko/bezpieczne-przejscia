@@ -99,8 +99,15 @@ def _quota_reset_ts():
     return reset.timestamp()
 
 
+# AI_FALLBACK=local: when Gemini is unavailable (daily/hourly quota, outage)
+# verdicts are produced by the local Ollama VLM instead; when the quota
+# resets, calls flow back to Gemini automatically. On a GPU node the local
+# model is fast, so events never wait for midnight.
+FALLBACK_LOCAL = os.environ.get("AI_FALLBACK", "").lower() == "local"
+
+
 def _local_ok():
-    return BACKEND == "local" and time.time() >= _breaker["until"]
+    return (BACKEND == "local" or FALLBACK_LOCAL) and time.time() >= _breaker["until"]
 
 
 def _hour_ok():
@@ -129,11 +136,12 @@ def _trip_breaker():
 
 
 def _call(parts, max_tokens=2000, temperature=0.2, timeout=90):
-    """Cooperating multi-model chain: try the free/private LOCAL model first;
-    on failure fall back to the (free-tier) cloud model so a verdict still lands.
-    When AI_BACKEND=gemini the local step is skipped entirely."""
-    # 1) local-first (self-hosted, no cost, best privacy)
-    if _local_ok():
+    """Cooperating multi-model chain. AI_BACKEND=local -> local first, Gemini
+    as backup. AI_BACKEND=gemini (+AI_FALLBACK=local) -> Gemini first while
+    the free quota lasts, local VLM takes over when it runs out, Gemini
+    resumes automatically after the reset."""
+    # 1) local-first only when local IS the primary backend
+    if BACKEND == "local" and _local_ok():
         try:
             out = _call_local(parts, max_tokens, temperature, timeout=LOCAL_TIMEOUT)
             _breaker["fails"] = 0
@@ -163,6 +171,18 @@ def _call(parts, max_tokens=2000, temperature=0.2, timeout=90):
                 print("ai_analyst: 429 (rate limit) — backing off 90 s", flush=True)
         except Exception as e:
             print(f"ai_analyst gemini error: {e}", flush=True)
+    # 3) Gemini exhausted/unavailable -> local VLM keeps verdicts flowing
+    #    (fast on a GPU node); Gemini resumes automatically after quota reset
+    if FALLBACK_LOCAL and BACKEND != "local" and time.time() >= _breaker["until"]:
+        try:
+            out = _call_local(parts, max_tokens, temperature, timeout=LOCAL_TIMEOUT)
+            _breaker["fails"] = 0
+            print("ai_analyst: verdict from LOCAL model (Gemini quota paused)",
+                  flush=True)
+            return out
+        except Exception as e:
+            _trip_breaker()
+            print(f"ai_analyst local fallback failed: {e}", flush=True)
     return None
 
 
@@ -301,6 +321,9 @@ Decide what actually happened. Return ONLY JSON:
 - phone_suspect: true|false — EXPERIMENTAL: does any pedestrian's posture (bent head,
   hand at ear/face) suggest phone use while crossing? At this resolution this is a weak
   guess — return false unless clearly visible;
+- vulnerable: {{"child": true|false, "stroller": true|false, "wheelchair": true|false}} —
+  are clearly visible children, prams/strollers or wheelchair users involved? Mention it
+  in the explanations if true (these cases matter most for road-safety statistics);
 - what_would_help: one short sentence — what extra data would make this decidable."""
 
 

@@ -24,9 +24,8 @@ T = {
                        "przez ludzi."),
         "meta_desc": ("Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: "
                       "liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, "
-                      "weryfikacja przez ludzi. Od „2% ustępujących” (KRBRD 2015) do realnej "
-                      "poprawy po 2021 — pokazujemy to na żywo. Demonstrator dla samorządów "
-                      "i KRBRD, prywatność by design."),
+                      "weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. "
+                      "Demonstrator dla samorządów i KRBRD, prywatność by design."),
         "nav": {"index": "Na żywo", "how-it-works": "Jak to działa",
                 "accuracy": "Skuteczność", "resources": "Wdrożenie",
                 "compliance": "Zgodność / RODO", "contact": "Kontakt", "privacy": "Prywatność"},
@@ -48,9 +47,9 @@ T = {
                        "imposes no penalties and identifies no persons (faces and plates are "
                        "blurred). Behavioural readouts are indicative and are verified by humans."),
         "meta_desc": ("SafeCross — live AI video analysis from a real camera: pedestrian and "
-                      "vehicle counting, crossing-conflict detection, human verification. From "
-                      "'2% yielding' (KRBRD 2015) to real improvement after the 2021 law — shown "
-                      "live. A demonstrator for road authorities, privacy by design."),
+                      "vehicle counting, crossing-conflict detection, human verification. Real "
+                      "traffic on a real crossing, live. A demonstrator for road authorities, "
+                      "privacy by design."),
         "nav": {"index": "Live", "how-it-works": "How it works",
                 "accuracy": "Accuracy", "resources": "Deployment",
                 "compliance": "Compliance / GDPR", "contact": "Contact", "privacy": "Privacy"},
@@ -319,12 +318,12 @@ def page_index(lang):
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
-  <h1>W 2015 r. tylko <span class="hot">2%</span> kierowców zatrzymywało się przed pieszym dochodzącym do przejścia.</h1>
-  <p class="lead">Tyle wykazały badania obserwacyjne dla KRBRD (Politechnika Gdańska i Krakowska, 2015) —
-  pieszemu czekającemu przy krawężniku ustępował wtedy ledwie 1 na 5 kierowców. Od 1 czerwca 2021 r.
-  pieszy wchodzący na pasy ma pierwszeństwo — i liczba zabitych na przejściach spadła o 23,6%
-  (KRBRD, 2019–2023). Nasza kamera pokazuje tę zmianę na żywo: naruszenia są dziś wyjątkiem,
-  a każdy wykryty konflikt ocenia AI i weryfikują ludzie — bo nawet jeden to o jeden za dużo.</p>
+  <h1>Na polskich przejściach wciąż ginie <span class="hot">ponad 100 osób</span> rocznie.</h1>
+  <p class="lead">Od nowelizacji z 1 czerwca 2021 r. pieszy wchodzący na pasy ma pierwszeństwo —
+  liczba zabitych na przejściach spadła o 23,6% (KRBRD, 2019–2023), ale w 2023 r. na oznakowanych
+  przejściach zginęło nadal 131 osób. Pokazujemy ruch na prawdziwym przejściu NA ŻYWO: system
+  liczy pieszych, rowerzystów i pojazdy, AI ocenia każdą sytuację konfliktową, a Ty weryfikujesz
+  jego werdykty — bo na przejściu nawet jedno naruszenie to o jedno za dużo.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
    <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
@@ -362,12 +361,12 @@ def page_index(lang):
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
-  <h1>In 2015, only <span class="hot">2%</span> of drivers stopped for a pedestrian approaching a crossing.</h1>
-  <p class="lead">That is what observational research for Poland's National Road Safety Council found
-  (Gdańsk &amp; Kraków Universities of Technology, 2015) — and barely 1 in 5 drivers yielded to someone
-  waiting at the curb. Since 1 June 2021 the law gives priority to pedestrians entering the crossing,
-  and deaths on crossings have fallen by 23.6% (KRBRD, 2019–2023). Our live camera shows that change
-  in real time: violations are now the exception — and AI plus human review catches every one.</p>
+  <h1>Over <span class="hot">100 people</span> still die on Polish pedestrian crossings every year.</h1>
+  <p class="lead">Since the law change of 1 June 2021, pedestrians entering a crossing have priority —
+  deaths on crossings fell by 23.6% (KRBRD, 2019–2023), yet 131 people were still killed on marked
+  crossings in 2023. We show a real crossing LIVE: the system counts pedestrians, cyclists and
+  vehicles, AI judges every conflict situation, and you verify its verdicts — because even one
+  violation at a crossing is one too many.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>

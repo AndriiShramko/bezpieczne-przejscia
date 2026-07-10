@@ -54,6 +54,23 @@
     e.querySelector(".big").textContent = big;
     var s = e.querySelector(".sub"); if (s) s.textContent = sub || "";
   }
+  // stat cards are clickable filters: events card -> full event list
+  (function () {
+    var map = { "st-ev": "all", "st-acc": "all" };
+    Object.keys(map).forEach(function (id) {
+      var e = el(id); if (!e) return;
+      e.style.cursor = "pointer";
+      e.title = L === "pl" ? "Kliknij, aby zobaczyć wszystkie nagrania zdarzeń" : "Click to see all event recordings";
+      e.addEventListener("click", function () {
+        curTab = map[id]; curHour = null;
+        document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === curTab); });
+        lastSig = ""; loadEvents();
+        var evs = el("events"); if (evs) evs.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      e.addEventListener("mouseenter", function () { e.style.outline = "1px solid #37b6ff"; });
+      e.addEventListener("mouseleave", function () { e.style.outline = "none"; });
+    });
+  })();
   function render(d) {
     setLive(d.live);
     setStat("st-ped", num(d.ped_total), num(d.ped_per_hour) + " " + T.perHour);
@@ -247,7 +264,15 @@
         (i % 2 === 0 ? '<text x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (H - 2) + '" font-size="9" fill="#8b97a7" text-anchor="middle">' + i * 5 + "</text>" : "");
     }).join("");
     e.innerHTML = svgEl(W, H) + bars + "</svg>" +
-      '<div class="legend"><i style="background:#ffcf5c"></i>km/h (' + total + (L === "pl" ? " pomiarów, orientacyjnie" : " samples, indicative") + ")</div>";
+      '<div class="legend"><i style="background:#ffcf5c"></i>km/h (' + total + (L === "pl" ? " pomiarów, orientacyjnie — kliknij, by zobaczyć przekroczenia" : " samples, indicative — click to see speeding events") + ")</div>";
+    e.style.cursor = "pointer";
+    e.title = L === "pl" ? "Kliknij: nagrania możliwych przekroczeń prędkości" : "Click: recordings of possible speeding";
+    e.onclick = function () {
+      curTab = "speeding"; curHour = null;
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === "speeding"); });
+      lastSig = ""; loadEvents();
+      var evs = el("events"); if (evs) evs.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
   }
   function eventChart(id, hourly) {
     var e = el(id); if (!e) return;

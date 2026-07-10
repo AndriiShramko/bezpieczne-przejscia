@@ -142,6 +142,7 @@ class State:
         self.recording_ok = True
         self.episode_active = False
         self.last_frame_ts = 0.0
+        self.frame_raw = None     # clean frame (no overlay) for the zone editor
 
 
 def _placeholder(text):
@@ -350,17 +351,31 @@ def _transcode_h264(path):
 
 
 def write_clip(path, frames, fps=None):
+    """Frames carry content timestamps but are NOT uniformly spaced (pre-roll
+    was sampled at a different stride than the episode). Writing them 1:1 at a
+    constant fps makes parts play too fast/slow. Fix: RESAMPLE onto a uniform
+    time grid (nearest-previous frame per tick) — the clip then plays back in
+    true real time throughout."""
     if not frames:
         return False
     if fps is None:
-        # honest playback rate: frames are evenly spaced in content time, so
-        # fps derived from their timestamps makes the clip play in real time
-        span = frames[-1][0] - frames[0][0]
-        fps = (len(frames) - 1) / span if span > 0.2 and len(frames) > 2 else CLIP_FPS
-        fps = max(1.0, min(12.0, fps))
-    h, w = frames[0][1].shape[:2]
+        fps = max(2.0, min(8.0, CLIP_FPS))
+    span = frames[-1][0] - frames[0][0]
+    if span > 0.4 and len(frames) > 2:
+        grid = []
+        t = frames[0][0]
+        j = 0
+        while t <= frames[-1][0] + 1e-6:
+            while j + 1 < len(frames) and frames[j + 1][0] <= t:
+                j += 1
+            grid.append(frames[j][1])
+            t += 1.0 / fps
+        out_frames = grid
+    else:
+        out_frames = [f for _, f in frames]
+    h, w = out_frames[0].shape[:2]
     vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
-    for _, f in frames:
+    for f in out_frames:
         vw.write(f)
     vw.release()
     ok = os.path.getsize(path) > 0
@@ -867,15 +882,59 @@ def _open_and_run(det, cam, frame_interval, by_id, cfg):
     if not cap.isOpened():
         return False
     grab = Grabber(cap, TARGET_FPS)
+    pub = Publisher()
     try:
-        return _run_camera(det, cam, frame_interval, cfg, grab)
+        return _run_camera(det, cam, frame_interval, cfg, grab, pub)
     finally:
+        pub.stop = True
         grab.close()          # idempotent; guarantees no Grabber leak on ANY exit
         with S.lock:
             S.live = False
 
 
-def _run_camera(det, cam, frame_interval, cfg, grab):
+class Publisher:
+    """Constant-latency playout for the live view. Processing takes a variable
+    0.1-0.5 s per frame, so pushing frames to viewers as they finish looks
+    jerky (speed-up / slow-down). Instead each annotated frame is released on
+    a schedule derived from its CONTENT timestamp + a fixed delay — the public
+    stream advances perfectly evenly."""
+
+    DELAY = 1.6   # extra seconds of playout latency (absorbs processing jitter)
+
+    def __init__(self):
+        self.q = deque(maxlen=60)
+        self.lock = threading.Lock()
+        self.off = None
+        self.stop = False
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def push(self, cts, jpg):
+        with self.lock:
+            self.q.append((cts, jpg))
+
+    def _run(self):
+        while not self.stop:
+            with self.lock:
+                item = self.q.popleft() if self.q else None
+            if item is None:
+                time.sleep(0.02)
+                continue
+            cts_i, jpg = item
+            if self.off is None:
+                self.off = time.time() - cts_i + self.DELAY
+            d = cts_i + self.off - time.time()
+            if d > 5 or d < -5:          # clock re-anchored -> recalibrate
+                self.off = time.time() - cts_i + self.DELAY
+                d = self.DELAY
+            if d > 0:
+                time.sleep(min(d, 1.5))
+            elif d < -3:
+                continue                  # hopelessly late frame -> drop
+            with S.lock:
+                S.jpeg = jpg
+
+
+def _run_camera(det, cam, frame_interval, cfg, grab, pub):
     cam_id = cam["id"]
     db.health(cam_id, "up", "stream opened")
     with S.lock:
@@ -926,11 +985,11 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
         EXCLUSION polygons (a person standing there is not on any crossing)."""
         zs = []
         mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
-        zs.append({"id": "main", "poly": mp, "zone": PolygonZone(mp),
+        zs.append({"id": "main", "kind": "ped", "poly": mp, "zone": PolygonZone(mp),
                    "bbox": poly_bbox(mp, w, h)})
         isl = []
         if isinstance(scene, dict):
-            def add(items, prefix):
+            def add(items, prefix, kind):
                 for c in (items or []):
                     if not isinstance(c, dict):
                         continue
@@ -942,9 +1001,10 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                     if any(_iou(bb, z["bbox"]) > 0.45 for z in zs):
                         continue  # same crossing as an existing zone
                     zs.append({"id": str(c.get("id", f"{prefix}{len(zs)}")),
-                               "poly": pts, "zone": PolygonZone(pts), "bbox": bb})
-            add(scene.get("crossings"), "cx")
-            add(scene.get("bike_crossings"), "bx")
+                               "kind": kind, "poly": pts,
+                               "zone": PolygonZone(pts), "bbox": bb})
+            add(scene.get("crossings"), "cx", "ped")
+            add(scene.get("bike_crossings"), "bx", "bike")
             for c in (scene.get("islands") or []):
                 if not isinstance(c, dict):
                     continue
@@ -1187,22 +1247,26 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             return any(i.contains(p) for i in islands)
 
         ped_in, veh_in_moving, hit_zone = [], [], None
+        mark_ped, mark_bike = set(), set()   # participant tids (for red marking)
         for z in zones:
             if zone_cooldown.get(z["id"], 0) > cts:
                 continue   # fresh episode just ended here — mute duplicates
             zb = z["bbox"]
-            pz = [p for tid, p in ped_tracks.items()
-                  if z["zone"].contains(p) and not on_island(p)
-                  and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
+            pz_p = [tid for tid, p in ped_tracks.items()
+                    if z["zone"].contains(p) and not on_island(p)
+                    and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
             # cyclists are crossing users too — a moving car must yield to them
-            pz += [p for tid, p in bike_tracks.items()
-                   if z["zone"].contains(p) and not on_island(p)
-                   and bike_cb.confirmed(tid) and bikebook.is_moving(tid)]
+            pz_b = [tid for tid, p in bike_tracks.items()
+                    if z["zone"].contains(p) and not on_island(p)
+                    and bike_cb.confirmed(tid) and bikebook.is_moving(tid)]
             vz = [tid for tid, p in veh_tracks.items()
                   if zb[0] <= p[0] <= zb[2] and zb[1] <= p[1] <= zb[3]
                   and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
-            if pz and vz and len(pz) + len(vz) > len(ped_in) + len(veh_in_moving):
-                ped_in, veh_in_moving, hit_zone = pz, vz, z["id"]
+            users = len(pz_p) + len(pz_b)
+            if users and vz and users + len(vz) > len(ped_in) + len(veh_in_moving):
+                ped_in = pz_p + pz_b
+                veh_in_moving, hit_zone = vz, z["id"]
+                mark_ped, mark_bike = set(pz_p), set(pz_b)
         instant_condition = bool(ped_in) and bool(veh_in_moving)
         cond_streak = cond_streak + 1 if instant_condition else 0
         # require the conflict to persist a few frames — kills 1-frame phantoms
@@ -1226,22 +1290,47 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                     best, bd = tid, dd
             return best
 
-        # annotate
+        # annotate — ONE color per zone TYPE (matches the admin editor legend):
+        # yellow = pedestrian crossings (incl. the manual one), cyan = bike
+        # crossings, magenta = refuge islands (exclusion areas)
         ann = frame.copy()
         for z in zones:
-            col = (60, 200, 255) if z["id"] == "main" else (50, 160, 235)
+            col = (60, 200, 255) if z.get("kind") != "bike" else (235, 235, 60)
             cv2.polylines(ann, [np.array(z["poly"], np.int32)], True, col, 2)
-        for d, tracks, book, col in (
-                [(d, ped_tracks, ped_kmh, (90, 230, 120)) for d in active_peds] +
-                [(d, veh_tracks, veh_kmh, (80, 150, 255)) for d in active_vehs] +
-                [(d, bike_tracks, bike_kmh, (60, 220, 235)) for d in active_bikes]):
+        for i in islands:
+            cv2.polylines(ann, [np.array(i.poly, np.int32)], True,
+                          (255, 0, 255), 2)
+        RED = (40, 40, 255)
+        for d, tracks, book, col, mk, tag in (
+                [(d, ped_tracks, ped_kmh, (90, 230, 120), mark_ped, "KONFLIKT")
+                 for d in active_peds] +
+                [(d, veh_tracks, veh_kmh, (80, 150, 255), set(veh_in_moving),
+                  "NIE USTĄPIŁ?") for d in active_vehs] +
+                [(d, bike_tracks, bike_kmh, (60, 220, 235), mark_bike, "KONFLIKT")
+                 for d in active_bikes]):
             x1, y1, x2, y2 = [int(v) for v in d.xyxy]
-            cv2.rectangle(ann, (x1, y1), (x2, y2), col, 2)
             tid = _tid_near(d, tracks)
             v = book.get(tid) if tid is not None else None
-            if v is not None and v > 1.5:
-                cv2.putText(ann, f"{v:.0f} km/h", (x1, max(12, y1 - 6)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.46, col, 1, cv2.LINE_AA)
+            flag = tid is not None and instant_condition and tid in mk
+            speed_flag = (tag == "NIE USTĄPIŁ?" and tid in speed_flagged)
+            if flag or speed_flag:
+                # the (potential) violator/participant — unmissable in the live
+                # view AND in the recorded clip, with the reason on the box
+                cv2.rectangle(ann, (x1, y1), (x2, y2), RED, 3)
+                label = "PREDKOSC!" if speed_flag and not flag else tag
+                if v is not None and v > 1.5:
+                    label += f" ~{v:.0f}km/h"
+                (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
+                cv2.rectangle(ann, (x1, max(0, y1 - th - 10)),
+                              (x1 + tw + 8, max(th + 10, y1)), RED, -1)
+                cv2.putText(ann, label, (x1 + 4, max(th + 2, y1 - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2,
+                            cv2.LINE_AA)
+            else:
+                cv2.rectangle(ann, (x1, y1), (x2, y2), col, 2)
+                if v is not None and v > 1.5:
+                    cv2.putText(ann, f"{v:.0f} km/h", (x1, max(12, y1 - 6)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.46, col, 1, cv2.LINE_AA)
         ann[:44] = (ann[:44] * 0.35).astype(np.uint8)
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         cv2.circle(ann, (20, 22), 7, (60, 60, 235), -1)
@@ -1375,8 +1464,9 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                 "ped_kmh": round(max(ped_kmh.values()), 1) if ped_kmh else None,
                 "bike_kmh": round(max(bike_kmh.values()), 1) if bike_kmh else None}
             ok3, buf = cv2.imencode(".jpg", ann, [cv2.IMWRITE_JPEG_QUALITY, 70])
-            if ok3:
-                S.jpeg = buf.tobytes()
+            S.frame_raw = frame       # clean copy for the admin zone editor
+        if ok3:
+            pub.push(cts, buf.tobytes())   # constant-latency playout, not direct
         # adaptive stride: track what one frame really costs on this CPU
         proc_ema = 0.8 * proc_ema + 0.2 * (time.time() - t_proc0)
 
@@ -1464,9 +1554,16 @@ class H(BaseHTTPRequestHandler):
             cam = S.cam_id or cams_load().get("active", "")
             sc = load_scene(cam)
             return self._json(200 if sc else 404, sc or {"ok": False})
-        if p == "/frame.jpg":           # single still frame (zone editor canvas)
+        if p in ("/frame.jpg", "/frame_raw.jpg"):
+            # /frame_raw.jpg = CLEAN frame (no zones/boxes) — the zone editor
+            # must never show baked-in overlays that look like editable zones
             with S.lock:
-                buf = S.jpeg
+                if p == "/frame_raw.jpg" and S.frame_raw is not None:
+                    ok9, b9 = cv2.imencode(".jpg", S.frame_raw,
+                                           [cv2.IMWRITE_JPEG_QUALITY, 82])
+                    buf = b9.tobytes() if ok9 else S.jpeg
+                else:
+                    buf = S.jpeg
             self.send_response(200)
             self.send_header("Content-Type", "image/jpeg")
             self.send_header("Content-Length", str(len(buf)))
