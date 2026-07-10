@@ -100,30 +100,35 @@ class OnnxCocoDetector:
         img = canvas.transpose(2, 0, 1)[None].astype(np.float32)
         return img, r
 
+    _WANTED = None  # class-level cache of wanted COCO ids
+
     def detect(self, frame: np.ndarray) -> list[Detection]:
         import cv2
         img, r = self._preprocess(frame)
         pred = self.sess.run(None, {self.input_name: img})[0][0]  # (N, 85) YOLOX raw grid
         pred = self._decode(pred)
-        boxes, scores, classes = [], [], []
-        for row in pred:
-            obj = row[4]
-            cls_id = int(np.argmax(row[5:]))
-            score = float(obj * row[5 + cls_id])
-            if score < self.conf or cls_id not in COCO_MAP:
-                continue
-            cx, cy, w, h = row[:4]
-            boxes.append([cx - w / 2, cy - h / 2, w, h])
-            scores.append(score)
-            classes.append(cls_id)
+        # vectorized filtering: the naive per-row Python loop over ~8400
+        # anchors costs 200-400 ms — more than the GPU inference itself
+        if OnnxCocoDetector._WANTED is None:
+            OnnxCocoDetector._WANTED = np.array(sorted(COCO_MAP.keys()))
+        cls_scores = pred[:, 5:]
+        cls_id = np.argmax(cls_scores, axis=1)
+        score = pred[:, 4] * cls_scores[np.arange(len(pred)), cls_id]
+        mask = (score >= self.conf) & np.isin(cls_id, OnnxCocoDetector._WANTED)
+        rows, scores, cids = pred[mask], score[mask], cls_id[mask]
         out: list[Detection] = []
-        if boxes:
-            keep = cv2.dnn.NMSBoxes(boxes, scores, self.conf, 0.45)
+        if len(rows):
+            boxes = np.stack([rows[:, 0] - rows[:, 2] / 2,
+                              rows[:, 1] - rows[:, 3] / 2,
+                              rows[:, 2], rows[:, 3]], axis=1)
+            keep = cv2.dnn.NMSBoxes(boxes.tolist(), scores.astype(float).tolist(),
+                                    self.conf, 0.45)
             for i in np.array(keep).flatten():
                 x, y, w, h = boxes[i]
                 out.append(Detection(
-                    (x / r, y / r, (x + w) / r, (y + h) / r),
-                    COCO_MAP[classes[i]], scores[i]))
+                    (float(x) / r, float(y) / r,
+                     float(x + w) / r, float(y + h) / r),
+                    COCO_MAP[int(cids[i])], float(scores[i])))
         return out
 
     def _decode(self, pred: np.ndarray) -> np.ndarray:
