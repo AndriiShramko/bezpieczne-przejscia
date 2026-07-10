@@ -24,8 +24,9 @@ T = {
                        "przez ludzi."),
         "meta_desc": ("Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: "
                       "liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, "
-                      "weryfikacja przez ludzi. Tylko 2% kierowców ustępuje pieszym. Demonstrator "
-                      "dla samorządów i KRBRD, prywatność by design."),
+                      "weryfikacja przez ludzi. Od „2% ustępujących” (KRBRD 2015) do realnej "
+                      "poprawy po 2021 — pokazujemy to na żywo. Demonstrator dla samorządów "
+                      "i KRBRD, prywatność by design."),
         "nav": {"index": "Na żywo", "how-it-works": "Jak to działa",
                 "accuracy": "Skuteczność", "resources": "Wdrożenie",
                 "compliance": "Zgodność / RODO", "contact": "Kontakt", "privacy": "Prywatność"},
@@ -47,9 +48,9 @@ T = {
                        "imposes no penalties and identifies no persons (faces and plates are "
                        "blurred). Behavioural readouts are indicative and are verified by humans."),
         "meta_desc": ("SafeCross — live AI video analysis from a real camera: pedestrian and "
-                      "vehicle counting, crossing-conflict detection, human verification. Only 2% "
-                      "of drivers yield to pedestrians. A demonstrator for road authorities, "
-                      "privacy by design."),
+                      "vehicle counting, crossing-conflict detection, human verification. From "
+                      "'2% yielding' (KRBRD 2015) to real improvement after the 2021 law — shown "
+                      "live. A demonstrator for road authorities, privacy by design."),
         "nav": {"index": "Live", "how-it-works": "How it works",
                 "accuracy": "Accuracy", "resources": "Deployment",
                 "compliance": "Compliance / GDPR", "contact": "Contact", "privacy": "Privacy"},
@@ -114,6 +115,7 @@ VERIFY_PL = """
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">Wszystkie</button>
   <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="speeding">Prędkość (szac.)</button>
   <button class="tab" data-tab="rejected">Odrzucone przez AI — sprawdź!</button>
   <button class="tab" data-tab="pending">Czekają na AI</button>
  </div>
@@ -145,6 +147,7 @@ VERIFY_EN = """
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">All</button>
   <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="speeding">Speeding (est.)</button>
   <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
   <button class="tab" data-tab="pending">Awaiting AI</button>
  </div>
@@ -267,6 +270,17 @@ def stat_card(idv, label, sub=""):
             f'<div class="lbl">{label}</div><div class="sub">{sub}</div></div>')
 
 
+def partial(name):
+    """Optional HTML partials (FAQ, About) kept as separate files — easier to
+    edit than giant Python string constants."""
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "partials", name)
+    try:
+        with open(p, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
 def page_index(lang):
     def livesec(lang):
         if lang == "pl":
@@ -305,10 +319,12 @@ def page_index(lang):
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
-  <h1>Tylko <span class="hot">2%</span> kierowców zatrzymuje się przed pieszym na przejściu.</h1>
-  <p class="lead">Od 1 czerwca 2021 prawo nakazuje ustąpić pieszemu <em>wchodzącemu</em> na przejście.
-  W praktyce zatrzymuje się ok. 2%, a pierwszeństwo czekającemu daje 1 na 5 kierowców.
-  Pokazujemy to na żywo, AI ocenia każdą sytuację, a Ty ją weryfikujesz.</p>
+  <h1>W 2015 r. tylko <span class="hot">2%</span> kierowców zatrzymywało się przed pieszym dochodzącym do przejścia.</h1>
+  <p class="lead">Tyle wykazały badania obserwacyjne dla KRBRD (Politechnika Gdańska i Krakowska, 2015) —
+  pieszemu czekającemu przy krawężniku ustępował wtedy ledwie 1 na 5 kierowców. Od 1 czerwca 2021 r.
+  pieszy wchodzący na pasy ma pierwszeństwo — i liczba zabitych na przejściach spadła o 23,6%
+  (KRBRD, 2019–2023). Nasza kamera pokazuje tę zmianę na żywo: naruszenia są dziś wyjątkiem,
+  a każdy wykryty konflikt ocenia AI i weryfikują ludzie — bo nawet jeden to o jeden za dużo.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
    <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
@@ -326,8 +342,8 @@ def page_index(lang):
  <div class="hook-grid">
   <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
   Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23,6%</b><p>spadek wypadków na przejściach po nowelizacji z 2021 r.
-  (piesi zabici na pasach −59%). Działa — trzeba dokończyć.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>−23,6%</b><p>spadek liczby ZABITYCH pieszych na przejściach po nowelizacji z 2021 r.
+  (wypadki −7,8%). Działa — trzeba dokończyć.<span class="src">KRBRD 2019–2023</span></p></div>
   <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych na milion mieszkańców — jedna z najwyższych w UE-27.
   <span class="src">Polskie Obserwatorium BRD</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>UE: −50% ofiar do 2030, zero do 2050 (Safe System).
@@ -346,10 +362,12 @@ def page_index(lang):
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
-  <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
-  <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
-  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live, AI judges each
-  situation, and you verify it.</p>
+  <h1>In 2015, only <span class="hot">2%</span> of drivers stopped for a pedestrian approaching a crossing.</h1>
+  <p class="lead">That is what observational research for Poland's National Road Safety Council found
+  (Gdańsk &amp; Kraków Universities of Technology, 2015) — and barely 1 in 5 drivers yielded to someone
+  waiting at the curb. Since 1 June 2021 the law gives priority to pedestrians entering the crossing,
+  and deaths on crossings have fallen by 23.6% (KRBRD, 2019–2023). Our live camera shows that change
+  in real time: violations are now the exception — and AI plus human review catches every one.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>
@@ -367,8 +385,8 @@ def page_index(lang):
  <div class="hook-grid">
   <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
   One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
-  crossings −59%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>−23.6%</b><p>drop in pedestrian DEATHS on crossings after the 2021 law
+  (crashes −7.8%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
   <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
   <span class="src">Polish Road Safety Observatory</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
@@ -385,7 +403,8 @@ def page_index(lang):
     extra = (JSONLD.replace("%BASE%", BASE) + FAQ_PL +
              '\n<script defer src="/assets/live.js"></script>')
     return (head(lang, "index", extra) + hero + livesec(lang) + verify + why
-            + research + contact + LIGHTBOX + foot(lang))
+            + research + partial(f"about_{lang}.html") + partial(f"faq_{lang}.html")
+            + contact + LIGHTBOX + foot(lang))
 
 
 def page_how(lang):

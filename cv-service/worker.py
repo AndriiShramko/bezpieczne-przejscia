@@ -65,6 +65,11 @@ MIN_TRACK_FRAMES = int(os.environ.get("MIN_TRACK_FRAMES", "4"))
 MIN_MOVE_PX = float(os.environ.get("MIN_MOVE_PX", "16"))  # on PROC-width frame
 MIN_EVENT_FRAMES = int(os.environ.get("MIN_EVENT_FRAMES", "3"))
 MIN_CLIP_SEC = float(os.environ.get("MIN_CLIP_SEC", "3"))
+BLUR = os.environ.get("BLUR", "1") not in ("0", "false", "off")
+EPISODE_COOLDOWN_S = float(os.environ.get("EPISODE_COOLDOWN_S", "20"))
+SPEED_LIMIT_KMH = float(os.environ.get("SPEED_LIMIT_KMH", "50"))
+# monocular speed is ±30%: flag only well above the limit to avoid slander
+SPEED_FLAG_FACTOR = float(os.environ.get("SPEED_FLAG_FACTOR", "1.35"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 CLIPS_MAX_GB = float(os.environ.get("CLIPS_MAX_GB", "2.0"))
 DISK_MIN_FREE_GB = float(os.environ.get("DISK_MIN_FREE_GB", "2.0"))
@@ -196,8 +201,9 @@ class SpeedBook:
             if len(q) >= 3 and q[-1][0] - q[0][0] >= 0.8:
                 t0, x0, y0 = q[0]
                 dt = now - t0
-                d_px = float(((x - x0) ** 2 + (y - y0) ** 2) ** 0.5)
-                out[tid] = float((d_px / dt) * self.m_per_px * 3.6)  # km/h approx
+                if dt > 0.2:  # never divide by a degenerate window
+                    d_px = float(((x - x0) ** 2 + (y - y0) ** 2) ** 0.5)
+                    out[tid] = float((d_px / dt) * self.m_per_px * 3.6)  # km/h
             span = q[-1][0] - q[0][0]
             if span >= self.STAT_SEC:
                 xs = [p[1] for p in q]; ys = [p[2] for p in q]
@@ -307,6 +313,21 @@ class Episode:
         self.tl_states = []
         self.best_snap = None
         self.best_overlap = -1
+        self.paths = {}           # "p<tid>"/"v<tid>"/"b<tid>" -> [(t,x,y), ...]
+
+    def paths_json(self, max_chars=2400):
+        """Compact normalized trajectories for the AI verdict — the motion
+        story the frames alone can't tell at 2-3 fps."""
+        items = sorted(self.paths.items(), key=lambda kv: -len(kv[1]))
+        out = {}
+        for k, v in items:
+            if len(v) < 3:
+                continue
+            out[k] = v[::max(1, len(v) // 12)][:12]   # ≤12 evenly picked points
+            if len(json.dumps(out)) > max_chars:
+                out.pop(k)
+                break
+        return json.dumps(out, separators=(",", ":"))
 
 
 def _transcode_h264(path):
@@ -328,9 +349,15 @@ def _transcode_h264(path):
         print("transcode:", e, flush=True)
 
 
-def write_clip(path, frames, fps):
+def write_clip(path, frames, fps=None):
     if not frames:
         return False
+    if fps is None:
+        # honest playback rate: frames are evenly spaced in content time, so
+        # fps derived from their timestamps makes the clip play in real time
+        span = frames[-1][0] - frames[0][0]
+        fps = (len(frames) - 1) / span if span > 0.2 and len(frames) > 2 else CLIP_FPS
+        fps = max(1.0, min(12.0, fps))
     h, w = frames[0][1].shape[:2]
     vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
     for _, f in frames:
@@ -361,24 +388,58 @@ class Grabber:
         self.fails = 0
         self.stop = False
         src = cap.get(cv2.CAP_PROP_FPS) or 0
-        src = src if 1 <= src <= 120 else 25.0
-        want = min(10.0, max(2.0, 2.0 * target_fps))   # buffer a bit above need
-        self.keep_every = max(1, int(round(src / want)))
+        self.src_fps = src if 1 <= src <= 120 else 25.0
+        want = min(12.0, max(2.0, 2.0 * target_fps))   # buffer a bit above need
+        self.keep_every = max(1, int(round(self.src_fps / want)))
+        self.anchor = None                 # wall time of frame #0 (content clock)
+        self.seq = 0
         self.th = threading.Thread(target=self._run, daemon=True)
         self.th.start()
 
     def _run(self):
-        i = 0
+        last_cts = 0.0
+        fps_win = deque(maxlen=600)   # (wall, seq) — empirical source-fps probe
         try:
             while not self.stop:
                 ok, f = self.cap.read()
                 if ok:
+                    now = time.time()
                     self.reads += 1
-                    self.t = time.time()
-                    i += 1
-                    if i % self.keep_every == 0:
+                    self.t = now
+                    if self.anchor is None:
+                        self.anchor = now
+                    # empirical source fps: CAP_PROP_FPS lies on some HLS cams
+                    # (0 or wrong), which would scale every speed estimate.
+                    # Measure delivered frames over a >=12 s window instead —
+                    # segment bursts average out across several segments.
+                    fps_win.append((now, self.seq))
+                    if len(fps_win) > 30 and now - fps_win[0][0] >= 12.0:
+                        est = (self.seq - fps_win[0][1]) / (now - fps_win[0][0])
+                        if 1.0 <= est <= 120.0 and abs(est - self.src_fps) / self.src_fps > 0.12:
+                            print(f"grabber: src_fps {self.src_fps:.1f} -> "
+                                  f"{est:.1f} (measured)", flush=True)
+                            # keep the content clock continuous at switch time
+                            self.anchor = (self.anchor + self.seq / self.src_fps
+                                           - self.seq / est)
+                            self.src_fps = est
+                    # CONTENT timestamp: frames arrive in segment bursts, but
+                    # in the video they are spaced 1/src_fps apart. All
+                    # kinematics (speeds, episode timing, clip fps) use this
+                    # clock, so bursty ARRIVAL never distorts them.
+                    cts = self.anchor + self.seq / self.src_fps
+                    # ONE-SIDED re-anchor: only when the reader LAGS wall time
+                    # (stall/reconnect). Running AHEAD during a backlog burst
+                    # is just constant latency — snapping the clock backwards
+                    # would corrupt speeds and drop frames.
+                    if now - cts > 5.0:
+                        self.anchor = now - self.seq / self.src_fps
+                        cts = now
+                    cts = max(cts, last_cts + 1.0 / self.src_fps)  # monotonic
+                    last_cts = cts
+                    self.seq += 1
+                    if self.seq % self.keep_every == 0:
                         with self.lock:
-                            self.q.append(f)
+                            self.q.append((cts, f))
                 else:
                     self.fails += 1
                     time.sleep(0.08)
@@ -391,13 +452,16 @@ class Grabber:
             except Exception:
                 pass
 
-    def next(self):
-        """Oldest queued frame, dropping backlog if we fell behind (keeps the
-        shown video close to live while staying smooth)."""
+    def next_due(self, due_cts):
+        """Oldest frame whose content time reached `due_cts`; older ones are
+        dropped. This yields EVENLY spaced frames in content time — steady
+        fps, honest speeds, smooth clips."""
         with self.lock:
-            while len(self.q) > 25:        # lagging -> catch up
-                self.q.popleft()
-            return self.q.popleft() if self.q else None
+            while self.q:
+                cts, f = self.q.popleft()
+                if cts + 1e-4 >= due_cts:
+                    return cts, f
+            return None
 
     def qlen(self):
         with self.lock:
@@ -476,26 +540,82 @@ _scene_lock = threading.Lock()
 _scene_busy = set()
 
 
+def _draw_grid(img):
+    """0.1-step labeled coordinate grid — dramatically improves the precision
+    of polygon coordinates a VLM returns."""
+    g = img.copy()
+    h, w = g.shape[:2]
+    for i in range(1, 10):
+        x = int(w * i / 10); y = int(h * i / 10)
+        cv2.line(g, (x, 0), (x, h), (255, 255, 255), 1)
+        cv2.line(g, (0, y), (w, y), (255, 255, 255), 1)
+        cv2.putText(g, f"{i/10:.1f}", (x + 3, 14), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45, (0, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(g, f"{i/10:.1f}", (3, y - 4), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45, (0, 255, 255), 1, cv2.LINE_AA)
+    return g
+
+
+def _draw_scene_polys(img, scene):
+    """Render the model's polygons for the self-check round: crossings yellow,
+    bike crossings cyan, islands magenta."""
+    g = img.copy()
+    h, w = g.shape[:2]
+    def draw(items, color):
+        for c in items:
+            pts = [(int(p[0] * w), int(p[1] * h)) for p in (c.get("polygon") or [])]
+            if len(pts) >= 3:
+                cv2.polylines(g, [np.array(pts, np.int32)], True, color, 2)
+                cv2.putText(g, str(c.get("id", "?")), pts[0],
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
+    draw(scene.get("crossings") or [], (0, 230, 255))
+    draw(scene.get("bike_crossings") or [], (255, 255, 0))
+    draw(scene.get("islands") or [], (255, 0, 255))
+    return g
+
+
+def _valid_scene(sc):
+    if not (isinstance(sc, dict) and sc):
+        return None
+    try:
+        return norm_scene_coords(json.loads(json.dumps(sc)))
+    except Exception as e:
+        print("scene_worker: off-schema scene rejected:", e, flush=True)
+        return None
+
+
 def _scene_worker(cam_id, jpeg_bytes):
-    """Background: ask the AI to describe the scene, write it to disk."""
+    """Background scene calibration: grid-annotated frame -> scene JSON ->
+    draw the polygons back -> one AI self-check round -> persist."""
     with _scene_lock:
         if cam_id in _scene_busy:
             return
         _scene_busy.add(cam_id)
     try:
-        sc = ai_analyst.scene_context(jpeg_bytes)
-        # persist ONLY a structurally sane document — a syntactically valid
-        # but off-schema model reply must never become an on-disk poison pill
-        if isinstance(sc, dict) and sc:
-            try:
-                norm_scene_coords(dict(sc))   # dry-run: must normalize cleanly
-            except Exception as e:
-                print("scene_worker: off-schema scene rejected:", e, flush=True)
-                return
-            json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
-                      ensure_ascii=False, indent=1)
-            with S.lock:
-                S.ticker.appendleft("AI opisał scenę перекрёстка (scene context) ✔")
+        arr = np.frombuffer(jpeg_bytes, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return
+        ok, gj = cv2.imencode(".jpg", _draw_grid(img), [cv2.IMWRITE_JPEG_QUALITY, 82])
+        if not ok:
+            return
+        sc = _valid_scene(ai_analyst.scene_context(gj.tobytes()))
+        if not sc:
+            return
+        # self-check: show the model its own polygons and let it correct them
+        try:
+            ok2, aj = cv2.imencode(".jpg", _draw_grid(_draw_scene_polys(img, sc)),
+                                   [cv2.IMWRITE_JPEG_QUALITY, 82])
+            if ok2:
+                refined = _valid_scene(ai_analyst.scene_refine(aj.tobytes(), sc))
+                if refined and refined.get("crossings"):
+                    sc = refined
+        except Exception as e:
+            print("scene refine skipped:", e, flush=True)
+        json.dump(sc, open(scene_path(cam_id), "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=1)
+        with S.lock:
+            S.ticker.appendleft("AI skalibrował strefy przejść (scene v2) ✔")
     except Exception as e:
         print("scene_worker:", e, flush=True)
     finally:
@@ -555,7 +675,9 @@ def norm_scene_coords(scene):
         return {}
     scene["crossings"] = lst("crossings")
     scene["traffic_lights"] = lst("traffic_lights")
-    for c in scene["crossings"]:
+    scene["bike_crossings"] = lst("bike_crossings")
+    scene["islands"] = lst("islands")
+    for c in scene["crossings"] + scene["bike_crossings"] + scene["islands"]:
         pts = []
         poly = c.get("polygon")
         for p in (poly if isinstance(poly, list) else []):
@@ -627,19 +749,24 @@ def disk_guard():
 def analyzer_loop():
     attempts = {}  # eid -> failed tries while AI was up (bad clip etc.)
     while True:
-        row = db.next_pending_ai()
+        try:
+            row = db.next_pending_ai()
+        except Exception as e:
+            print("analyzer db error:", e, flush=True)
+            time.sleep(10)
+            continue
         if not row:
             time.sleep(5)
             continue
-        eid, cam_id, clip, tl_state, kmh, n_ped, n_veh = row
-        path = os.path.join(CLIP_DIR, clip or "")
-        if not clip or not os.path.exists(path):
-            db.set_ai_skipped(eid)
-            continue
-        if not ai_analyst.enabled():
-            time.sleep(30)
-            continue
+        eid, cam_id, clip, tl_state, kmh, n_ped, n_veh, ev_kind, traj = row
         try:
+            path = os.path.join(CLIP_DIR, clip or "")
+            if not clip or not os.path.exists(path):
+                db.set_ai_skipped(eid)
+                continue
+            if not ai_analyst.enabled():
+                time.sleep(30)
+                continue
             cap = cv2.VideoCapture(path)
             n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
             picks = sorted({max(0, min(n - 1, int(i))) for i in
@@ -655,7 +782,8 @@ def analyzer_loop():
             cap.release()
             scene = load_scene(cam_id)
             res = ai_analyst.analyze_event(frames, scene, tl_state, kmh, n_ped, n_veh,
-                                           fps=CLIP_FPS)
+                                           fps=CLIP_FPS, kind=ev_kind or "potential_conflict",
+                                           trajectories=traj)
             if res:
                 db.set_ai_result(eid, res["verdict"], res.get("violator", "none"),
                                  res.get("explanation_pl", ""), res.get("explanation_en", ""),
@@ -695,10 +823,15 @@ def worker():
     fail_start = None
 
     while True:
-        cfg = cams_load()
-        by_id = {c["id"]: c for c in cfg["cameras"]}
-        order = [cfg.get("active")] + [c["id"] for c in cfg["cameras"]
-                                       if c["id"] != cfg.get("active")]
+        try:
+            cfg = cams_load()
+            by_id = {c["id"]: c for c in cfg["cameras"]}
+            order = [cfg.get("active")] + [c["id"] for c in cfg["cameras"]
+                                           if c["id"] != cfg.get("active")]
+        except Exception as e:
+            print("worker: cams config error:", e, flush=True)
+            time.sleep(10)
+            continue
         cam = None
         for cid in order:
             if cid in by_id:
@@ -711,11 +844,10 @@ def worker():
                     # down and fail over / retry — the thread itself survives.
                     import traceback
                     traceback.print_exc()
-                    try:
-                        db.health(cid, "down", f"loop error: {e!r}")
-                    except Exception:
-                        pass
-                db.health(cid, "down", "stream failed")
+                try:
+                    db.health(cid, "down", "stream failed")
+                except Exception:
+                    pass
         if cam is None:
             time.sleep(5)
         S.live = False
@@ -761,6 +893,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                                                detectShadows=False)
     cond_streak = 0
     zones = []               # [{id, poly, zone, bbox}] — manual poly + AI crossings
+    islands = []             # refuge-island exclusion polygons
     zones_have_scene = False
     scene = load_scene_safe(cam_id)
     m_per_px = None
@@ -768,34 +901,71 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
     ring = deque()  # (ts, clip_frame)
     ep = None
     scene_try_ts = 0.0
-    tprev = time.time()
     idle_frames = 0
     t_open = time.time()
     last_cfg_check = time.time()
     dbg_t = 0.0
     dbg_iters = 0
+    cts_prev = None      # content time of the previously processed frame
+    due_cts = 0.0        # next content time we want a frame at
+    proc_ema = 1.0 / TARGET_FPS   # EMA of per-frame processing cost (adaptive stride)
+    zone_cooldown = {}   # zone_id -> content time until which new episodes are muted
+    speed_streak = {}    # veh tid -> consecutive over-limit samples
+    speed_flagged = set()  # veh tids already reported this pass-through
+    scene_mtime = 0.0
+    scene_mtime_check = 0.0
+    try:
+        scene_mtime = os.path.getmtime(scene_path(cam_id))
+    except OSError:
+        pass
 
     def build_zones(w, h):
-        """Event zones: the manually configured crossing PLUS every crossing
-        the AI scene-context found — so ALL zebras in view are monitored."""
+        """Event zones: the manually configured crossing PLUS every pedestrian
+        crossing AND cyclist crossing the AI scene-context found — so ALL
+        painted crossings in view are monitored. Refuge islands come back as
+        EXCLUSION polygons (a person standing there is not on any crossing)."""
         zs = []
         mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
         zs.append({"id": "main", "poly": mp, "zone": PolygonZone(mp),
                    "bbox": poly_bbox(mp, w, h)})
+        isl = []
         if isinstance(scene, dict):
-            for c in (scene.get("crossings") or []):
+            def add(items, prefix):
+                for c in (items or []):
+                    if not isinstance(c, dict):
+                        continue
+                    pts = [(p[0] * w, p[1] * h) for p in (c.get("polygon") or [])
+                           if isinstance(p, (list, tuple)) and len(p) >= 2]
+                    if len(pts) < 3:
+                        continue
+                    bb = poly_bbox(pts, w, h)
+                    if any(_iou(bb, z["bbox"]) > 0.45 for z in zs):
+                        continue  # same crossing as an existing zone
+                    zs.append({"id": str(c.get("id", f"{prefix}{len(zs)}")),
+                               "poly": pts, "zone": PolygonZone(pts), "bbox": bb})
+            add(scene.get("crossings"), "cx")
+            add(scene.get("bike_crossings"), "bx")
+            for c in (scene.get("islands") or []):
                 if not isinstance(c, dict):
                     continue
                 pts = [(p[0] * w, p[1] * h) for p in (c.get("polygon") or [])
                        if isinstance(p, (list, tuple)) and len(p) >= 2]
                 if len(pts) < 3:
                     continue
-                bb = poly_bbox(pts, w, h)
-                if any(_iou(bb, z["bbox"]) > 0.45 for z in zs):
-                    continue  # same zebra as an existing zone
-                zs.append({"id": str(c.get("id", f"cx{len(zs)}")), "poly": pts,
-                           "zone": PolygonZone(pts), "bbox": bb})
-        return zs[:5]
+                # sanity: one hallucinated island covering the crossing would
+                # mute EVERY event on the camera. Cap its size and require it
+                # to actually touch some crossing.
+                bb = poly_bbox(pts, w, h, margin=0)
+                barea = (bb[2] - bb[0]) * (bb[3] - bb[1])
+                if barea > 0.08 * w * h:
+                    print(f"scene island {c.get('id')} rejected: too large", flush=True)
+                    continue
+                if not any(_iou(bb, z["bbox"]) > 0.01 for z in zs):
+                    print(f"scene island {c.get('id')} rejected: touches no crossing",
+                          flush=True)
+                    continue
+                isl.append(PolygonZone(pts))
+        return zs[:8], isl
 
     while True:
         now = time.time()
@@ -803,7 +973,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
         if now - dbg_t > 15:
             dbg_t = now
             print(f"dbg iters15s={dbg_iters} reads={grab.reads} rfails={grab.fails} "
-                  f"q={grab.qlen()} idle={idle_frames} fps={S.fps:.2f}", flush=True)
+                  f"q={grab.qlen()} idle={idle_frames} stride={proc_ema:.2f} "
+                  f"fps={S.fps:.2f}", flush=True)
             dbg_iters = 0
             grab.reads = 0
             grab.fails = 0
@@ -817,15 +988,19 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             grab.close()
             db.health(cam_id, "down", "stream stalled")
             return False
-        if now - tprev < frame_interval:        # pace to TARGET_FPS
-            time.sleep(0.02)
-            continue
-        frame = grab.next()
-        if frame is None:                       # queue empty (between segments)
+        # EVEN sampling in content time: stride adapts to what the CPU can
+        # actually sustain, so processed frames are uniformly spaced — steady
+        # fps instead of bursts, and speed estimates stay correct.
+        item = grab.next_due(due_cts)
+        if item is None:                        # queue empty / next frame not due
             time.sleep(0.03)
             continue
-        dt = now - tprev
-        tprev = now
+        cts, frame = item
+        stride = max(frame_interval, proc_ema * 1.15)
+        due_cts = cts + stride
+        dt = (cts - cts_prev) if cts_prev is not None else stride
+        cts_prev = cts
+        t_proc0 = time.time()
 
         # admin may have switched camera / edited config
         if now - last_cfg_check > 5:
@@ -843,7 +1018,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             frame = frame.copy()   # never mutate the grabber's buffer in place
         h, w = frame.shape[:2]
         if not zones:
-            zones = build_zones(w, h)
+            zones, islands = build_zones(w, h)
             zones_have_scene = bool(scene)
             m_full = cam.get("m_per_px_fullw", 0.075)
             m_per_px = m_full * (1920.0 / w)  # config is per full-width pixel
@@ -858,10 +1033,24 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             if ok2:
                 threading.Thread(target=_scene_worker, args=(cam_id, jb.tobytes()),
                                  daemon=True).start()
-        if scene is None and int(now) % 10 == 0:
-            scene = load_scene_safe(cam_id)
+        # hot-reload: the admin zone editor (or AI recalibration) rewrites the
+        # scene file — pick it up within ~10 s without a restart
+        if now - scene_mtime_check > 10:
+            scene_mtime_check = now
+            try:
+                mt = os.path.getmtime(scene_path(cam_id))
+            except OSError:
+                mt = 0.0
+            if mt != scene_mtime:
+                scene_mtime = mt
+                scene = load_scene_safe(cam_id)
+                zones, islands = build_zones(w, h)
+                zones_have_scene = bool(scene)
+                if scene:
+                    with S.lock:
+                        S.ticker.appendleft("Strefy przejść zaktualizowane ✔")
         if scene and not zones_have_scene:
-            zones = build_zones(w, h)   # AI crossings arrived -> monitor them all
+            zones, islands = build_zones(w, h)  # AI crossings arrived -> monitor all
             zones_have_scene = True
 
         # foreground (motion) mask for this fixed camera — static objects
@@ -910,12 +1099,15 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             kept.append(d)
         dets = kept
 
-        # privacy first (riders get head-blur too)
-        pboxes = [head_region(d.xyxy) for d in dets if d.cls in (PERSON, BIKE)]
-        pboxes += [plate_region(d.xyxy) for d in dets if d.cls == VEHICLE]
-        frame = blur_regions(frame, pboxes, block=10)
+        # privacy blur (riders get head-blur too). Toggleable: BLUR=0 disables
+        # while running on a weak CPU box (measured cost ~9 ms/frame ≈ 2%).
+        if BLUR:
+            pboxes = [head_region(d.xyxy) for d in dets if d.cls in (PERSON, BIKE)]
+            pboxes += [plate_region(d.xyxy) for d in dets if d.cls == VEHICLE]
+            frame = blur_regions(frame, pboxes, block=10)
 
         bikes = [d for d in dets if d.cls == BIKE]
+        vehs = [d for d in dets if d.cls == VEHICLE]
         # a person overlapping a MOVING bicycle is its RIDER -> one cyclist,
         # not a pedestrian + a bike (kills double counting). A parked bike
         # shows no foreground, so it can never suppress real pedestrians
@@ -924,8 +1116,24 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                          if fg_ratio_at(fgmask, *b.anchor) >= FG_MIN]
         def _is_rider(d):
             return any(_iou(d.xyxy, b.xyxy) > 0.18 for b in _moving_bikes)
-        peds = [d for d in dets if d.cls == PERSON and not _is_rider(d)]
-        vehs = [d for d in dets if d.cls == VEHICLE]
+        # a person box mostly INSIDE a vehicle box AND sitting HIGH in it is
+        # the driver/passenger seen through the glass — not a pedestrian.
+        # A pedestrian walking IN FRONT of a stopped car also overlaps its box
+        # (the exact conflict geometry!) but their feet reach the box bottom —
+        # the positional test keeps them alive.
+        def _in_vehicle(d):
+            x1, y1, x2, y2 = d.xyxy
+            area = max(1.0, (x2 - x1) * (y2 - y1))
+            for v in vehs:
+                ix = max(0.0, min(x2, v.xyxy[2]) - max(x1, v.xyxy[0]))
+                iy = max(0.0, min(y2, v.xyxy[3]) - max(y1, v.xyxy[1]))
+                if ix * iy / area > 0.6:
+                    vh = max(1.0, v.xyxy[3] - v.xyxy[1])
+                    if (y2 - v.xyxy[1]) / vh < 0.72:  # feet-line high = occupant
+                        return True
+            return False
+        peds = [d for d in dets if d.cls == PERSON
+                and not _is_rider(d) and not _in_vehicle(d)]
         ped_tracks = ped_tr.update(peds)
         veh_tracks = veh_tr.update(vehs)
         bike_tracks = bike_tr.update(bikes)
@@ -935,19 +1143,20 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
         veh_fg = {tid for tid, p in veh_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
         bike_fg = {tid for tid, p in bike_tracks.items() if fg_ratio_at(fgmask, *p) >= FG_MIN}
         # confirm real objects (moved over lifetime) — count ONLY on confirmation
-        new_ped = len(ped_cb.update(ped_tracks, ped_fg, now))
-        new_veh = len(veh_cb.update(veh_tracks, veh_fg, now))
-        new_bike = len(bike_cb.update(bike_tracks, bike_fg, now))
+        new_ped = len(ped_cb.update(ped_tracks, ped_fg, cts))
+        new_veh = len(veh_cb.update(veh_tracks, veh_fg, cts))
+        new_bike = len(bike_cb.update(bike_tracks, bike_fg, cts))
         if new_ped or new_veh or new_bike:
             db.bump_counts(cam_id, new_ped, new_veh, 0, bike=new_bike)
         db.bump_counts(cam_id, 0, 0, min(dt, 3.0))
 
-        veh_kmh = speeds.update(veh_tracks, now)
+        # kinematics on CONTENT time — immune to processing jitter
+        veh_kmh = speeds.update(veh_tracks, cts)
         if not hasattr(speeds, "_pedbook"):
             speeds._pedbook = SpeedBook(m_per_px)
             speeds._bikebook = SpeedBook(m_per_px)
-        ped_kmh = speeds._pedbook.update(ped_tracks, now)
-        bike_kmh = speeds._bikebook.update(bike_tracks, now)
+        ped_kmh = speeds._pedbook.update(ped_tracks, cts)
+        bike_kmh = speeds._bikebook.update(bike_tracks, cts)
         for tid, v in veh_kmh.items():
             if v > 1.5 and int(now * 2) % 10 == 0:  # sample, don't flood
                 db.add_speed(cam_id, "vehicle", v)
@@ -970,16 +1179,25 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
         #   the zebra/red light is stationary -> never triggers).
         pedbook = speeds._pedbook
         bikebook = speeds._bikebook
+
+        def on_island(p):
+            # a person on a refuge island has LEFT the crossing half behind —
+            # cars on that half no longer conflict with them (the silver-car
+            # false-violation case)
+            return any(i.contains(p) for i in islands)
+
         ped_in, veh_in_moving, hit_zone = [], [], None
         for z in zones:
+            if zone_cooldown.get(z["id"], 0) > cts:
+                continue   # fresh episode just ended here — mute duplicates
             zb = z["bbox"]
             pz = [p for tid, p in ped_tracks.items()
-                  if z["zone"].contains(p) and ped_cb.confirmed(tid)
-                  and pedbook.is_moving(tid)]
+                  if z["zone"].contains(p) and not on_island(p)
+                  and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
             # cyclists are crossing users too — a moving car must yield to them
             pz += [p for tid, p in bike_tracks.items()
-                   if z["zone"].contains(p) and bike_cb.confirmed(tid)
-                   and bikebook.is_moving(tid)]
+                   if z["zone"].contains(p) and not on_island(p)
+                   and bike_cb.confirmed(tid) and bikebook.is_moving(tid)]
             vz = [tid for tid, p in veh_tracks.items()
                   if zb[0] <= p[0] <= zb[2] and zb[1] <= p[1] <= zb[3]
                   and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
@@ -1035,29 +1253,71 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
         if condition or (ep is not None):
             cv2.rectangle(ann, (0, 0), (ann.shape[1] - 1, ann.shape[0] - 1), (0, 0, 235), 5)
 
-        # clip frame for ring buffer / episode
+        # clip frame for ring buffer / episode — CONTENT time, so clips play
+        # back smoothly at their true rate
         small = cv2.resize(ann, (CLIP_W, int(ann.shape[0] * CLIP_W / ann.shape[1])))
-        ring.append((now, small))
-        while ring and now - ring[0][0] > PRE_ROLL_S:
+        ring.append((cts, small))
+        while ring and cts - ring[0][0] > PRE_ROLL_S:
             if ep is None:
                 ring.popleft()
             else:
                 break
 
+        # ---- speeding detection (rough monocular estimate, flagged only well
+        # above the limit; each event gets a clip + AI sanity check + votes) ----
+        for tid, v in veh_kmh.items():
+            if v >= SPEED_LIMIT_KMH * SPEED_FLAG_FACTOR and veh_cb.confirmed(tid):
+                speed_streak[tid] = speed_streak.get(tid, 0) + 1
+                if speed_streak[tid] >= 2 and tid not in speed_flagged \
+                        and S.recording_ok and ep is None:
+                    speed_flagged.add(tid)
+                    keepf = list(ring)
+                    if len(keepf) > 3:
+                        stamp = int(cts)
+                        cname = f"sp_{cam_id}_{stamp}_{tid}.mp4"
+                        sname = f"sp_{cam_id}_{stamp}_{tid}.jpg"
+                        okc = write_clip(os.path.join(CLIP_DIR, cname), keepf)
+                        cv2.imwrite(os.path.join(SNAP_DIR, sname), ann,
+                                    [cv2.IMWRITE_JPEG_QUALITY, 80])
+                        desc = (f"Możliwe przekroczenie prędkości: ~{v:.0f} km/h "
+                                f"(limit {SPEED_LIMIT_KMH:.0f}; pomiar szacunkowy "
+                                f"monokularowy ±30% — orientacyjny, to nie radar).")
+                        eid = db.add_event(cam_id, desc, sname,
+                                           cname if okc else None,
+                                           max(MIN_CLIP_SEC, keepf[-1][0] - keepf[0][0]),
+                                           tl_summary[:24], round(v, 1), 0, 1,
+                                           kind="speeding")
+                        with S.lock:
+                            S.ticker.appendleft(f"#{eid} ~{v:.0f} km/h → weryfikacja")
+            else:
+                speed_streak.pop(tid, None)
+        for tid in list(speed_flagged):
+            if tid not in veh_tracks:
+                speed_flagged.discard(tid)
+
         # ---- episode state machine ----
         if ep is None and condition and S.recording_ok:
             ep = Episode()
-            ep.start = now
-            ep.last_cond = now
+            ep.start = cts
+            ep.last_cond = cts
             ep.frames = list(ring)
             ep.zone_id = hit_zone or "main"
             with S.lock:
                 S.episode_active = True
         if ep is not None:
-            ep.frames.append((now, small))
+            ep.frames.append((cts, small))
+            for pref, trks in (("p", ped_tracks), ("v", veh_tracks), ("b", bike_tracks)):
+                for tid, (tx, ty) in trks.items():
+                    q = ep.paths.setdefault(f"{pref}{tid}", [])
+                    if len(q) < 60:
+                        q.append([round(cts - ep.start, 1),
+                                  round(tx / w, 3), round(ty / h, 3)])
             if condition:
-                ep.last_cond = now
-                ep.max_kmh = max(ep.max_kmh, vmax)
+                ep.last_cond = cts
+                # speed of the CONFLICTING vehicle(s), not the frame-wide max
+                vz_max = max((veh_kmh.get(t, 0.0) for t in veh_in_moving),
+                             default=0.0)
+                ep.max_kmh = max(ep.max_kmh, vz_max)
                 ep.n_ped = max(ep.n_ped, len(ped_in))
                 ep.n_veh = max(ep.n_veh, len(veh_in_moving))
                 ep.tl_states.append(tl_summary)
@@ -1065,8 +1325,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                 if overlap > ep.best_overlap:
                     ep.best_overlap = overlap
                     ep.best_snap = ann.copy()
-            ended_lapse = now - ep.last_cond > EPISODE_END_S
-            ended_max = now - ep.start > EPISODE_MAX_S
+            ended_lapse = cts - ep.last_cond > EPISODE_END_S
+            ended_max = cts - ep.start > EPISODE_MAX_S
             if ended_lapse or ended_max:
                 # ALWAYS save (a >35 s sustained conflict is the most
                 # report-worthy case — force-finalize, never discard)
@@ -1078,7 +1338,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                     stamp = int(ep.start)
                     clip_name = f"ep_{cam_id}_{stamp}.mp4"
                     snap_name = f"ep_{cam_id}_{stamp}.jpg"
-                    ok_clip = write_clip(os.path.join(CLIP_DIR, clip_name), keep, CLIP_FPS)
+                    ok_clip = write_clip(os.path.join(CLIP_DIR, clip_name), keep)
                     if ep.best_snap is not None:
                         cv2.imwrite(os.path.join(SNAP_DIR, snap_name), ep.best_snap,
                                     [cv2.IMWRITE_JPEG_QUALITY, 80])
@@ -1090,9 +1350,13 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
                     eid = db.add_event(cam_id, desc, snap_name,
                                        clip_name if ok_clip else None,
                                        dur, tl_mode, round(ep.max_kmh, 1),
-                                       ep.n_ped, ep.n_veh)
+                                       ep.n_ped, ep.n_veh,
+                                       tracks_json=ep.paths_json())
                     with S.lock:
                         S.ticker.appendleft(f"#{eid} epizod zapisany ({dur:.0f}s) → analiza AI…")
+                # mute this zone briefly: a busy crossing otherwise spawns a
+                # near-duplicate episode every few seconds and burns AI budget
+                zone_cooldown[getattr(ep, "zone_id", "main")] = cts + EPISODE_COOLDOWN_S
                 ep = None
                 with S.lock:
                     S.episode_active = False
@@ -1113,6 +1377,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab):
             ok3, buf = cv2.imencode(".jpg", ann, [cv2.IMWRITE_JPEG_QUALITY, 70])
             if ok3:
                 S.jpeg = buf.tobytes()
+        # adaptive stride: track what one frame really costs on this CPU
+        proc_ema = 0.8 * proc_ema + 0.2 * (time.time() - t_proc0)
 
 
 # ---------------- HTTP ----------------
@@ -1183,7 +1449,8 @@ class H(BaseHTTPRequestHandler):
             q = urllib.parse.parse_qs(self.path.split("?")[1] if "?" in self.path else "")
             tab = (q.get("tab") or ["all"])[0]
             offset = int((q.get("offset") or ["0"])[0])
-            return self._json(200, {"events": db.list_events(tab, 12, offset)})
+            hour = (q.get("hour") or [None])[0]   # 'YYYY-MM-DDTHH' chart click-filter
+            return self._json(200, {"events": db.list_events(tab, 12, offset, hour=hour)})
         if p == "/charts.json":
             cam = S.cam_id or cams_load().get("active", "")
             return self._json(200, db.charts(cam))
@@ -1197,6 +1464,15 @@ class H(BaseHTTPRequestHandler):
             cam = S.cam_id or cams_load().get("active", "")
             sc = load_scene(cam)
             return self._json(200 if sc else 404, sc or {"ok": False})
+        if p == "/frame.jpg":           # single still frame (zone editor canvas)
+            with S.lock:
+                buf = S.jpeg
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(buf)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            return self.wfile.write(buf)
         if p == "/report.csv":
             return self._report_csv()
         if p == "/report.html":
@@ -1224,6 +1500,31 @@ class H(BaseHTTPRequestHandler):
             ip = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[0]
             ok = db.vote(int(data.get("id", 0)), str(data.get("verdict", "")), ip)
             return self._json(200 if ok else 400, {"ok": ok})
+        if p == "/admin/scene":
+            # admin saves a hand-corrected zone map (the AI draft is editable:
+            # move/add/delete polygons, edit event rules) — validated, then the
+            # worker hot-reloads it via the scene-file mtime watch
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            sc = data.get("scene")
+            valid = _valid_scene(sc) if isinstance(sc, dict) else None
+            if not valid:
+                return self._json(400, {"ok": False, "error": "scene failed validation"})
+            cam = S.cam_id or cams_load().get("active", "")
+            json.dump(sc, open(scene_path(cam), "w", encoding="utf-8"),
+                      ensure_ascii=False, indent=1)
+            return self._json(200, {"ok": True, "cam": cam})
+        if p == "/admin/scene/recalibrate":
+            # wipe the scene -> the worker re-runs the AI calibration
+            # (grid + self-check) on the next frames
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            cam = S.cam_id or cams_load().get("active", "")
+            try:
+                os.remove(scene_path(cam))
+            except OSError:
+                pass
+            return self._json(200, {"ok": True, "cam": cam})
         if p == "/admin/cameras":
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})

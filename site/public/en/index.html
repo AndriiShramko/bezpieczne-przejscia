@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SafeCross — live pedestrian-crossing safety analysis (AI + human verification)</title>
-<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. From '2% yielding' (KRBRD 2015) to real improvement after the 2021 law — shown live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="SafeCross — live pedestrian-crossing safety analysis (AI + human verification)">
-<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Only 2% of drivers yield to pedestrians. A demonstrator for road authorities, privacy by design.">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. From '2% yielding' (KRBRD 2015) to real improvement after the 2021 law — shown live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/en/">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
@@ -46,10 +46,12 @@
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
-  <h1>Only <span class="hot">2%</span> of drivers stop for a pedestrian at the crossing.</h1>
-  <p class="lead">Since 1 June 2021 the law requires yielding to a pedestrian <em>entering</em> the crossing.
-  In reality about 2% stop, and only 1 in 5 yield to someone waiting. We show it live, AI judges each
-  situation, and you verify it.</p>
+  <h1>In 2015, only <span class="hot">2%</span> of drivers stopped for a pedestrian approaching a crossing.</h1>
+  <p class="lead">That is what observational research for Poland's National Road Safety Council found
+  (Gdańsk &amp; Kraków Universities of Technology, 2015) — and barely 1 in 5 drivers yielded to someone
+  waiting at the curb. Since 1 June 2021 the law gives priority to pedestrians entering the crossing,
+  and deaths on crossings have fallen by 23.6% (KRBRD, 2019–2023). Our live camera shows that change
+  in real time: violations are now the exception — and AI plus human review catches every one.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>
@@ -94,6 +96,7 @@
  <div class="tabs-row">
   <button class="tab cur" data-tab="all">All</button>
   <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab" data-tab="speeding">Speeding (est.)</button>
   <button class="tab" data-tab="rejected">AI-rejected — double-check!</button>
   <button class="tab" data-tab="pending">Awaiting AI</button>
  </div>
@@ -115,8 +118,8 @@
  <div class="hook-grid">
   <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
   One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23.6%</b><p>drop in crossing accidents after the 2021 law (pedestrian deaths on
-  crossings −59%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>−23.6%</b><p>drop in pedestrian DEATHS on crossings after the 2021 law
+  (crashes −7.8%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
   <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
   <span class="src">Polish Road Safety Observatory</span></p></div>
   <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
@@ -141,7 +144,107 @@
    <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
    <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
+</section><section id="about" class="about-section" lang="en">
+  <h2>About the project</h2>
+  <p class="about-lead">
+    <strong>Bezpieczne Przejścia</strong> (“Safe Crossings”) is a personal
+    project of <strong>Andrii Shramko</strong> — a VR, volumetric-video and
+    computer-vision engineer. No grant, no company, no budget: one small CPU
+    server, open code and a public city webcam.
+  </p>
+  <p>
+    The goal is simple: <strong>to show that road-safety monitoring can be
+    transparent, cheap and open</strong>. An AI watches a live pedestrian
+    crossing, flags dangerous situations and explains its decisions — and any
+    visitor can verify and vote on those verdicts. Faces and license plates are
+    blurred; only anonymized statistics ever touch the disk. All code is public
+    (Apache-2.0).
+  </p>
+  <p class="about-invite">
+    <strong>Cities, road authorities, companies and researchers are invited to
+    collaborate</strong>: share a camera over a crossing, pilot the system in
+    your municipality, or build on the code.
+    <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">Code on GitHub</a>
+    · <a href="#contact">get in touch via the contact form</a>.
+  </p>
+
+  <!-- share block, EN labels -->
+  <div class="share-block" data-share-text="Live AI watching a Polish pedestrian crossing — verify its verdicts yourself:">
+    <div class="share-title">Share the project:</div>
+    <button class="share-btn" data-share="linkedin">LinkedIn</button>
+    <button class="share-btn" data-share="facebook">Facebook</button>
+    <button class="share-btn" data-share="x">X / Twitter</button>
+    <button class="share-btn" data-share="copy" data-copied-label="Link copied!">Copy link</button>
+    <span class="share-copied" hidden>Link copied!</span>
+  </div>
+</section><!-- EN -->
+<section id="faq" class="faq">
+ <h2>Frequently asked questions — no marketing, honestly</h2>
+ <details>
+  <summary>How does the system detect violations?</summary>
+  <p>The system does not guess from a single frame. An episode is created only when local kinematics shows two
+  things at once: a pedestrian is <strong>walking</strong> on the crossing and a vehicle is
+  <strong>moving</strong> through the same zone (a car stopped at a red light is not an episode). A sequence of
+  up to 8 frames then goes to the AI, which issues a verdict with an explanation. Humans have the final say —
+  every verdict can be confirmed or refuted.</p>
+ </details>
+ <details>
+  <summary>Does the AI make mistakes?</summary>
+  <p>Yes — and we don't hide it. That is why every verdict has ✓/✗ buttons: any visitor can confirm or refute
+  the AI's judgement. From those votes we compute AI↔human agreement and publish it live on the home page.
+  We treat events as candidates, not as facts.</p>
+ </details>
+ <details>
+  <summary>How is vehicle speed measured?</summary>
+  <p>It is a monocular estimate: pixel displacement between frames converted through a known lane scale. The
+  result is indicative — the error can reach ±30%. It is <strong>not</strong> a radar or a measurement
+  instrument, and it is not legal evidence of anything.</p>
+ </details>
+ <details>
+  <summary>What about privacy and GDPR?</summary>
+  <p>The system identifies no one: tracking uses ephemeral in-memory IDs, and only aggregate counters and
+  short event clips reach the disk. Blurring of faces and licence plates is available. This is a research
+  demonstrator, not surveillance or enforcement — no register of offences is created. Details on the
+  <a href="/en/compliance.html">Compliance / GDPR</a> page.</p>
+ </details>
+ <details>
+  <summary>Why does the video lag a few seconds and run at a low FPS?</summary>
+  <p>The source is an HLS stream, which by design splits video into multi-second segments — hence the delay.
+  The analysis runs on a CPU with a limited compute budget, so we process a few frames per second instead of
+  the full 25. A smoothing queue keeps the preview fluid instead of a choppy "live at any cost" picture.</p>
+ </details>
+ <details>
+  <summary>Are bicycles counted?</summary>
+  <p>Yes — bicycles are a separate detection class with separate statistics, because their behaviour at a
+  crossing differs from pedestrians and cars. Motorcycles are counted as vehicles.</p>
+ </details>
+ <details>
+  <summary>Where do the cameras come from?</summary>
+  <p>From public webcams made available by municipalities. The source of each camera is credited next to the
+  preview. We do not install our own cameras and we do not use closed CCTV systems.</p>
+ </details>
+ <details>
+  <summary>Can I run this at my own crossing?</summary>
+  <p>Yes — the whole project is open source under Apache-2.0:
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
+  You need a public camera stream and a small server — CPU is enough, no GPU. The method is portable: the AI
+  describes the scene once (zones, lanes, directions), then the analysis runs automatically.</p>
+ </details>
+ <details>
+  <summary>How much does it cost?</summary>
+  <p>Almost nothing. Detection runs locally on a CPU, AI verdicts fit within the free daily tier, and hosting
+  is a small VPS. The code is open — the only real cost is the server and your setup time.</p>
+ </details>
+ <details>
+  <summary>What does the AI do, and what does YOLO do?</summary>
+  <p>It is a cooperation of three "models". <strong>YOLOX</strong> is perception: it finds pedestrians and
+  vehicles in every frame, locally and for free, but it doesn't "understand" the scene. <strong>Gemini</strong>
+  is understanding: it describes the crossing topology once, then judges each episode from a frame sequence.
+  <strong>Humans</strong> are the final check — they confirm or refute the verdicts, and true accuracy is
+  computed from that.</p>
+ </details>
 </section>
+
 <section id="kontakt" class="contact">
  <h2>Let's talk about your crossing</h2>
  <p class="lead">For a municipality, road authority, company or research project. I reply within 1–2 business days.</p>

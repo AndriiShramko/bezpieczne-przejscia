@@ -43,12 +43,15 @@ CREATE TABLE IF NOT EXISTS ai_usage(
 """)
 _C.commit()
 
-# migrations for DBs created before the bike counter existed
-try:
-    _C.execute("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0")
-    _C.commit()
-except sqlite3.OperationalError:
-    pass  # column already there
+# migrations for DBs created before these columns existed
+for _mig in ("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0",
+             "ALTER TABLE events ADD COLUMN tracks_json TEXT"):
+    try:
+        _C.execute(_mig)
+        _C.commit()
+    except sqlite3.OperationalError as _e:
+        if "duplicate column" not in str(_e).lower():
+            raise  # a real DB problem must be loud, not swallowed
 
 
 def _now():
@@ -60,13 +63,14 @@ def _hour():
 
 
 def add_event(cam_id, description, snapshot, clip, duration_s, tl_state,
-              max_veh_kmh, n_ped, n_veh):
+              max_veh_kmh, n_ped, n_veh, kind="potential_conflict",
+              tracks_json=None):
     with _LOCK:
         cur = _C.execute(
-            "INSERT INTO events(ts_utc,cam_id,description,snapshot,clip,duration_s,"
-            "tl_state,max_veh_kmh,n_ped,n_veh) VALUES(?,?,?,?,?,?,?,?,?,?)",
-            (_now(), cam_id, description, snapshot, clip, round(duration_s, 1),
-             tl_state, max_veh_kmh, n_ped, n_veh))
+            "INSERT INTO events(ts_utc,cam_id,kind,description,snapshot,clip,duration_s,"
+            "tl_state,max_veh_kmh,n_ped,n_veh,tracks_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (_now(), cam_id, kind, description, snapshot, clip, round(duration_s, 1),
+             tl_state, max_veh_kmh, n_ped, n_veh, tracks_json))
         _C.execute("INSERT INTO hourly(cam_id,hour_utc,events) VALUES(?,?,1) "
                    "ON CONFLICT(cam_id,hour_utc) DO UPDATE SET events=events+1",
                    (cam_id, _hour()))
@@ -96,15 +100,16 @@ def set_ai_skipped(eid):
 
 def next_pending_ai():
     with _LOCK:
-        r = _C.execute("SELECT id,cam_id,clip,tl_state,max_veh_kmh,n_ped,n_veh "
-                       "FROM events WHERE status='pending_ai' ORDER BY id LIMIT 1").fetchone()
+        r = _C.execute("SELECT id,cam_id,clip,tl_state,max_veh_kmh,n_ped,n_veh,kind,"
+                       "tracks_json FROM events WHERE status='pending_ai' "
+                       "ORDER BY id LIMIT 1").fetchone()
     return r
 
 
-def list_events(tab="all", limit=12, offset=0, cam_id=None):
+def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     q = ("SELECT id,ts_utc,cam_id,description,snapshot,clip,duration_s,tl_state,"
          "max_veh_kmh,status,ai_verdict,ai_explanation_pl,ai_explanation_en,"
-         "ai_confidence,confirm,refute FROM events")
+         "ai_confidence,confirm,refute,kind FROM events")
     where, args = [], []
     if tab == "violation":
         where.append("ai_verdict='violation'")
@@ -112,8 +117,12 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None):
         where.append("ai_verdict IN ('no_violation','uncertain')")
     elif tab == "pending":
         where.append("status IN ('pending_ai','ai_skipped') AND ai_verdict IS NULL")
+    elif tab == "speeding":
+        where.append("kind='speeding'")
     if cam_id:
         where.append("cam_id=?"); args.append(cam_id)
+    if hour:  # 'YYYY-MM-DDTHH' — click-to-filter from the hourly chart
+        where.append("ts_utc LIKE ?"); args.append(hour[:13] + "%")
     if where:
         q += " WHERE " + " AND ".join(where)
     q += " ORDER BY id DESC LIMIT ? OFFSET ?"
@@ -121,7 +130,7 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None):
     with _LOCK:
         rows = _C.execute(q, args).fetchall()
     keys = ["id", "ts", "cam", "desc", "snap", "clip", "dur", "tl", "kmh", "status",
-            "ai_verdict", "ai_pl", "ai_en", "ai_conf", "confirm", "refute"]
+            "ai_verdict", "ai_pl", "ai_en", "ai_conf", "confirm", "refute", "kind"]
     return [dict(zip(keys, r)) for r in rows]
 
 

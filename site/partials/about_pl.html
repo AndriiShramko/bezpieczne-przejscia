@@ -1,0 +1,95 @@
+<section id="about">      — Polish variant
+    3. <section id="about">      — English variant
+    4. Share buttons block       — plain HTML + tiny inline JS, no SDKs
+  Use the PL blocks on the Polish page and the EN blocks on /en/.
+  The share block is language-neutral except for the button labels —
+  both label sets are provided below.
+-->
+
+<!-- ============================================================
+     1a. OG / meta — POLISH page (put inside <head> of the PL root)
+     ============================================================ -->
+<!--
+<title>Bezpieczne Przejścia — AI na żywo patrzy na polskie przejście dla pieszych</title>
+<meta name="description" content="Otwarty eksperyment: YOLOX i Gemini analizują na żywo przejście dla pieszych, wskazują konflikty i tłumaczą swoje werdykty. Każdy werdykt możesz sprawdzić i ocenić sam.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/">
+<meta property="og:site_name" content="Bezpieczne Przejścia">
+<meta property="og:title" content="AI na żywo patrzy na polskie przejście dla pieszych — sprawdź jego werdykty">
+<meta property="og:description" content="Otwarty, darmowy i prywatnościowy monitoring bezpieczeństwa: YOLOX + Gemini + weryfikacja przez ludzi. Kod open source (Apache-2.0).">
+<meta property="og:image" content="https://patrol.flyreelstudio.eu/og-cover.jpg">
+<!~~ og-cover.jpg: 1200×630, a blurred live-frame screenshot with the project name overlaid ~~>
+<meta property="og:locale" content="pl_PL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+-->
+
+<!-- ============================================================
+     1b. OG / meta — ENGLISH page (put inside <head> of /en/)
+     ============================================================ -->
+<!--
+<title>Live AI watching a Polish pedestrian crossing — verify its verdicts yourself</title>
+<meta name="description" content="An open experiment: YOLOX and Gemini watch a live pedestrian crossing, flag conflicts and explain their verdicts. Every verdict can be checked and voted on by anyone.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/en/">
+<meta property="og:site_name" content="Bezpieczne Przejścia / Safe Crossings">
+<meta property="og:title" content="Live AI watching a Polish pedestrian crossing — verify its verdicts yourself">
+<meta property="og:description" content="Open, free and privacy-first road-safety monitoring: YOLOX + Gemini + human verification. Open source (Apache-2.0).">
+<meta property="og:image" content="https://patrol.flyreelstudio.eu/og-cover.jpg">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="pl_PL">
+<meta name="twitter:card" content="summary_large_image">
+-->
+
+<!-- shared styles for the about + share blocks -->
+<style>
+  .about-section { max-width: 720px; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+  .about-section h2 { margin-bottom: .75rem; }
+  .about-section .about-lead { font-size: 1.08em; }
+  .about-section .about-invite { border-left: 3px solid #2e7d32; padding: .6rem 1rem; margin-top: 1rem; background: rgba(46,125,50,.07); }
+  .share-block { margin-top: 1.5rem; }
+  .share-block .share-title { font-weight: 600; margin-bottom: .5rem; }
+  .share-btn { display: inline-block; margin: 0 .4rem .4rem 0; padding: .45rem .9rem;
+               border: 1px solid #888; border-radius: 6px; background: transparent;
+               font: inherit; font-size: .92em; cursor: pointer; text-decoration: none; color: inherit; }
+  .share-btn:hover { background: rgba(128,128,128,.15); }
+  .share-copied { color: #2e7d32; font-size: .9em; margin-left: .5rem; }
+</style>
+
+<!-- ============================================================
+     2. ABOUT — POLISH
+     ============================================================ -->
+<section id="about" class="about-section" lang="pl">
+  <h2>O projekcie</h2>
+  <p class="about-lead">
+    <strong>Bezpieczne Przejścia</strong> to osobisty projekt
+    <strong>Andrii Shramko</strong> — inżyniera VR, wolumetrycznego wideo
+    i widzenia komputerowego. Bez grantu, bez firmy, bez budżetu:
+    jeden mały serwer CPU, otwarty kod i publiczna kamera miejska.
+  </p>
+  <p>
+    Cel jest prosty: <strong>pokazać, że monitoring bezpieczeństwa drogowego może
+    być transparentny, tani i otwarty</strong>. Sztuczna inteligencja obserwuje
+    przejście dla pieszych na żywo, wskazuje niebezpieczne sytuacje i tłumaczy
+    swoje decyzje — a każdy odwiedzający może te werdykty zweryfikować i ocenić.
+    Twarze i tablice rejestracyjne są rozmywane, na dysku zostają tylko
+    zanonimizowane statystyki. Cały kod jest publiczny (Apache-2.0).
+  </p>
+  <p class="about-invite">
+    <strong>Zapraszam do współpracy</strong> miasta, zarządców dróg, firmy
+    i badaczy: udostępnij kamerę nad przejściem, przetestuj system w swojej
+    gminie albo rozwijaj kod razem ze mną.
+    <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">Kod na GitHubie</a>
+    · <a href="#contact">napisz przez formularz kontaktowy</a>.
+  </p>
+
+  <!-- share block, PL labels -->
+  <div class="share-block" data-share-text="AI na żywo patrzy na polskie przejście dla pieszych — sprawdź jego werdykty sam:">
+    <div class="share-title">Udostępnij projekt:</div>
+    <button class="share-btn" data-share="linkedin">LinkedIn</button>
+    <button class="share-btn" data-share="facebook">Facebook</button>
+    <button class="share-btn" data-share="x">X / Twitter</button>
+    <button class="share-btn" data-share="copy" data-copied-label="Skopiowano!">Kopiuj link</button>
+    <span class="share-copied" hidden>Skopiowano!</span>
+  </div>
+</section>

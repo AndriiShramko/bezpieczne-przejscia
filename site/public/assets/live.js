@@ -33,7 +33,7 @@
 
   var voted = {};
   try { voted = JSON.parse(localStorage.getItem("bp_voted2") || "{}"); } catch (e) {}
-  var curTab = "all", events = [], lastSig = "";
+  var curTab = "all", curHour = null, events = [], lastSig = "";
 
   function el(i) { return document.getElementById(i); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -81,7 +81,7 @@
 
   /* ---------- events ---------- */
   function loadEvents() {
-    fetch("/cv/events.json?tab=" + curTab, { cache: "no-store" })
+    fetch("/cv/events.json?tab=" + curTab + (curHour ? "&hour=" + encodeURIComponent(curHour) : ""), { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (d) { events = d.events || []; renderEvents(); })
       .catch(function () {});
@@ -94,7 +94,7 @@
   }
   function renderEvents() {
     var box = el("events"); if (!box) return;
-    var sig = curTab + "|" + events.map(function (e) {
+    var sig = curTab + "|" + (curHour || "") + "|" + events.map(function (e) {
       return e.id + ":" + e.status + ":" + (e.ai_verdict || "") + ":" + e.confirm + ":" + e.refute + ":" + (voted[e.id] || "");
     }).join(",");
     if (sig === lastSig) return;
@@ -109,7 +109,9 @@
                 : '<img loading="lazy" src="/cv/snap/' + esc(e.snap) + '" alt="">') +
         '</div><figcaption>' +
         '<div class="ev-top">#' + e.id + " · " + esc((e.ts || "").replace("T", " ").slice(0, 16)) +
-        " · " + (e.dur != null ? e.dur : "?") + "s · ~" + (e.kmh != null ? e.kmh : "?") + " km/h " + aiBadge(e) + "</div>" +
+        " · " + (e.dur != null ? e.dur : "?") + "s · ~" + (e.kmh != null ? e.kmh : "?") + " km/h " +
+        (e.kind === "speeding" ? '<span class="ai-badge" style="background:#4d3800;color:#ffcf5c">⚡ ' + (L === "pl" ? "prędkość (szac.)" : "speed (est.)") + "</span> " : "") +
+        aiBadge(e) + "</div>" +
         (expl ? '<div class="ev-ai">' + esc(expl) + "</div>" : '<div class="ev-ai muted">' + esc(e.desc || "") + "</div>") +
         '<div class="ev-q">' + T.q + "</div>" +
         '<div class="ev-actions">' + vbtn(e.id, "violation", T.yes, v) + vbtn(e.id, "false_alarm", T.no, v) + "</div>" +
@@ -128,12 +130,14 @@
     if (b && !b.disabled) {
       var id = b.getAttribute("data-id"), verdict = b.getAttribute("data-v");
       b.disabled = true;
+      // lock BOTH buttons of this event everywhere (cards + lightbox) at once
+      document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = true; });
       fetch("/cv/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: Number(id), verdict: verdict }) })
         .then(function (r) {
-          if (r.ok) { voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {} lastSig = ""; loadEvents(); }
-          else b.disabled = false;
-        }).catch(function () { b.disabled = false; });
+          if (r.ok) { voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {} lastSig = ""; loadEvents(); if (typeof boxIdx !== "undefined" && boxIdx >= 0 && typeof renderBox === "function") renderBox(); }
+          else document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; });
+        }).catch(function () { document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; }); });
       return;
     }
     var tb = ev.target.closest && ev.target.closest(".tab");
@@ -213,12 +217,23 @@
         return (i * W / Math.max(1, n - 1)).toFixed(1) + "," + (H - 12 - (H - 24) * x[key] / m).toFixed(1);
       }).join(" ");
     }
+    var mb = Math.max.apply(null, hourly.map(function (x) { return x.bike || 0; }).concat([1]));
+    // invisible hover strips with native tooltips (hour + values)
+    var bw = W / Math.max(1, n);
+    var hov = hourly.map(function (x, i) {
+      var tip = (x.h || "").slice(11, 16) + "  " + x.veh + " " + T.veh + ", " + x.ped + " " + T.ped + ", " + (x.bike || 0) + " " + T.bike;
+      return '<rect x="' + (i * bw).toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + H + '" fill="transparent"><title>' + tip + "</title></rect>";
+    }).join("");
     e.innerHTML = svgEl(W, H) +
       '<polyline fill="none" stroke="#37b6ff" stroke-width="2" points="' + pts("veh", mv) + '"/>' +
       '<polyline fill="none" stroke="#2ee6a6" stroke-width="2" points="' + pts("ped", mp) + '"/>' +
+      '<polyline fill="none" stroke="#ffcf5c" stroke-width="1.5" points="' + hourly.map(function (x, i) {
+        return (i * W / Math.max(1, n - 1)).toFixed(1) + "," + (H - 12 - (H - 24) * (x.bike || 0) / mb).toFixed(1);
+      }).join(" ") + '"/>' + hov +
       "</svg>" +
       '<div class="legend"><i style="background:#37b6ff"></i>' + T.veh + " (max " + mv + "/h)" +
-      '<i style="background:#2ee6a6"></i>' + T.ped + " (max " + mp + "/h)</div>";
+      '<i style="background:#2ee6a6"></i>' + T.ped + " (max " + mp + "/h)" +
+      '<i style="background:#ffcf5c"></i>' + T.bike + "</div>";
   }
   function histChart(id, bins, total) {
     var e = el(id); if (!e) return;
@@ -227,7 +242,8 @@
     var bars = bins.map(function (v, i) {
       var bh = (H - 26) * v / m;
       return '<rect x="' + (i * bw + 2).toFixed(1) + '" y="' + (H - 14 - bh).toFixed(1) +
-        '" width="' + (bw - 4).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="#ffcf5c"/>' +
+        '" width="' + (bw - 4).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="#ffcf5c"><title>' +
+        (i * 5) + "-" + (i * 5 + 5) + " km/h: " + v + "</title></rect>" +
         (i % 2 === 0 ? '<text x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (H - 2) + '" font-size="9" fill="#8b97a7" text-anchor="middle">' + i * 5 + "</text>" : "");
     }).join("");
     e.innerHTML = svgEl(W, H) + bars + "</svg>" +
@@ -240,12 +256,29 @@
     var bw = W / n;
     var bars = hourly.map(function (x, i) {
       var bh = (H - 26) * x.ev / m, vh = (H - 26) * (x.viol || 0) / m;
-      return '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - 14 - bh).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="#22435e"/>' +
-             '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - 14 - vh).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + vh.toFixed(1) + '" fill="#ff5d6c"/>';
+      var hr = (x.h || "").slice(0, 13);
+      var sel = curHour === hr;
+      var tip = (x.h || "").slice(11, 16) + "  " + x.ev + (L === "pl" ? " epizodów, " : " episodes, ") + (x.viol || 0) + (L === "pl" ? " naruszeń — kliknij, by filtrować" : " violations — click to filter");
+      return '<g class="evbar" data-hour="' + hr + '" style="cursor:pointer">' +
+             '<rect x="' + (i * bw + 1).toFixed(1) + '" y="0" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + H + '" fill="transparent"/>' +
+             '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - 14 - bh).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="' + (sel ? "#3f6f9e" : "#22435e") + '"/>' +
+             '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - 14 - vh).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + vh.toFixed(1) + '" fill="#ff5d6c"/>' +
+             "<title>" + tip + "</title></g>";
     }).join("");
     e.innerHTML = svgEl(W, H) + bars + "</svg>" +
       '<div class="legend"><i style="background:#22435e"></i>' + (L === "pl" ? "epizody" : "episodes") +
-      '<i style="background:#ff5d6c"></i>' + (L === "pl" ? "naruszenia wg AI" : "AI violations") + "</div>";
+      '<i style="background:#ff5d6c"></i>' + (L === "pl" ? "naruszenia wg AI" : "AI violations") +
+      (curHour ? ' · <a href="#" id="hour-reset">' + (L === "pl" ? "pokaż wszystkie godziny ✕" : "show all hours ✕") + "</a>" : "") + "</div>";
+    e.querySelectorAll(".evbar").forEach(function (g) {
+      g.addEventListener("click", function () {
+        var hr = g.getAttribute("data-hour");
+        curHour = (curHour === hr) ? null : hr;
+        lastSig = ""; loadEvents(); drawCharts();
+        var evs = el("events"); if (evs && curHour) evs.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    var rst = el("hour-reset");
+    if (rst) rst.addEventListener("click", function (ev2) { ev2.preventDefault(); curHour = null; lastSig = ""; loadEvents(); drawCharts(); });
   }
 
   /* ---------- boot ---------- */

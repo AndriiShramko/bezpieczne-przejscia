@@ -1,0 +1,67 @@
+<!-- EN -->
+<section id="faq" class="faq">
+ <h2>Frequently asked questions — no marketing, honestly</h2>
+ <details>
+  <summary>How does the system detect violations?</summary>
+  <p>The system does not guess from a single frame. An episode is created only when local kinematics shows two
+  things at once: a pedestrian is <strong>walking</strong> on the crossing and a vehicle is
+  <strong>moving</strong> through the same zone (a car stopped at a red light is not an episode). A sequence of
+  up to 8 frames then goes to the AI, which issues a verdict with an explanation. Humans have the final say —
+  every verdict can be confirmed or refuted.</p>
+ </details>
+ <details>
+  <summary>Does the AI make mistakes?</summary>
+  <p>Yes — and we don't hide it. That is why every verdict has ✓/✗ buttons: any visitor can confirm or refute
+  the AI's judgement. From those votes we compute AI↔human agreement and publish it live on the home page.
+  We treat events as candidates, not as facts.</p>
+ </details>
+ <details>
+  <summary>How is vehicle speed measured?</summary>
+  <p>It is a monocular estimate: pixel displacement between frames converted through a known lane scale. The
+  result is indicative — the error can reach ±30%. It is <strong>not</strong> a radar or a measurement
+  instrument, and it is not legal evidence of anything.</p>
+ </details>
+ <details>
+  <summary>What about privacy and GDPR?</summary>
+  <p>The system identifies no one: tracking uses ephemeral in-memory IDs, and only aggregate counters and
+  short event clips reach the disk. Blurring of faces and licence plates is available. This is a research
+  demonstrator, not surveillance or enforcement — no register of offences is created. Details on the
+  <a href="/en/compliance.html">Compliance / GDPR</a> page.</p>
+ </details>
+ <details>
+  <summary>Why does the video lag a few seconds and run at a low FPS?</summary>
+  <p>The source is an HLS stream, which by design splits video into multi-second segments — hence the delay.
+  The analysis runs on a CPU with a limited compute budget, so we process a few frames per second instead of
+  the full 25. A smoothing queue keeps the preview fluid instead of a choppy "live at any cost" picture.</p>
+ </details>
+ <details>
+  <summary>Are bicycles counted?</summary>
+  <p>Yes — bicycles are a separate detection class with separate statistics, because their behaviour at a
+  crossing differs from pedestrians and cars. Motorcycles are counted as vehicles.</p>
+ </details>
+ <details>
+  <summary>Where do the cameras come from?</summary>
+  <p>From public webcams made available by municipalities. The source of each camera is credited next to the
+  preview. We do not install our own cameras and we do not use closed CCTV systems.</p>
+ </details>
+ <details>
+  <summary>Can I run this at my own crossing?</summary>
+  <p>Yes — the whole project is open source under Apache-2.0:
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
+  You need a public camera stream and a small server — CPU is enough, no GPU. The method is portable: the AI
+  describes the scene once (zones, lanes, directions), then the analysis runs automatically.</p>
+ </details>
+ <details>
+  <summary>How much does it cost?</summary>
+  <p>Almost nothing. Detection runs locally on a CPU, AI verdicts fit within the free daily tier, and hosting
+  is a small VPS. The code is open — the only real cost is the server and your setup time.</p>
+ </details>
+ <details>
+  <summary>What does the AI do, and what does YOLO do?</summary>
+  <p>It is a cooperation of three "models". <strong>YOLOX</strong> is perception: it finds pedestrians and
+  vehicles in every frame, locally and for free, but it doesn't "understand" the scene. <strong>Gemini</strong>
+  is understanding: it describes the crossing topology once, then judges each episode from a frame sequence.
+  <strong>Humans</strong> are the final check — they confirm or refute the verdicts, and true accuracy is
+  computed from that.</p>
+ </details>
+</section>

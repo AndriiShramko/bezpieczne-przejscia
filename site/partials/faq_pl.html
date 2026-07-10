@@ -1,0 +1,75 @@
+<!-- FAQ — Bezpieczne Przejścia / SafeCross. Two sections: PL first, EN below (marked <!— EN —>).
+Suggested CSS additions for the CSS block in build_site.py (uses existing vars):
+.faq{margin:2.4rem 0}
+.faq details{background:var(--panel);border-radius:12px;padding:.2rem 1rem;margin:.6rem 0}
+.faq summary{cursor:pointer;font-weight:700;padding:.65rem 0;color:var(--tx)}
+.faq details[open] summary{color:var(--acc)}
+.faq details p{color:#cdd6e0;font-size:.95rem;margin:.2rem 0 .9rem}
+-->
+
+<!-- PL -->
+<section id="faq" class="faq">
+ <h2>Najczęstsze pytania — bez marketingu, uczciwie</h2>
+ <details>
+  <summary>Jak system wykrywa naruszenia?</summary>
+  <p>System nie zgaduje z pojedynczej klatki. Epizod powstaje tylko wtedy, gdy lokalna kinematyka pokazuje
+  dwie rzeczy naraz: pieszy <strong>idzie</strong> po przejściu i pojazd <strong>jedzie</strong> przez tę samą
+  strefę (auto stojące na czerwonym to nie epizod). Wtedy sekwencja do 8 klatek trafia do AI, które wydaje
+  werdykt z wyjaśnieniem po polsku. Ostatnie słowo mają ludzie — każdy werdykt można potwierdzić lub odrzucić.</p>
+ </details>
+ <details>
+  <summary>Czy AI się myli?</summary>
+  <p>Tak — i nie ukrywamy tego. Dlatego przy każdym werdykcie są przyciski ✓/✗: każdy odwiedzający może
+  potwierdzić lub odrzucić ocenę AI. Z tych głosów liczymy zgodność AI↔ludzie i publikujemy ją na żywo na
+  stronie głównej. Zdarzenia traktujemy jako kandydatów, nie jako fakty.</p>
+ </details>
+ <details>
+  <summary>Jak mierzona jest prędkość pojazdów?</summary>
+  <p>To estymata monokularna: przesunięcie obiektu w pikselach między klatkami przeliczamy przez znaną skalę
+  pasa ruchu. Wynik jest orientacyjny — błąd może sięgać ±30%. To <strong>nie</strong> jest radar ani przyrząd
+  pomiarowy i nie stanowi żadnego dowodu prawnego.</p>
+ </details>
+ <details>
+  <summary>Co z prywatnością i RODO?</summary>
+  <p>System nikogo nie identyfikuje: śledzenie używa efemerycznych ID w pamięci, a na dysk trafiają tylko
+  zbiorcze liczniki i krótkie klipy zdarzeń. Dostępne jest rozmywanie twarzy i tablic rejestracyjnych.
+  To demonstrator badawczy, nie nadzór ani egzekwowanie prawa — nie powstaje żaden rejestr wykroczeń.
+  Szczegóły na stronie <a href="/compliance.html">Zgodność / RODO</a>.</p>
+ </details>
+ <details>
+  <summary>Dlaczego wideo ma kilka sekund opóźnienia i niski FPS?</summary>
+  <p>Źródłem jest strumień HLS, który z natury dzieli wideo na kilkusekundowe segmenty — stąd opóźnienie.
+  Analiza działa na CPU z ograniczonym budżetem obliczeń, więc przetwarzamy kilka klatek na sekundę zamiast
+  pełnych 25. Kolejka wygładzająca dba o płynny podgląd zamiast rwanego obrazu „na żywo za wszelką cenę".</p>
+ </details>
+ <details>
+  <summary>Czy liczone są rowery?</summary>
+  <p>Tak — rowery to osobna klasa detekcji z osobnymi statystykami, bo ich zachowanie na przejściu różni się
+  od pieszych i aut. Motocykle są liczone jako pojazdy.</p>
+ </details>
+ <details>
+  <summary>Skąd pochodzą kamery?</summary>
+  <p>Z publicznych kamer internetowych udostępnianych przez miasta. Źródło każdej kamery jest podane przy
+  podglądzie. Nie instalujemy własnych kamer i nie korzystamy z zamkniętych systemów monitoringu.</p>
+ </details>
+ <details>
+  <summary>Czy mogę uruchomić to na swoim skrzyżowaniu?</summary>
+  <p>Tak — cały projekt jest open source na licencji Apache-2.0:
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
+  Potrzebny jest publiczny strumień z kamery i mały serwer — wystarczy CPU, bez GPU. Metoda jest przenośna:
+  AI raz opisuje scenę (strefy, pasy, kierunki), a potem analiza działa automatycznie.</p>
+ </details>
+ <details>
+  <summary>Ile to kosztuje?</summary>
+  <p>Prawie nic. Detekcja działa lokalnie na CPU, werdykty AI mieszczą się w darmowym dziennym limicie
+  (free tier), a hosting to mały VPS. Kod jest otwarty — jedyny realny koszt to serwer i czas na konfigurację.</p>
+ </details>
+ <details>
+  <summary>Co robi AI, a co YOLO?</summary>
+  <p>To współpraca trzech „modeli". <strong>YOLOX</strong> to percepcja: wykrywa pieszych i pojazdy w każdej
+  klatce, lokalnie i za darmo, ale „nie rozumie" sceny. <strong>Gemini</strong> to zrozumienie: raz opisuje
+  topologię przejścia, a potem ocenia każdy epizod na podstawie sekwencji klatek. <strong>Ludzie</strong> są
+  ostateczną kontrolą — potwierdzają lub odrzucają werdykty, i z tego liczymy realną trafność.</p>
+ </details>
+</section>
+

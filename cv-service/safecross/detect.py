@@ -78,8 +78,14 @@ class OnnxCocoDetector:
         if nthreads > 0:
             so.intra_op_num_threads = nthreads
             so.inter_op_num_threads = 1
+        # ONNX_PROVIDERS=cuda runs the same model on a GPU node (RTX etc.);
+        # falls back to CPU automatically if CUDA is unavailable at runtime.
+        if "cuda" in os.environ.get("ONNX_PROVIDERS", "cpu").lower():
+            providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        else:
+            providers = ["CPUExecutionProvider"]
         self.sess = ort.InferenceSession(onnx_path, sess_options=so,
-                                         providers=["CPUExecutionProvider"])
+                                         providers=providers)
         self.input_name = self.sess.get_inputs()[0].name
         self.size = input_size
         self.conf = conf_thres

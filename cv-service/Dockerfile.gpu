@@ -1,0 +1,29 @@
+# GPU build of the CV worker for a local NVIDIA node (e.g. RTX 4090).
+# Same code as the CPU image; onnxruntime-gpu + CUDA/cuDNN runtime base.
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 python3-pip libgl1 libglib2.0-0 ca-certificates curl unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3 /usr/local/bin/python3
+
+RUN pip3 install --no-cache-dir --break-system-packages \
+      numpy opencv-python-headless onnxruntime-gpu yt-dlp imageio-ffmpeg \
+      2>/dev/null || pip3 install --no-cache-dir \
+      numpy opencv-python-headless onnxruntime-gpu yt-dlp imageio-ffmpeg
+
+WORKDIR /app
+RUN mkdir -p /app/models && curl -fsSL -o /app/models/yolox_s.onnx \
+      https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.onnx
+COPY safecross /app/safecross
+COPY worker.py db.py ai_analyst.py /app/
+
+ENV MODEL_PATH=/app/models/yolox_s.onnx \
+    DB_PATH=/data/events.db \
+    PORT=8090 \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    ONNX_PROVIDERS=cuda
+
+EXPOSE 8090
+CMD ["python3", "/app/worker.py"]

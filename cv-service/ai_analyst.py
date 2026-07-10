@@ -20,6 +20,7 @@ import os
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from datetime import datetime, timedelta, timezone
 
 import db
@@ -30,6 +31,9 @@ BACKEND = os.environ.get("AI_BACKEND", "gemini").lower()
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 DAILY_CAP = int(os.environ.get("AI_DAILY_CAP", "150"))
+# spread the daily budget over the day so a busy morning cannot burn it all
+# in two hours and leave the system blind till midnight
+HOURLY_CAP = int(os.environ.get("AI_HOURLY_CAP", str(max(4, DAILY_CAP // 20))))
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 # local (Ollama) — recommended: qwen2.5vl:3b (Apache-2.0) on a 4c/8GB box,
@@ -70,11 +74,12 @@ def _shrink_b64_jpeg(b64, width):
 # slow/broken we stop hammering it and lean on the free-tier fallback.
 _breaker = {"fails": 0, "until": 0.0}
 
-# Free-tier quota guard: on HTTP 429 (RESOURCE_EXHAUSTED) we stop calling
-# Gemini until the free quota resets (midnight US-Pacific = 07:00 UTC in
-# summer), then resume automatically. Combined with DAILY_CAP this keeps
-# usage strictly inside the free tier — we never retry into paid territory.
-_quota = {"until": 0.0}
+# Free-tier quota guard. A 429 can mean the PER-MINUTE limit (transient) or
+# the DAILY limit. Strategy: first 429s back off briefly; if they keep coming
+# (3+ within 10 min) it is the daily quota — pause until reset (08:10 UTC,
+# DST-proof) and resume automatically. Never retries into paid territory.
+_quota = {"until": 0.0, "hits": deque(maxlen=8)}
+_hour_budget = {"hour": "", "calls": 0}
 
 
 class QuotaExhausted(Exception):
@@ -98,9 +103,17 @@ def _local_ok():
     return BACKEND == "local" and time.time() >= _breaker["until"]
 
 
+def _hour_ok():
+    h = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+    if _hour_budget["hour"] != h:
+        _hour_budget["hour"] = h
+        _hour_budget["calls"] = 0
+    return _hour_budget["calls"] < HOURLY_CAP
+
+
 def _gemini_ok():
     return (bool(API_KEY) and time.time() >= _quota["until"]
-            and db.ai_calls_today() < DAILY_CAP)
+            and db.ai_calls_today() < DAILY_CAP and _hour_ok())
 
 
 def enabled():
@@ -131,12 +144,23 @@ def _call(parts, max_tokens=2000, temperature=0.2, timeout=90):
     # 2) cloud fallback / primary (Gemini free tier, capped)
     if _gemini_ok():
         try:
-            return _call_gemini(parts, max_tokens, temperature, timeout)
+            out = _call_gemini(parts, max_tokens, temperature, timeout)
+            _hour_budget["calls"] += 1
+            return out
         except QuotaExhausted:
-            _quota["until"] = _quota_reset_ts()
-            print(f"ai_analyst: Gemini free quota exhausted (429) — paused until "
-                  f"{datetime.fromtimestamp(_quota['until'], timezone.utc):%Y-%m-%d %H:%M} UTC, "
-                  f"will resume automatically", flush=True)
+            now = time.time()
+            _quota["hits"].append(now)
+            recent = [t for t in _quota["hits"] if now - t < 600]
+            if len(recent) >= 3:
+                # repeated 429s -> daily quota really exhausted
+                _quota["until"] = _quota_reset_ts()
+                print(f"ai_analyst: daily free quota exhausted — paused until "
+                      f"{datetime.fromtimestamp(_quota['until'], timezone.utc):%Y-%m-%d %H:%M}"
+                      f" UTC, resumes automatically", flush=True)
+            else:
+                # single 429 may be the per-MINUTE limit -> short backoff
+                _quota["until"] = now + 90
+                print("ai_analyst: 429 (rate limit) — backing off 90 s", flush=True)
         except Exception as e:
             print(f"ai_analyst gemini error: {e}", flush=True)
     return None
@@ -191,31 +215,56 @@ def _img_part(jpeg_bytes):
 
 
 SCENE_PROMPT = """You are a traffic-engineering scene analyst. This is a frame from a fixed public
-camera over a road scene in Poland. Produce a JSON scene context for a computer-vision pipeline
-(YOLO detector + zone topology) that must correctly interpret events at the PEDESTRIAN CROSSINGS.
-All coordinates are normalized fractions of image width/height in [0,1].
+camera over a road scene in Poland. A COORDINATE GRID is drawn on the image: thin lines every 0.1
+of width/height with labels — USE IT to give precise coordinates. Produce a JSON scene context for
+a computer-vision pipeline (YOLO detector + zone topology) that must correctly interpret events at
+the PEDESTRIAN CROSSINGS. All coordinates are normalized fractions of width/height in [0,1].
 
 Return ONLY JSON with keys:
 - description: 2-3 sentences;
-- crossings: [{id, polygon:[[x,y]*4..6], approach_directions, signalized:bool}];
+- crossings: [{id, polygon:[[x,y]*4..6], approach_directions, signalized:bool}] — one entry PER
+  CARRIAGEWAY HALF if a refuge island splits the crossing (e.g. cx1_left, cx1_right), polygon
+  covering the FULL zebra stripes area of that half, tight to the painted stripes;
+- bike_crossings: [{id, polygon:[[x,y]*4..6]}] — the red/marked CYCLIST crossings (przejazd dla
+  rowerzystów) running parallel to zebras; empty array if none;
+- islands: [{id, polygon:[[x,y]*3..6]}] — refuge islands / medians where pedestrians WAIT between
+  carriageways; a person standing here is NOT on any crossing;
 - traffic_lights: [{id, bbox:[x1,y1,x2,y2], controls, visible_at_night:bool}];
-- vehicle_flows: [{from, to, lanes, passes_crossing_ids}];
-- scale_hints: [{feature, approx_pixels_at_full_width:number, approx_meters:number}] — pick
-  measurable features (PL lane ~3.5 m, zebra stripe 0.5 m, crossing length);
-- event_rules: short rules for a REAL "driver failed to yield" at THESE crossings, including how
-  signals change interpretation;
-- pitfalls: where a naive zone-overlap detector would false-alarm here (waiting cars, islands...);
-- ignore_regions: CRITICAL — array of {label, bbox:[x1,y1,x2,y2]} for every FIXED object a COCO
-  detector (YOLO) is likely to MISCLASSIFY as a car or a person: traffic-light heads and their
-  poles, road signs on poles, bollards/posts, statues/monuments, illuminated shop signs, parked-
-  forever objects, litter bins. Give a tight bbox for each. The pipeline uses these to suppress
-  false "car"/"person" detections on static street furniture, so be thorough."""
+- vehicle_flows: [{from, to, lanes, passes_crossing_ids, direction}] — which crossing halves each
+  flow crosses and from which side;
+- scale_hints: [{feature, approx_pixels_at_full_width:number, approx_meters:number}];
+- event_rules: PRECISE per-crossing rules for a REAL "driver failed to yield" HERE: which flow
+  vs which crossing half, how the island changes it (vehicle on a half the pedestrian ALREADY
+  LEFT = no violation), how signals change it;
+- pitfalls: where a naive zone-overlap detector would false-alarm here;
+- ignore_regions: array of {label, bbox:[x1,y1,x2,y2]} for every FIXED object a COCO detector is
+  likely to MISCLASSIFY as car/person (traffic-light heads, poles, signs, bollards, bins). Tight
+  bboxes, be thorough."""
+
+REFINE_PROMPT = """The SAME camera frame now has your proposed geometry DRAWN on it:
+crossing polygons in YELLOW with their ids, bike crossings in CYAN, islands in MAGENTA.
+Compare the drawn shapes with the actual painted zebras / red bike crossings / islands in the
+image (the 0.1 coordinate grid is also drawn). Fix every polygon that is misplaced, too small,
+or missing — the polygons must tightly cover the real painted areas. Return the FULL corrected
+JSON in exactly the same schema as before (all keys, not only the fixed ones)."""
 
 
 def scene_context(jpeg_bytes):
     if not enabled():
         return None
-    return _call([_img_part(jpeg_bytes), {"text": SCENE_PROMPT}], max_tokens=4000)
+    return _call([_img_part(jpeg_bytes), {"text": SCENE_PROMPT}], max_tokens=5000)
+
+
+def scene_refine(annotated_jpeg_bytes, scene_json):
+    """One self-check round: show the model its own polygons drawn on the
+    frame and let it correct them. Costs one extra call per camera, hugely
+    improves zone placement."""
+    if not enabled():
+        return None
+    parts = [_img_part(annotated_jpeg_bytes),
+             {"text": "Previous JSON:\n" + json.dumps(scene_json, ensure_ascii=False)[:6000]
+                      + "\n\n" + REFINE_PROMPT}]
+    return _call(parts, max_tokens=5000)
 
 
 EVENT_PROMPT = """You are a road-safety incident analyst for Poland. Polish law (since 1 June 2021):
@@ -223,10 +272,18 @@ a driver approaching a pedestrian crossing must slow down and YIELD to a pedestr
 and one ENTERING it. A pedestrian crossing on red has no priority. A stationary vehicle waiting at
 a red light near the zebra is NOT a violation.
 
+CRITICAL island rule: a pedestrian standing on a REFUGE ISLAND between carriageways is NOT on the
+crossing. A vehicle passing over the half of the crossing the pedestrian has ALREADY LEFT is NOT a
+violation. Only a vehicle moving through the half the pedestrian is ON or clearly ENTERING violates.
+Apply the per-crossing event_rules from the scene context — they encode which traffic flow conflicts
+with which crossing half.
+
 You get {n} chronological frames (~{fps} fps apart) of ONE flagged episode from a fixed camera, plus
-scene context. Faces/plates are blurred for privacy — judge by motion and positions, not identity.
+scene context and object trajectories. Judge by motion and positions, not identity.
 
 SCENE CONTEXT (JSON): {scene}
+TRACK TRAJECTORIES (normalized [0,1] coords, chronological, p=pedestrian v=vehicle b=bike):
+{traj}
 EPISODE METADATA: traffic-light state seen by pixel analysis: {tl}; max vehicle speed estimate:
 {kmh} km/h (rough, monocular); pedestrians in zone: {n_ped}; vehicles in zone: {n_veh}.
 
@@ -247,14 +304,36 @@ Decide what actually happened. Return ONLY JSON:
 - what_would_help: one short sentence — what extra data would make this decidable."""
 
 
-def analyze_event(frames_jpeg, scene_json, tl_state, kmh, n_ped, n_veh, fps=2):
+SPEEDING_PROMPT = """You are a road-safety analyst. A monocular CV pipeline flagged a vehicle at
+~{kmh} km/h (rough estimate, ±30%, urban limit {limit} km/h) in these {n} chronological frames
+(~{fps} fps). You CANNOT measure speed from frames — instead sanity-check the flag:
+- is there really ONE vehicle moving visibly faster than surrounding traffic / covering a large
+  distance across frames? Or is this a tracker artifact (box jumping between two cars, a bus,
+  reflections)?
+Return ONLY JSON:
+- verdict: "violation" (clearly fast-moving single vehicle, flag plausible) | "no_violation"
+  (tracking artifact / normal speed) | "uncertain";
+- violator: "driver" | "none";
+- explanation_pl: 2-3 zdania po polsku (podkreśl, że pomiar jest szacunkowy);
+- explanation_en: same in English;
+- confidence: 0..1."""
+
+
+def analyze_event(frames_jpeg, scene_json, tl_state, kmh, n_ped, n_veh, fps=2,
+                  kind="potential_conflict", trajectories=None):
     if not enabled():
         return None
-    prompt = EVENT_PROMPT.format(
-        n=len(frames_jpeg), fps=fps,
-        scene=json.dumps(scene_json, ensure_ascii=False)[:4000] if scene_json else "unavailable",
-        tl=tl_state or "unknown", kmh=kmh if kmh else "unknown",
-        n_ped=n_ped, n_veh=n_veh)
+    if kind == "speeding":
+        prompt = SPEEDING_PROMPT.format(kmh=kmh if kmh else "?", fps=fps,
+                                        n=len(frames_jpeg),
+                                        limit=os.environ.get("SPEED_LIMIT_KMH", "50"))
+    else:
+        prompt = EVENT_PROMPT.format(
+            n=len(frames_jpeg), fps=fps,
+            scene=json.dumps(scene_json, ensure_ascii=False)[:4000] if scene_json else "unavailable",
+            traj=(trajectories or "unavailable")[:2500],
+            tl=tl_state or "unknown", kmh=kmh if kmh else "unknown",
+            n_ped=n_ped, n_veh=n_veh)
     parts = [_img_part(f) for f in frames_jpeg] + [{"text": prompt}]
     out = _call(parts, max_tokens=1500)
     if not out or "verdict" not in out:
