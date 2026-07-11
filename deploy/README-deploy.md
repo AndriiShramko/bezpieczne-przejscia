@@ -1,12 +1,12 @@
 # Deploy runbook — patrol.flyreelstudio.eu (OPERATOR GATES APPLY)
 
-Target (default per spec): the virtualproduction.business server (neighbour:
-Teleportour, Django+Vue). **The stack is additive and must not touch the
+Target (default per spec): a shared production server that already co-hosts a
+neighbouring web app. **The stack is additive and must not touch the
 neighbour.** Safer alternative: any separate node / Cloudflare Pages.
 
 ## Operator-only steps (the agent must NOT do these autonomously)
 1. Provide SSH endpoint + **non-root deploy user** scoped to this stack.
-   (The Hetzner API token is out of agent scope; read-only list/describe max.)
+   (The cloud provider API token is out of agent scope; read-only list/describe max.)
 2. **Independent before-snapshot of the neighbour** (uptime, cert fingerprint) —
    without it the deploy is a hard STOP.
 3. DNS: A-record `patrol.flyreelstudio.eu` -> target IP.

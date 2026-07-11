@@ -280,9 +280,11 @@ def scene_context(jpeg_bytes):
 RULES_PROMPT = """This frame shows a road scene with a zone map (JSON below): pedestrian crossings,
 bike crossings, refuge islands. Write PRECISE per-crossing EVENT RULES for judging "driver failed
 to yield" incidents HERE under Polish law (since 2021: yield to a pedestrian ON the crossing or
-ENTERING it; pedestrian on a refuge island is NOT on the crossing; vehicle on the half the
-pedestrian already LEFT is not violating; red-light-crossing pedestrians have no priority).
-Name the zones by their ids. 4-8 short sentences, English.
+ENTERING it; the driver must yield ONLY while the pedestrian is on the ROADWAY — once the pedestrian
+reaches the far sidewalk/kerb or a refuge island the driver may proceed and it is NOT a violation;
+a vehicle on the half the pedestrian already LEFT is not violating; red-light-crossing pedestrians
+have no priority; a violation requires a real MOVING motor vehicle — a lone pedestrian/cyclist is
+never a violation). Name the zones by their ids. 4-8 short sentences, English.
 Return ONLY JSON: {"event_rules": "..."}"""
 
 
@@ -315,9 +317,26 @@ a driver approaching a pedestrian crossing must slow down and YIELD to a pedestr
 and one ENTERING it. A pedestrian crossing on red has no priority. A stationary vehicle waiting at
 a red light near the zebra is NOT a violation.
 
-CRITICAL island rule: a pedestrian standing on a REFUGE ISLAND between carriageways is NOT on the
-crossing. A vehicle passing over the half of the crossing the pedestrian has ALREADY LEFT is NOT a
-violation. Only a vehicle moving through the half the pedestrian is ON or clearly ENTERING violates.
+RULE 1 — a violation REQUIRES a real, visibly MOVING MOTOR VEHICLE physically driving across the
+crossing in these frames. If you cannot clearly see such a vehicle on the crossing, the verdict is
+"no_violation". NEVER assume, infer, hallucinate or "expect" a vehicle you cannot actually see. A
+person ALONE on the crossing — walking, pushing a stroller/pram, in a wheelchair, or cycling — is
+NOT a violation: pedestrians and cyclists have the RIGHT to be there. "vehicles in zone" metadata
+may be a detector artifact (a shadow, reflection, a parked or distant car); if no genuine moving
+motor vehicle is visible crossing while the pedestrian is on the road, return "no_violation".
+
+RULE 2 — the driver must yield ONLY while the pedestrian is ON THE ROADWAY (jezdnia). The instant
+the pedestrian steps OFF the roadway — onto the far sidewalk/kerb or onto a refuge island — the
+driver MAY proceed and it is NOT a violation, even if the pedestrian is still near the painted
+stripes. So: pedestrian ALMOST across and already reaching / standing on the far sidewalk while a
+previously-waiting car starts moving = LAWFUL, "no_violation". A pedestrian on a REFUGE ISLAND is
+NOT on the crossing; a vehicle passing the half the pedestrian has ALREADY LEFT is not a violation.
+Only a vehicle moving through the half the pedestrian is still ON or clearly ENTERING violates.
+
+RULE 3 — the drawn yellow crossing polygon can be miscalibrated and spill onto the sidewalk. Judge
+by whether the person is on the actual ROAD SURFACE, not merely inside the drawn zone. A person on
+the sidewalk who happens to fall inside an over-stretched polygon is NOT a crossing user.
+
 Apply the per-crossing event_rules from the scene context — they encode which traffic flow conflicts
 with which crossing half.
 

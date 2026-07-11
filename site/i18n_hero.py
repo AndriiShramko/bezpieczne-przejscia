@@ -1,2 +1,73 @@
-# auto-generated hero/why strings for es/ru
-HERO = {'es': {'h1': 'Más de <span class="hot">100 personas</span> siguen muriendo cada año en los pasos de peatones de Polonia.', 'lead': 'Desde el cambio legal del 1 de junio de 2021, el peatón que entra en un paso tiene prioridad: las muertes en pasos de peatones bajaron un 23.6% (KRBRD, 2019–2023), pero aun así 131 personas murieron en pasos señalizados en 2023. Mostramos un paso real EN VIVO: el sistema cuenta peatones, ciclistas y vehículos, la AI evalúa cada situación de conflicto y tú verificas sus veredictos, porque incluso una sola infracción en un paso ya es demasiado.', 'facts': [('458', 'peatones muertos en 2023 — ~1 de cada 4 del total de muertes en carretera'), ('131', 'de ellos en pasos señalizados (2023)'), ('PLN 2.57M', 'coste unitario de una sola víctima mortal en carretera (KRBRD)')], 'hooks': [('PLN 52bn / año', 'el coste de los accidentes de tráfico para Polonia — ~1.7% del PIB. Un solo paso mejorado puede amortizar todo el programa.', 'KRBRD, PANDORA 2022'), ('−23.6%', 'caída de las MUERTES de peatones en pasos tras la ley de 2021 (accidentes −7.8%). Funciona: terminemos el trabajo.', 'KRBRD 2019–2023'), ('12.2 / M', 'tasa de mortalidad de peatones por millón de habitantes — de las peores de la UE-27.', 'Observatorio Polaco de Seguridad Vial'), ('Vision Zero', 'UE: −50% de muertes para 2030, cero para 2050 (Safe System). Aportamos los datos objetivos que hoy faltan en las decisiones sobre infraestructura.', 'Marco de Seguridad Vial de la UE')], 'why_title': 'Por qué esto importa a los gobiernos', 'contact_h': 'Hablemos de tu paso de peatones', 'contact_p': 'Para un municipio, autoridad de carreteras, empresa o proyecto de investigación. Respondo en 1–2 días laborables.', 'cta1': 'Ver la cámara en vivo ↓', 'cta2': 'Para gobiernos', 'kicker': 'Análisis de vídeo en vivo · cámara real · verificación humana'}, 'ru': {'h1': 'Каждый год на пешеходных переходах Польши по-прежнему гибнет более <span class="hot">100 человек</span>.', 'lead': 'С момента изменения закона 1 июня 2021 года пешеход, вступающий на переход, имеет приоритет — число погибших на переходах снизилось на 23,6% (KRBRD, 2019–2023), но в 2023 году на обозначенных переходах всё равно погиб 131 человек. Мы показываем реальный переход в прямом эфире: система считает пешеходов, велосипедистов и транспорт, ИИ оценивает каждую конфликтную ситуацию, а вы проверяете его вердикты — потому что даже одно нарушение на переходе — это уже слишком много.', 'facts': [('458', 'погибших пешеходов в 2023 году — примерно каждый четвёртый среди всех погибших на дорогах'), ('131', 'из них на обозначенных переходах (2023)'), ('2,57 млн злотых', 'удельная стоимость одной смерти на дороге (KRBRD)')], 'hooks': [('52 млрд злотых / год', 'цена дорожных аварий для Польши — около 1,7% ВВП. Один исправленный переход может окупить всю программу.', 'KRBRD, PANDORA 2022'), ('−23,6%', 'снижение числа СМЕРТЕЙ пешеходов на переходах после закона 2021 года (аварий −7,8%). Это работает — доведём дело до конца.', 'KRBRD 2019–2023'), ('12,2 / млн', 'смертность пешеходов на миллион жителей — одна из худших в ЕС-27.', 'Польская обсерватория безопасности дорожного движения'), ('Vision Zero', 'ЕС: −50% смертей к 2030 году, ноль к 2050-му (Safe System). Мы даём объективные данные, которых не хватает нынешним решениям по инфраструктуре.', 'EU Road Safety Framework')], 'why_title': 'Почему это важно для власти', 'contact_h': 'Обсудим ваш переход', 'contact_p': 'Для города, дорожной службы, компании или исследовательского проекта. Отвечаю за 1–2 рабочих дня.', 'cta1': 'Смотреть камеру в эфире ↓', 'cta2': 'Для власти', 'kicker': 'Живой видеоанализ · реальная камера · проверка людьми'}}
+# -*- coding: utf-8 -*-
+# Country-localized hero/why strings. Each language leads with the reader's OWN
+# country's pedestrian-safety figures (not translated Polish numbers), so the
+# stakes feel local. The live demo camera itself is a real Polish crossing —
+# the copy is honest about that ("a real crossing, the same tech could watch
+# yours"). PL keeps Poland (KRBRD); EN uses global/EU framing (WHO + ETSC).
+#   ES -> Spain, DGT 2023
+#   RU -> Russia, State Traffic Inspectorate (Госавтоинспекция) 2023
+HERO = {
+    'es': {
+        'kicker': 'Análisis de vídeo en vivo · cámara real · verificación humana',
+        'h1': 'En España, cada año más de <span class="hot">350 peatones</span> mueren en accidentes de tráfico.',
+        'lead': 'En 2023 murieron 353 peatones en España — 1 de cada 5 víctimas mortales en '
+                'carretera (DGT). El 63% ocurre en ciudad, justo donde están los pasos de peatones. '
+                'Mostramos EN VIVO un paso real: el sistema cuenta peatones, ciclistas y vehículos, '
+                'la IA evalúa cada situación de conflicto y tú verificas sus veredictos. La misma '
+                'tecnología abierta podría vigilar cualquier paso — también el de tu ciudad.',
+        'facts': [
+            ('353', 'peatones muertos en España en 2023 — el 20% de todas las víctimas en carretera (DGT)'),
+            ('223', 'de ellos en zona urbana (63%), donde están los pasos de peatones'),
+            ('50%', 'tenían 65 años o más — la edad más vulnerable'),
+        ],
+        'hooks': [
+            ('353 / año', 'peatones muertos en España — casi uno al día. Un solo paso bien vigilado '
+                          'puede evitar muertes.', 'DGT, 2023'),
+            ('20%', 'de todas las muertes en carretera en España son peatones — sin mejora frente a '
+                    '2022. El progreso se ha estancado.', 'DGT, 2023'),
+            ('−50%', 'objetivo de la UE: la mitad de muertes para 2030, cero para 2050 (Visión Cero / '
+                     'Safe System), suscrito por España.', 'Marco de Seguridad Vial de la UE'),
+            ('Datos abiertos', 'aportamos las cifras objetivas que faltan en las decisiones de '
+                               'infraestructura: cámara real, IA abierta y verificación pública.',
+             'Bezpieczne Przejścia / SafeCross'),
+        ],
+        'why_title': 'Por qué esto importa a los gobiernos',
+        'contact_h': 'Hablemos de tu paso de peatones',
+        'contact_p': 'Para un municipio, autoridad de carreteras, empresa o proyecto de '
+                     'investigación. Respondo en 1–2 días laborables.',
+        'cta1': 'Ver la cámara en vivo ↓',
+        'cta2': 'Para gobiernos',
+    },
+    'ru': {
+        'kicker': 'Живой видеоанализ · реальная камера · проверка людьми',
+        'h1': 'В России каждый год под колёсами гибнет более <span class="hot">3 400 пешеходов</span>.',
+        'lead': 'В 2023 году в России в ДТП погибли 3 403 пешехода — почти каждый четвёртый (23,5%) '
+                'среди всех погибших на дорогах (Госавтоинспекция). Наезд на пешехода — это каждое '
+                'четвёртое ДТП в стране. Мы показываем реальный переход в прямом эфире: система '
+                'считает пешеходов, велосипедистов и транспорт, ИИ оценивает каждую конфликтную '
+                'ситуацию, а вы проверяете его вердикты. Та же открытая технология может следить за '
+                'любым переходом — в том числе в вашем городе.',
+        'facts': [
+            ('3 403', 'пешехода погибли в ДТП в России в 2023 году — 23,5% всех погибших (Госавтоинспекция)'),
+            ('34 944', 'наезда на пешеходов за год — каждое четвёртое ДТП в стране'),
+            ('14 504', 'человека всего погибли на дорогах России в 2023 году'),
+        ],
+        'hooks': [
+            ('3 403 / год', 'пешехода гибнут на дорогах России — почти по девять человек каждый день. '
+                            'Один переход под наблюдением может спасать жизни.', 'Госавтоинспекция, 2023'),
+            ('23,5%', 'всех погибших в ДТП — пешеходы. Это одна из самых незащищённых групп на дороге.',
+             'Госавтоинспекция, 2023'),
+            ('−50%', 'цель ООН: вдвое сократить смертность на дорогах к 2030 году '
+                     '(Десятилетие действий 2021–2030).', 'ВОЗ / ООН'),
+            ('Открытые данные', 'мы даём объективные цифры, которых не хватает в решениях по '
+                                'инфраструктуре: реальная камера, открытый ИИ и проверка людьми.',
+             'Bezpieczne Przejścia / SafeCross'),
+        ],
+        'why_title': 'Почему это важно для власти',
+        'contact_h': 'Обсудим ваш переход',
+        'contact_p': 'Для города, дорожной службы, компании или исследовательского проекта. '
+                     'Отвечаю за 1–2 рабочих дня.',
+        'cta1': 'Смотреть камеру в эфире ↓',
+        'cta2': 'Для власти',
+    },
+}

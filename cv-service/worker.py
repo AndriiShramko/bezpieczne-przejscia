@@ -28,6 +28,7 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import urllib.parse
 
 import cv2
 import numpy as np
@@ -727,6 +728,20 @@ def _scene_ignore(scene, w, h):
 
 def scene_path(cam_id):
     return os.path.join(SCENE_DIR, f"scene_{cam_id}.json")
+
+
+def _known_cam(cid):
+    """Return cid only if it is a REGISTERED camera id — used to scope the zone
+    editor to a specific camera. Guards against typos AND path traversal in the
+    scene/frame filenames (cid goes into scene_<cid>.json / frame_<cid>.jpg)."""
+    cid = str(cid or "").strip()
+    if not cid:
+        return ""
+    try:
+        ids = {c.get("id") for c in cams_load().get("cameras", [])}
+    except Exception:
+        ids = set()
+    return cid if cid in ids else ""
 
 
 _scene_lock = threading.Lock()
@@ -1528,6 +1543,25 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             return False
         peds = [d for d in dets if d.cls == PERSON
                 and not _is_rider(d) and not _in_vehicle(d)]
+        # A "vehicle" box that sits ON a pedestrian and is not much larger than
+        # them is almost certainly that person's PRAM / WHEELCHAIR / shopping
+        # cart misread as a car — never a real motor vehicle. Drop it, so a lone
+        # pedestrian pushing a stroller cannot fabricate a "vehicle in zone" and
+        # trigger a false failed-to-yield episode with no car present. A real car
+        # is many times larger than a person, so it is never dropped — even when
+        # a pedestrian walks right in front of it (the true conflict geometry).
+        def _is_ped_object(v):
+            vx1, vy1, vx2, vy2 = v.xyxy
+            va = max(1.0, (vx2 - vx1) * (vy2 - vy1))
+            for d in peds:
+                x1, y1, x2, y2 = d.xyxy
+                pa = max(1.0, (x2 - x1) * (y2 - y1))
+                ix = max(0.0, min(vx2, x2) - max(vx1, x1))
+                iy = max(0.0, min(vy2, y2) - max(vy1, y1))
+                if ix * iy / va > 0.5 and va < 2.5 * pa:
+                    return True
+            return False
+        vehs = [v for v in vehs if not _is_ped_object(v)]
         ped_tracks = ped_tr.update(peds)
         veh_tracks = veh_tr.update(vehs)
         bike_tracks = bike_tr.update(bikes)
@@ -1582,6 +1616,20 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             # false-violation case)
             return any(i.contains(p) for i in islands)
 
+        # A cyclist whose bicycle flickers between the BIKE and the MOTORCYCLE
+        # (=VEHICLE) class from frame to frame spawns BOTH a bike track and a
+        # phantom "vehicle" track at the SAME spot — the cyclist then conflicts
+        # with HIMSELF and fires a bogus "failed to yield" event with no real
+        # car present (events #505, #513). Suppress any vehicle track sitting on
+        # top of a bike track: a genuine motor vehicle is never co-located with
+        # a separately-tracked bicycle, and a real motorcycle produces NO
+        # parallel BIKE detection, so neither is ever wrongly dropped.
+        _dedup_px = 0.06 * w
+        _bike_pts = list(bike_tracks.values())
+        _phantom_veh = {tid for tid, vp in veh_tracks.items()
+                        if any(abs(vp[0] - bx) < _dedup_px and abs(vp[1] - by) < _dedup_px
+                               for bx, by in _bike_pts)}
+
         ped_in, veh_in_moving, hit_zone = [], [], None
         mark_ped, mark_bike = set(), set()   # participant tids (for red marking)
         for z in zones:
@@ -1611,6 +1659,7 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             # THIS zone, already passed it, or turns away is not a conflict
             vz = [tid for tid, p in veh_tracks.items()
                   if z["zone"].contains(p) and veh_cb.confirmed(tid)
+                  and tid not in _phantom_veh
                   and speeds.is_moving(tid) and speeds.heading_ok(tid, zcx, zcy)]
             users = len(pz_p) + len(pz_b)
             if users and vz and users + len(vz) > len(ped_in) + len(veh_in_moving):
@@ -1838,6 +1887,17 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                                         int(ann.shape[0] * LIVE_WIDTH / ann.shape[1])))
             ok3, buf = cv2.imencode(".jpg", live, [cv2.IMWRITE_JPEG_QUALITY, 68])
             S.frame_raw = frame       # clean copy for the admin zone editor
+            # Persist a per-camera REFERENCE frame (throttled ~20 s) so the zone
+            # editor can show ANY camera's real geometry — not only the running
+            # one. Without this, editing a non-active camera would draw zones on
+            # the wrong picture; with it, every camera is edited on its own view.
+            if cts - getattr(S, "_ref_saved", 0) > 20:
+                S._ref_saved = cts
+                try:
+                    cv2.imwrite(os.path.join(SCENE_DIR, f"frame_{cam_id}.jpg"),
+                                frame, [cv2.IMWRITE_JPEG_QUALITY, 82])
+                except Exception:
+                    pass
         if ok3:
             pub.push(cts, buf.tobytes())   # constant-latency playout, not direct
         # adaptive stride: track what one frame really costs on this CPU
@@ -1927,7 +1987,6 @@ class H(BaseHTTPRequestHandler):
                 pass
             return self._json(200, d)
         if p == "/events.json":
-            import urllib.parse
             q = urllib.parse.parse_qs(self.path.split("?")[1] if "?" in self.path else "")
             tab = (q.get("tab") or ["all"])[0]
             offset = int((q.get("offset") or ["0"])[0])
@@ -1945,7 +2004,11 @@ class H(BaseHTTPRequestHandler):
         if p.startswith("/clip/"):
             return self._file(os.path.join(CLIP_DIR, os.path.basename(p)), "video/mp4")
         if p == "/scene.json":
-            cam = S.cam_id or cams_load().get("active", "")
+            # zone editor may request a SPECIFIC camera (?cam=id); without it we
+            # serve the running camera. Scoping read+write by explicit id is what
+            # stops one camera's zones bleeding onto another.
+            q = urllib.parse.parse_qs(self.path.split("?")[1] if "?" in self.path else "")
+            cam = _known_cam((q.get("cam") or [""])[0]) or S.cam_id or cams_load().get("active", "")
             sc = load_scene(cam)
             if not sc:
                 calibrating = (os.path.exists(os.path.join(SCENE_DIR, f"recal_{cam}.flag"))
@@ -1958,7 +2021,25 @@ class H(BaseHTTPRequestHandler):
             return self._json(200, sc)
         if p in ("/frame.jpg", "/frame_raw.jpg"):
             # /frame_raw.jpg = CLEAN frame (no zones/boxes) — the zone editor
-            # must never show baked-in overlays that look like editable zones
+            # must never show baked-in overlays that look like editable zones.
+            # ?cam=id lets the editor show a NON-running camera's LAST reference
+            # frame (persisted periodically), so zones are always drawn on the
+            # correct camera's geometry — never the active camera's picture.
+            q = urllib.parse.parse_qs(self.path.split("?")[1] if "?" in self.path else "")
+            req_cam = _known_cam((q.get("cam") or [""])[0])
+            if (p == "/frame_raw.jpg" and req_cam and req_cam != (S.cam_id or "")):
+                ref = os.path.join(SCENE_DIR, f"frame_{req_cam}.jpg")
+                if os.path.exists(ref):
+                    try:
+                        buf = open(ref, "rb").read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "image/jpeg")
+                        self.send_header("Content-Length", str(len(buf)))
+                        self.send_header("Cache-Control", "no-store")
+                        self.end_headers()
+                        return self.wfile.write(buf)
+                    except OSError:
+                        pass
             with S.lock:
                 if p == "/frame_raw.jpg" and S.frame_raw is not None:
                     ok9, b9 = cv2.imencode(".jpg", S.frame_raw,
@@ -2037,7 +2118,10 @@ class H(BaseHTTPRequestHandler):
             valid = _valid_scene(sc) if isinstance(sc, dict) else None
             if not valid:
                 return self._json(400, {"ok": False, "error": "scene failed validation"})
-            cam = S.cam_id or cams_load().get("active", "")
+            # write to the EXPLICIT camera the editor loaded (data.cam), never the
+            # implicitly-active one — this is the core fix for zones bleeding
+            # between cameras when the active camera rotates under the editor.
+            cam = _known_cam(data.get("cam")) or S.cam_id or cams_load().get("active", "")
             json.dump(sc, open(scene_path(cam), "w", encoding="utf-8"),
                       ensure_ascii=False, indent=1)
             return self._json(200, {"ok": True, "cam": cam})
@@ -2046,12 +2130,15 @@ class H(BaseHTTPRequestHandler):
             # touching the hand-drawn polygons
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})
-            cam = S.cam_id or cams_load().get("active", "")
+            cam = _known_cam(data.get("cam")) or S.cam_id or cams_load().get("active", "")
             sc = load_scene(cam)
             if not (isinstance(sc, dict) and sc.get("crossings")):
                 return self._json(400, {"ok": False, "error": "no zone map yet"})
             with S.lock:
-                jpg = S.frame_raw
+                jpg = S.frame_raw if cam == (S.cam_id or "") else None
+            if jpg is None:
+                ref = os.path.join(SCENE_DIR, f"frame_{cam}.jpg")
+                jpg = cv2.imread(ref) if os.path.exists(ref) else None
             if jpg is None:
                 jpg = None
             else:
@@ -2069,7 +2156,7 @@ class H(BaseHTTPRequestHandler):
             # (grid + self-check) on the next frames
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})
-            cam = S.cam_id or cams_load().get("active", "")
+            cam = _known_cam(data.get("cam")) or S.cam_id or cams_load().get("active", "")
             try:
                 os.remove(scene_path(cam))
             except OSError:

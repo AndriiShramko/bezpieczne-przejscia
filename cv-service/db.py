@@ -156,14 +156,22 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     where, args = [], []
     order = "id DESC"
     if tab in ("top", "all_confirmed"):
-        # front-page default: clear violations first — HUMAN-confirmed at the
-        # very top, then AI-flagged violations. A visitor immediately sees the
-        # events people agreed are real.
+        # front-page default: only clear violations — events HUMANS agreed are
+        # real, plus AI-flagged violations. Ordered strictly newest-first so the
+        # feed always reads chronologically (latest events on top).
         where.append("((confirm > refute AND confirm > 0) OR ai_verdict='violation')")
-        order = "(confirm > refute AND confirm > 0) DESC, id DESC"
+        order = "id DESC"
     elif tab == "unverified":
-        # not yet checked by people (no human votes yet) — for participation
+        # not yet checked by people (no human votes yet) — for participation.
+        # Order for maximum usefulness: AI-flagged VIOLATIONS first (highest
+        # AI confidence at the very top), then uncertain/pending, and the events
+        # the AI already REJECTED as no-violation last — so a visitor spends
+        # their attention on the cases most likely to be real.
         where.append("confirm=0 AND refute=0")
+        order = ("CASE ai_verdict WHEN 'violation' THEN 0 "
+                 "WHEN 'no_violation' THEN 2 ELSE 1 END, "
+                 "CASE WHEN ai_verdict='violation' THEN ai_confidence ELSE 0 END DESC, "
+                 "id DESC")
     elif tab == "violation":
         where.append("ai_verdict='violation'")
     elif tab == "rejected":

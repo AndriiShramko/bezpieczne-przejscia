@@ -175,8 +175,27 @@
   function loadEvents() {
     fetch("/cv/events.json?tab=" + curTab + (curHour ? "&hour=" + encodeURIComponent(curHour) : ""), { cache: "no-store" })
       .then(function (r) { return r.json(); })
-      .then(function (d) { events = d.events || []; renderEvents(); })
+      .then(function (d) {
+        var curId = (boxIdx >= 0 && events[boxIdx]) ? events[boxIdx].id : null;
+        events = d.events || [];
+        renderEvents();
+        if (boxIdx >= 0) syncBox(curId);
+      })
       .catch(function () {});
+  }
+  // Keep the open fullscreen viewer in sync after any list refresh: follow the
+  // SAME event by id. If it vanished from this list — trashed, or voted out of
+  // the "unverified" tab — advance to the next event at the same slot (or close
+  // when nothing is left). Unchanged position => do nothing (never reload the
+  // playing video on the periodic refresh).
+  function syncBox(curId) {
+    if (boxIdx < 0) return;
+    if (!events.length) { closeBox(); return; }
+    var ni = -1;
+    if (curId != null) { for (var i = 0; i < events.length; i++) { if (events[i].id === curId) { ni = i; break; } } }
+    if (ni === boxIdx) return;                       // same event, same slot
+    boxIdx = ni >= 0 ? ni : Math.min(boxIdx, events.length - 1);
+    renderBox();
   }
   function aiBadge(e) {
     if (e.ai_verdict === "violation") return '<span class="badge viol">' + T.aiViol + " · " + Math.round((e.ai_conf || 0) * 100) + "%</span>";

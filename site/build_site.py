@@ -473,35 +473,35 @@ def page_index(lang):
 <section class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
-  <h1>Over <span class="hot">100 people</span> still die on Polish pedestrian crossings every year.</h1>
-  <p class="lead">Since the law change of 1 June 2021, pedestrians entering a crossing have priority —
-  deaths on crossings fell by 23.6% (KRBRD, 2019–2023), yet 131 people were still killed on marked
-  crossings in 2023. We show a real crossing LIVE: the system counts pedestrians, cyclists and
-  vehicles, AI judges every conflict situation, and you verify its verdicts — because even one
-  violation at a crossing is one too many.</p>
+  <h1>Every year <span class="hot">274,000 pedestrians</span> are killed on the world's roads.</h1>
+  <p class="lead">Pedestrians are 23% of the 1.19 million people killed on the world's roads each
+  year (WHO, 2023); in the EU alone 20,418 people died in traffic in 2023 (ETSC). We show a real
+  pedestrian crossing LIVE: the system counts pedestrians, cyclists and vehicles, AI judges every
+  conflict situation, and you verify its verdicts. The same open technology could watch any
+  crossing — including yours.</p>
   <div class="hero-cta">
    <a class="btn" href="#live">Watch the live camera ↓</a>
    <a class="btn ghost" href="#kontakt">For government</a>
   </div>
  </div>
  <aside class="hero-facts">
-  <div class="fact"><b>458</b><span>pedestrians killed in 2023 — ~1 in 4 of all road deaths</span></div>
-  <div class="fact"><b>131</b><span>of them on marked crossings (2023)</span></div>
-  <div class="fact"><b>PLN 2.57M</b><span>unit cost of a single road fatality (KRBRD)</span></div>
+  <div class="fact"><b>274,000</b><span>pedestrians killed on the world's roads every year — 23% of all road deaths (WHO 2023)</span></div>
+  <div class="fact"><b>20,418</b><span>people killed on EU roads in 2023 — about 1 in 5 were pedestrians (ETSC)</span></div>
+  <div class="fact"><b>53%</b><span>of road deaths worldwide are vulnerable users: pedestrians, cyclists, riders (WHO)</span></div>
  </aside>
 </section>"""
         why = """
 <section class="hooks">
  <h2>Why this matters to government</h2>
  <div class="hook-grid">
-  <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
-  One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23.6%</b><p>drop in pedestrian DEATHS on crossings after the 2021 law
-  (crashes −7.8%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
-  <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
-  <span class="src">Polish Road Safety Observatory</span></p></div>
-  <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
-  We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
+  <div class="hook"><b>274,000 / yr</b><p>pedestrians die on the world's roads — one every two minutes.
+  One monitored crossing can save lives.<span class="src">WHO Global Status Report 2023</span></p></div>
+  <div class="hook"><b>20%</b><p>of all EU road deaths are pedestrians — and most happen in cities, at
+  crossings.<span class="src">European Commission / CARE</span></p></div>
+  <div class="hook"><b>−50%</b><p>the global and EU target: halve road deaths by 2030, zero by 2050
+  (Vision Zero / Safe System).<span class="src">UN Decade of Action · EU Road Safety Framework</span></p></div>
+  <div class="hook"><b>Open data</b><p>we supply the objective data missing from infrastructure
+  decisions: a real camera, open AI, public verification.<span class="src">Bezpieczne Przejścia / SafeCross</span></p></div>
  </div>
 </section>"""
         contact = f"""

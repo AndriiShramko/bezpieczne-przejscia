@@ -115,7 +115,10 @@ function loadAll(){
 function edit(id){var c=window._cfg.cameras.find(x=>x.id===id);if(!c)return;
   c_id.value=c.id;c_label.value=c.label;c_url.value=c.url;c_ref.value=c.referer||'';
   c_src.value=c.source_url||'';
-  c_poly.value=JSON.stringify(c.poly);c_mpp.value=c.m_per_px_fullw||0.075;window.scrollTo(0,600);}
+  c_poly.value=JSON.stringify(c.poly);c_mpp.value=c.m_per_px_fullw||0.075;
+  if(Z.dirty&&!confirm('Masz niezapisane zmiany stref. Przełączyć edytor na kamerę „'+id+'" i je porzucić?')){window.scrollTo(0,600);return;}
+  zeLoad(id);                 // bind the zone editor to THIS camera (never the active one)
+  window.scrollTo(0,600);}
 function saveCam(){var cam={id:c_id.value.trim(),label:c_label.value.trim(),url:c_url.value.trim(),
     referer:c_ref.value.trim(),source_url:c_src.value.trim(),
     poly:JSON.parse(c_poly.value),m_per_px_fullw:parseFloat(c_mpp.value)};
@@ -149,7 +152,7 @@ function plToggle(){
 }
 
 /* ================= zone editor ================= */
-var Z={scene:null,img:new Image(),sel:null,drag:null,draw:null,W:1280,H:720,dirty:false};
+var Z={scene:null,img:new Image(),sel:null,drag:null,draw:null,W:1280,H:720,dirty:false,cam:null};
 function zeDirty(){Z.dirty=true;var m=document.getElementById('zmsg');
   if(m&&!m.textContent.includes('niezapisane'))m.textContent='✏️ Masz niezapisane zmiany — kliknij „Zapisz strefy".';}
 var ZTYPES={crossings:'#ffd24d',bike_crossings:'#37e6e6',islands:'#ff5dc8',traffic_lights:'#ff3b3b',ignore_regions:'#8b97a7'};
@@ -157,19 +160,21 @@ var ZNAME={crossings:'przejście',bike_crossings:'przejazd rower.',islands:'wyse
 var ZBBOX={traffic_lights:1,ignore_regions:1};   // rectangle types
 function zc(){return document.getElementById('zc');}
 function zmsg(s){document.getElementById('zmsg').textContent=s;}
-function zeLoad(){
-  Z.dirty=false;
+function zeLoad(cam){
+  if(cam!==undefined)Z.cam=cam;            // which camera the editor is bound to
+  var qc=Z.cam?('cam='+encodeURIComponent(Z.cam)+'&'):'';
+  Z.dirty=false;Z.sel=null;Z.draw=null;
   Z.img.onload=function(){var c=zc();c.width=Z.img.naturalWidth;c.height=Z.img.naturalHeight;Z.W=c.width;Z.H=c.height;zeRender();};
-  Z.img.src='/cv/frame_raw.jpg?'+Date.now();
-  fetch('/cv/scene.json').then(r=>r.json()).then(function(sc){
-    if(sc&&sc.cam)document.getElementById('zcam').textContent='kamera: '+sc.cam;
+  Z.img.src='/cv/frame_raw.jpg?'+qc+'t='+Date.now();
+  fetch('/cv/scene.json?'+qc+'t='+Date.now()).then(r=>r.json()).then(function(sc){
+    if(sc&&sc.cam){Z.cam=sc.cam;document.getElementById('zcam').textContent='kamera: '+sc.cam;}
     if(sc&&sc.crossings!==undefined){Z.scene=sc;zmsg('');}
     else{
       Z.scene={crossings:[],bike_crossings:[],islands:[],ignore_regions:[],event_rules:''};
       if(sc&&sc.calibrating){
         if(sc.ai_available===false)zmsg('⏳ AI czeka na budżet zapytań (dzienny/godzinowy limit) — kalibracja ruszy automatycznie, gdy budżet się odnowi. Możesz narysować strefy ręcznie już teraz.');
         else zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
-        if(!Z.dirty)setTimeout(function(){if(!Z.dirty)zeLoad();},12000);}
+        if(!Z.dirty)setTimeout(function(){if(!Z.dirty)zeLoad(Z.cam);},12000);}
       else zmsg('Brak mapy stref — narysuj ręcznie lub użyj „Rekalibruj AI".');
     }
     ['crossings','bike_crossings','islands','traffic_lights','ignore_regions'].forEach(k=>{if(!Array.isArray(Z.scene[k]))Z.scene[k]=[];});
@@ -235,19 +240,19 @@ document.getElementById('zc').addEventListener('dblclick',function(ev){
   else{Z.scene[k].push({id:id||k,polygon:Z.draw.pts});}
   Z.draw=null;zeDirty();zeList();zeRender();zmsg('Strefa dodana — pamiętaj Zapisz.');});
 function zeSave(){Z.scene.event_rules=document.getElementById('zrules').value;
-  fetch('/cv/admin/scene',{method:'POST',headers:h(),body:JSON.stringify({scene:Z.scene})})
-    .then(r=>r.json()).then(function(d){if(d.ok){Z.dirty=false;zmsg('Zapisano ✔ — system przeładuje strefy w ~10 s.');}else zmsg('Błąd: '+(d.error||'token?'));});}
-function zeRecal(){if(!confirm('Usunąć mapę i pozwolić AI narysować ją od nowa?'))return;
-  fetch('/cv/admin/scene/recalibrate',{method:'POST',headers:h(),body:'{}'})
+  fetch('/cv/admin/scene',{method:'POST',headers:h(),body:JSON.stringify({cam:Z.cam,scene:Z.scene})})
+    .then(r=>r.json()).then(function(d){if(d.ok){Z.dirty=false;zmsg('Zapisano ✔ dla kamery „'+(d.cam||Z.cam||'?')+'" — system przeładuje strefy w ~10 s.');}else zmsg('Błąd: '+(d.error||'token?'));});}
+function zeRecal(){if(!confirm('Usunąć mapę i pozwolić AI narysować ją od nowa (kamera „'+(Z.cam||'?')+'")?'))return;
+  fetch('/cv/admin/scene/recalibrate',{method:'POST',headers:h(),body:JSON.stringify({cam:Z.cam})})
     .then(r=>r.json()).then(function(d){
       if(!d.ok){zmsg('Błąd tokenu.');return;}
       zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
-      setTimeout(zeLoad,15000);});}
+      setTimeout(function(){zeLoad(Z.cam);},15000);});}
 function zeRules(){
-  fetch('/cv/admin/scene/rules',{method:'POST',headers:h(),body:'{}'})
+  fetch('/cv/admin/scene/rules',{method:'POST',headers:h(),body:JSON.stringify({cam:Z.cam})})
     .then(r=>r.json()).then(function(d){
       if(!d.ok){zmsg('Błąd: '+(d.error||'token / brak mapy stref'));return;}
       zmsg('📜 AI uzupełnia reguły zdarzeń… (~20-40 s, odświeżę automatycznie)');
-      setTimeout(zeLoad,25000);});}
+      setTimeout(function(){zeLoad(Z.cam);},25000);});}
 zeLoad();
 </script></body></html>
