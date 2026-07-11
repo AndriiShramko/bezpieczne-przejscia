@@ -93,6 +93,58 @@ for d in (SNAP_DIR, CLIP_DIR, SCENE_DIR):
 
 _REFERER_DEFAULT = os.environ.get("STREAM_REFERER", "")
 
+# ---------------- global (universal) event rules ----------------
+# One shared ruleset the AI reads for EVERY event on EVERY camera, on top of any
+# per-crossing rules. This is where the lessons from confirmed false positives
+# live, so a NEW camera starts with the full body of "do not false-trigger"
+# knowledge without any per-camera setup. Editable in /admin.html.
+GLOBAL_RULES_FILE = os.path.join(DATA, "global_rules.txt")
+DEFAULT_GLOBAL_RULES = """UNIVERSAL RULES — apply to every pedestrian crossing, on every camera.
+1. A violation REQUIRES a real, clearly MOVING MOTOR VEHICLE (car, bus, truck, motorcycle)
+   driving across the crossing. If you cannot actually see such a vehicle in the frames, the
+   verdict is no_violation. Never assume, infer or hallucinate a vehicle that is not visible.
+2. A lone pedestrian, cyclist or motorcyclist — with NO conflicting motor vehicle — is NEVER a
+   violation. People and cyclists are allowed to be on the crossing.
+3. A person RIDING a bicycle or motorcycle is a rider, NOT a pedestrian. A rider does not create
+   a pedestrian-yield event "on themselves". A motorcycle/scooter is a motor vehicle that must
+   yield to others, but its rider is never the endangered pedestrian.
+4. Cyclists using their OWN marked bike crossing (przejazd dla rowerzystów), parallel to the
+   zebra, are crossing lawfully — they are not pedestrians on the zebra and do not conflict with
+   vehicles on unrelated lanes.
+5. The driver must yield ONLY while the pedestrian is on the ROADWAY (jezdnia). Once the
+   pedestrian has reached the far sidewalk/kerb or a refuge island — even if still near the
+   painted stripes — a vehicle proceeding is NOT a violation.
+6. A vehicle stopped/creeping while WAITING (red light, or letting a pedestrian pass) is not a
+   violation. Only a vehicle actually driving through the pedestrian's path violates.
+7. A pedestrian standing on a refuge island has left the crossing half behind them; a vehicle on
+   that already-cleared half does not conflict with them.
+8. Judge by the REAL road surface and real positions, not by an over-stretched or miscalibrated
+   zone polygon. A person on the sidewalk who merely falls inside the drawn zone is not a
+   crossing user.
+9. Prams/strollers, wheelchairs and shopping carts are NOT motor vehicles.
+"""
+
+
+def load_global_rules():
+    try:
+        with open(GLOBAL_RULES_FILE, encoding="utf-8") as f:
+            t = f.read().strip()
+            if t:
+                return t
+    except OSError:
+        pass
+    try:   # seed on first run so the admin can see & refine the baseline
+        with open(GLOBAL_RULES_FILE, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_GLOBAL_RULES)
+    except OSError:
+        pass
+    return DEFAULT_GLOBAL_RULES
+
+
+def save_global_rules(text):
+    with open(GLOBAL_RULES_FILE, "w", encoding="utf-8") as f:
+        f.write(str(text))
+
 
 # ---------------- camera registry ----------------
 CAMS_FILE = os.path.join(DATA, "cameras.json")
@@ -1010,6 +1062,10 @@ def config_sync_loop():
                               ensure_ascii=False, indent=1)
                     print(f"config_sync: scene {cid} updated from authority",
                           flush=True)
+            gr = data.get("global_rules")
+            if isinstance(gr, str) and gr.strip() and gr.strip() != load_global_rules().strip():
+                save_global_rules(gr.strip())
+                print("config_sync: global rules updated from authority", flush=True)
         except Exception as e:
             print("config_sync:", e, flush=True)
 
@@ -1111,7 +1167,7 @@ def analyzer_loop():
             scene = load_scene(cam_id)
             res = ai_analyst.analyze_event(frames, scene, tl_state, kmh, n_ped, n_veh,
                                            fps=CLIP_FPS, kind=ev_kind or "potential_conflict",
-                                           trajectories=traj)
+                                           trajectories=traj, global_rules=load_global_rules())
             if res:
                 db.set_ai_result(eid, res["verdict"], res.get("violator", "none"),
                                  res.get("explanation_pl", ""), res.get("explanation_en", ""),
@@ -1517,14 +1573,20 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
 
         bikes = [d for d in dets if d.cls == BIKE]
         vehs = [d for d in dets if d.cls == VEHICLE]
-        # a person overlapping a MOVING bicycle is its RIDER -> one cyclist,
-        # not a pedestrian + a bike (kills double counting). A parked bike
-        # shows no foreground, so it can never suppress real pedestrians
-        # walking past it.
-        _moving_bikes = [b for b in bikes
-                         if fg_ratio_at(fgmask, *b.anchor) >= FG_MIN]
+        # a person overlapping a MOVING two-wheeler is its RIDER -> one road user,
+        # not a pedestrian (kills double counting AND the "motorcyclist / cyclist
+        # triggered a pedestrian event on himself" false positives, #486/#510/
+        # #517). Two-wheelers = bicycles (BIKE) + MOTORCYCLES (COCO id 3, which
+        # aggregate into VEHICLE but still carry a rider, not a pedestrian). A
+        # parked two-wheeler shows no foreground, so it never suppresses real
+        # pedestrians walking past it. The motorcycle itself stays a VEHICLE that
+        # must yield — only its rider is removed from the pedestrian set.
+        _moving_two = [b for b in bikes
+                       if fg_ratio_at(fgmask, *b.anchor) >= FG_MIN]
+        _moving_two += [v for v in vehs
+                        if v.coco_id == 3 and fg_ratio_at(fgmask, *v.anchor) >= FG_MIN]
         def _is_rider(d):
-            return any(_iou(d.xyxy, b.xyxy) > 0.18 for b in _moving_bikes)
+            return any(_iou(d.xyxy, b.xyxy) > 0.18 for b in _moving_two)
         # a person box mostly INSIDE a vehicle box AND sitting HIGH in it is
         # the driver/passenger seen through the glass — not a pedestrian.
         # A pedestrian walking IN FRONT of a stopped car also overlaps its box
@@ -2083,11 +2145,16 @@ class H(BaseHTTPRequestHandler):
                             pass
             except OSError:
                 pass
-            return self._json(200, {"cameras": cams_load(), "scenes": scenes})
+            return self._json(200, {"cameras": cams_load(), "scenes": scenes,
+                                    "global_rules": load_global_rules()})
         if p == "/admin/health":
             if not _admin_ok(self):
                 return self._json(403, {"ok": False})
             return self._json(200, db.camera_uptime_stats())
+        if p == "/admin/global-rules":
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            return self._json(200, {"ok": True, "rules": load_global_rules()})
         return self._json(404, {"ok": False})
 
     def do_POST(self):
@@ -2110,6 +2177,16 @@ class H(BaseHTTPRequestHandler):
             except (ValueError, TypeError):
                 return self._json(400, {"ok": False})
             db.set_trashed(eid, 0 if data.get("restore") else 1)
+            return self._json(200, {"ok": True})
+        if p == "/admin/global-rules":
+            # the universal ruleset the AI reads for EVERY event on EVERY camera.
+            # Written on the config AUTHORITY; syncs to the other node like scenes.
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            rules = data.get("rules")
+            if not isinstance(rules, str) or not rules.strip():
+                return self._json(400, {"ok": False, "error": "empty rules"})
+            save_global_rules(rules.strip())
             return self._json(200, {"ok": True})
         if p == "/admin/scene":
             # admin saves a hand-corrected zone map (the AI draft is editable:

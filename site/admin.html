@@ -43,6 +43,24 @@ td,th{border-bottom:1px solid #233044;padding:.4rem;text-align:left}
 
 <h2>Niezawodność kamer (up / down / failover)</h2><div id="health"></div>
 
+<h2>Reguły GLOBALNE — uniwersalne dla wszystkich kamer 🌍</h2>
+<div class="card">
+ <p class="muted">Jeden wspólny zbiór zasad „nie generuj fałszywych alarmów", który AI czyta przy
+ <b>każdym</b> zdarzeniu, na <b>każdej</b> kamerze — także nowo dodanej (nie trzeba jej nic
+ konfigurować, od razu dziedziczy te reguły). Tu spisujemy wnioski z odrzuconych zdarzeń
+ (motocyklista/rowerzysta nie jest pieszym, brak realnego auta = brak naruszenia, pieszy który
+ zszedł na chodnik itd.). Zapis działa na obu węzłach (sync ~15 s).</p>
+ <textarea id="grules" rows="14" style="width:100%;font-family:ui-monospace,monospace;font-size:.82rem"></textarea>
+ <div style="margin-top:8px">
+  <button onclick="grSave()">💾 Zapisz reguły globalne</button>
+  <span id="grmsg" class="muted" style="margin-left:10px"></span>
+ </div>
+ <p class="muted" style="margin-top:10px">📥 <b>Odrzucone zdarzenia (baza do analizy):</b> wszystkie
+ zdarzenia oznaczone przez ludzi jako fałszywe trafiają do zakładek <b>„Odrzucone przez AI"</b> i
+ <b>„Kosz"</b> na stronie głównej — to jest ta „jedna wewnętrzna baza". Na żądanie można je
+ wyeksportować i przeanalizować, by dopisać nowe reguły powyżej.</p>
+</div>
+
 <h2>Strefy przejść — edytor (AI rysuje, Ty poprawiasz) <span id="zcam" class="tag"></span></h2>
 <p class="muted"><b>Uwaga:</b> edytor zawsze dotyczy kamery <b>AKTYWNEJ</b> (tej, która jest na
 stronie głównej). Chcesz edytować inną? Najpierw „Pokaż publicznie" przy tej kamerze wyżej.
@@ -254,5 +272,11 @@ function zeRules(){
       if(!d.ok){zmsg('Błąd: '+(d.error||'token / brak mapy stref'));return;}
       zmsg('📜 AI uzupełnia reguły zdarzeń… (~20-40 s, odświeżę automatycznie)');
       setTimeout(function(){zeLoad(Z.cam);},25000);});}
+function grLoad(){fetch('/cv/admin/global-rules',{headers:h()}).then(r=>r.json()).then(function(d){
+  if(d&&typeof d.rules==='string')document.getElementById('grules').value=d.rules;}).catch(function(){});}
+function grSave(){fetch('/cv/admin/global-rules',{method:'POST',headers:h(),
+  body:JSON.stringify({rules:document.getElementById('grules').value})}).then(r=>r.json()).then(function(d){
+  document.getElementById('grmsg').textContent=d.ok?'Zapisano ✔ — oba węzły zaktualizują się w ~15 s.':'Błąd: '+(d.error||'token?');});}
+grLoad();
 zeLoad();
 </script></body></html>

@@ -317,6 +317,10 @@ a driver approaching a pedestrian crossing must slow down and YIELD to a pedestr
 and one ENTERING it. A pedestrian crossing on red has no priority. A stationary vehicle waiting at
 a red light near the zebra is NOT a violation.
 
+GLOBAL RULES (operator-maintained, apply to EVERY crossing — obey these first):
+{global_rules}
+
+
 RULE 1 — a violation REQUIRES a real, visibly MOVING MOTOR VEHICLE physically driving across the
 crossing in these frames. If you cannot clearly see such a vehicle on the crossing, the verdict is
 "no_violation". NEVER assume, infer, hallucinate or "expect" a vehicle you cannot actually see. A
@@ -385,7 +389,7 @@ Return ONLY JSON:
 
 
 def analyze_event(frames_jpeg, scene_json, tl_state, kmh, n_ped, n_veh, fps=2,
-                  kind="potential_conflict", trajectories=None):
+                  kind="potential_conflict", trajectories=None, global_rules=""):
     if not enabled():
         return None
     if kind == "speeding":
@@ -395,6 +399,7 @@ def analyze_event(frames_jpeg, scene_json, tl_state, kmh, n_ped, n_veh, fps=2,
     else:
         prompt = EVENT_PROMPT.format(
             n=len(frames_jpeg), fps=fps,
+            global_rules=(global_rules or "(none configured)"),
             scene=json.dumps(scene_json, ensure_ascii=False)[:4000] if scene_json else "unavailable",
             traj=(trajectories or "unavailable")[:2500],
             tl=tl_state or "unknown", kmh=kmh if kmh else "unknown",

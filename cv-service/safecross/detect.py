@@ -23,8 +23,11 @@ COCO_MAP = {0: PERSON, 1: BIKE, 2: VEHICLE, 3: VEHICLE, 5: VEHICLE, 7: VEHICLE}
 @dataclass
 class Detection:
     xyxy: tuple[float, float, float, float]
-    cls: str          # person | vehicle
+    cls: str          # person | vehicle | bike
     conf: float
+    coco_id: int = -1  # raw COCO class id (3 = motorcycle) — lets the worker
+    #                    identify a MOTORCYCLE (aggregated into VEHICLE) so it can
+    #                    suppress its RIDER from the pedestrian set. -1 = unknown.
 
     @property
     def anchor(self) -> tuple[float, float]:
@@ -128,7 +131,7 @@ class OnnxCocoDetector:
                 out.append(Detection(
                     (float(x) / r, float(y) / r,
                      float(x + w) / r, float(y + h) / r),
-                    COCO_MAP[int(cids[i])], float(scores[i])))
+                    COCO_MAP[int(cids[i])], float(scores[i]), int(cids[i])))
         return out
 
     def _decode(self, pred: np.ndarray) -> np.ndarray:

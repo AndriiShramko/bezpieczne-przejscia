@@ -252,7 +252,15 @@
       fetch("/cv/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: Number(id), verdict: verdict }) })
         .then(function (r) {
-          if (r.ok) { voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {} lastSig = ""; loadEvents(); if (typeof boxIdx !== "undefined" && boxIdx >= 0 && typeof renderBox === "function") renderBox(); }
+          if (r.ok) {
+            voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {}
+            lastSig = "";
+            // in the fullscreen viewer, jump straight to the NEXT event to review
+            // after voting (keeps the review flow moving). loadEvents() then keeps
+            // the viewer synced to that event by id.
+            if (boxIdx >= 0 && events.length > 1) nav(1);
+            loadEvents();
+          }
           else document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; });
         }).catch(function () { document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; }); });
       return;
