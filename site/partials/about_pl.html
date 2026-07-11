@@ -47,13 +47,19 @@
   .about-section h2 { margin-bottom: .75rem; }
   .about-section .about-lead { font-size: 1.08em; }
   .about-section .about-invite { border-left: 3px solid #2e7d32; padding: .6rem 1rem; margin-top: 1rem; background: rgba(46,125,50,.07); }
-  .share-block { margin-top: 1.5rem; }
-  .share-block .share-title { font-weight: 600; margin-bottom: .5rem; }
-  .share-btn { display: inline-block; margin: 0 .4rem .4rem 0; padding: .45rem .9rem;
-               border: 1px solid #888; border-radius: 6px; background: transparent;
-               font: inherit; font-size: .92em; cursor: pointer; text-decoration: none; color: inherit; }
-  .share-btn:hover { background: rgba(128,128,128,.15); }
-  .share-copied { color: #2e7d32; font-size: .9em; margin-left: .5rem; }
+    .share-cta{margin:2rem auto;max-width:720px;padding:1.4rem 1.2rem;border-radius:16px;
+    background:linear-gradient(135deg,rgba(46,230,166,.12),rgba(55,182,255,.10));
+    border:1px solid rgba(46,230,166,.35);text-align:center}
+  .share-cta h3{margin:0 0 .3rem;font-size:1.25rem}
+  .share-cta p{margin:.2rem 0 1rem;color:#8b97a7}
+  .share-cta .btns{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
+  .share-cta a,.share-cta button{display:inline-flex;align-items:center;gap:.4rem;font:inherit;
+    font-weight:700;font-size:1rem;padding:.7rem 1.3rem;border-radius:11px;border:0;cursor:pointer;
+    color:#fff;text-decoration:none;transition:transform .12s ease,filter .12s ease}
+  .share-cta a:hover,.share-cta button:hover{transform:translateY(-2px);filter:brightness(1.12)}
+  .share-cta .li{background:#0a66c2}.share-cta .fb{background:#1877f2}
+  .share-cta .tw{background:#111}.share-cta .cp{background:#2ee6a6;color:#04120c}
+
 </style>
 
 <!-- ============================================================

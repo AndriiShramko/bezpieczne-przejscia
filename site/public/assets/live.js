@@ -15,6 +15,7 @@
       tl: "sygnalizacja", vmax: "max prędkość", epi: "● nagrywam epizod…",
       fsNote: "Klip celowo w niskiej rozdzielczości i klatkażu — oszczędzamy zasoby serwera demo. Produkcyjnie: pełne FPS/rozdzielczość.",
       aiToday: "analiz AI dziś",
+      share: "Udostępnij:", copy: "Kopiuj link", trash: "do kosza",
     },
     en: {
       live: "LIVE", off: "OFFLINE", perHour: "/h",
@@ -28,12 +29,21 @@
       tl: "signals", vmax: "max speed", epi: "● recording episode…",
       fsNote: "Clips are intentionally low-res/low-fps to save demo server resources. Production: full FPS/resolution.",
       aiToday: "AI analyses today",
+      share: "Share:", copy: "Copy link", trash: "trash",
     },
   }[L];
 
   var voted = {};
   try { voted = JSON.parse(localStorage.getItem("bp_voted2") || "{}"); } catch (e) {}
   var curTab = "all", curHour = null, events = [], lastSig = "";
+  var SHARE = "https://patrol.flyreelstudio.eu/cv/share/";
+  // admin mode: /#live?admin=<token> once, then remembered in this browser
+  var ADMIN = "";
+  try {
+    var qa = (location.search.match(/[?&]admin=([^&]+)/) || [])[1];
+    if (qa) { ADMIN = decodeURIComponent(qa); localStorage.setItem("bp_admin", ADMIN); }
+    else ADMIN = localStorage.getItem("bp_admin") || "";
+  } catch (e) {}
 
   function el(i) { return document.getElementById(i); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -107,7 +117,7 @@
     if (!pc && d.playlist) {
       pc = document.createElement("div");
       pc.id = "pl-countdown";
-      pc.style.cssText = "font-size:.8rem;color:#8b97a7;margin-top:.25rem";
+      pc.className = "pl-timer";
       if (src && src.parentNode) src.parentNode.insertBefore(pc, src.nextSibling);
     }
     if (pc) {
@@ -157,6 +167,12 @@
         '<div class="ev-q">' + T.q + "</div>" +
         '<div class="ev-actions">' + vbtn(e.id, "violation", T.yes, v) + vbtn(e.id, "false_alarm", T.no, v) + "</div>" +
         '<div class="ev-tally">' + e.confirm + " " + T.conf + " · " + e.refute + " " + T.ref + "</div>" +
+        '<div class="ev-share">' + T.share + " " +
+          '<a target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(SHARE + e.id) + '">LinkedIn</a> ' +
+          '<a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url=' + encodeURIComponent(SHARE + e.id) + '">X</a> ' +
+          '<a href="#" data-copy="' + SHARE + e.id + '">' + T.copy + "</a>" +
+          (ADMIN ? ' · <a href="#" class="ev-trash" data-trash="' + e.id + '" style="color:#ff6b6b">🗑 ' + (curTab === "trash" ? (L === "pl" ? "przywróć" : "restore") : T.trash) + "</a>" : "") +
+        "</div>" +
         "</figcaption></figure>";
     }).join("");
   }
@@ -186,6 +202,23 @@
       curTab = tb.getAttribute("data-tab");
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x === tb); });
       lastSig = ""; loadEvents();
+      return;
+    }
+    var cp = ev.target.closest && ev.target.closest("[data-copy]");
+    if (cp) {
+      ev.preventDefault();
+      navigator.clipboard.writeText(cp.getAttribute("data-copy")).then(function () {
+        var o = cp.textContent; cp.textContent = "✓"; setTimeout(function () { cp.textContent = o; }, 1500);
+      });
+      return;
+    }
+    var tr = ev.target.closest && ev.target.closest("[data-trash]");
+    if (tr && ADMIN) {
+      ev.preventDefault();
+      var restore = curTab === "trash";
+      fetch("/cv/admin/event", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Token": ADMIN },
+        body: JSON.stringify({ id: Number(tr.getAttribute("data-trash")), restore: restore }) })
+        .then(function (r) { if (r.ok) { lastSig = ""; loadEvents(); } else if (r.status === 403) { alert("Admin token invalid"); } });
       return;
     }
     var m = ev.target.closest && ev.target.closest("[data-open]");
@@ -245,6 +278,12 @@
       histChart("chart-speed", d.speed_hist_bins_kmh5 || [], d.speed_n || 0);
       eventChart("chart-events", d.hourly || []);
       todChart("chart-tod", d.speeding_by_hour || []);
+      // animate bars/lines only on the FIRST paint of each chart (no jitter
+      // on the periodic refresh)
+      ["chart-traffic", "chart-speed", "chart-events", "chart-tod"].forEach(function (id) {
+        var e = el(id); if (!e || e.dataset.animated) return;
+        var svg = e.querySelector("svg"); if (svg) { svg.classList.add("anim"); e.dataset.animated = "1"; }
+      });
     }).catch(function () {});
   }
   function svgEl(w, h) { return '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" style="width:100%;height:150px;display:block">'; }
@@ -343,7 +382,13 @@
 
   function todChart(id, tod) {
     var e = el(id); if (!e) return;
-    if (!tod.length) { e.innerHTML = '<p class="muted small pad">…</p>'; return; }
+    var totSp = tod.reduce(function (a, x) { return a + (x.speeding || 0); }, 0);
+    if (!tod.length || totSp === 0) {
+      e.innerHTML = '<p class="muted pad">' + (L === "pl"
+        ? "Brak zarejestrowanych przekroczeń prędkości — wykres wypełni się, gdy pojawią się szybkie pojazdy."
+        : "No speeding recorded yet — this chart fills in as fast vehicles appear.") + "</p>";
+      return;
+    }
     var W = 600, H = 150, bw = W / 24;
     var m = Math.max.apply(null, tod.map(function (x) { return x.per1000 || 0; }).concat([0.1]));
     var byH = {}; tod.forEach(function (x) { byH[x.h] = x; });
@@ -378,8 +423,9 @@
     if (!pc || !window._plNext) return;
     var s = Math.max(0, Math.round((window._plNext.t - Date.now()) / 1000));
     var mm = Math.floor(s / 60), ss = ("0" + (s % 60)).slice(-2);
-    pc.textContent = (L === "pl" ? "⏱ Zmiana kamery za " : "⏱ Camera changes in ") + mm + ":" + ss +
-      (L === "pl" ? " → następna: " : " → next: ") + window._plNext.label;
+    pc.innerHTML = "⏱ " + (L === "pl" ? "Zmiana kamery za " : "Camera changes in ") +
+      "<b>" + mm + ":" + ss + "</b> " + (L === "pl" ? "→ następna: " : "→ next: ") +
+      esc(window._plNext.label);
   }, 1000);
   tick(); loadEvents(); drawCharts();
   setInterval(tick, 3000);

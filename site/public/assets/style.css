@@ -66,6 +66,9 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .vbtn.mine{outline:2px solid var(--acc)}
 .vbtn:disabled{opacity:.55;cursor:default}
 .ev-tally{font-size:.78rem;color:var(--mut);margin-top:.5rem}
+.ev-share{font-size:.76rem;color:var(--mut);margin-top:.45rem}
+.ev-share a{color:#8fd3ff;text-decoration:none;margin-right:.15rem}
+.ev-share a:hover{text-decoration:underline}
 .epi-badge{background:#2f1216;color:#ff8a92;font-weight:800;font-size:.72rem;padding:.15rem .55rem;border-radius:20px;margin-right:.4rem;animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.4}}
 .pipe3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem;margin:1rem 0}
@@ -84,10 +87,37 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .badge.viol{background:#3a1418;color:#ff8a92}.badge.ok{background:#123021;color:#7fe0a0}
 .badge.unc{background:#2f2a12;color:#ffd97a}.badge.wait{background:#1c2432;color:#8b97a7}
 .charts{margin:2rem 0}
-.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
-.chart-card{background:var(--panel);border-radius:14px;padding:1rem}
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+@media(max-width:760px){.chart-grid{grid-template-columns:1fr}}
+.chart-card{background:var(--panel);border-radius:14px;padding:1rem 1.1rem 1.2rem;display:flex;flex-direction:column}
 .chart-card h3{font-size:.95rem;margin:.2rem 0 .6rem}
-.chart{min-height:150px}.chart .legend{display:flex;gap:.6rem .9rem;flex-wrap:wrap;font-size:.72rem;color:var(--mut);margin-top:.35rem;line-height:1.3}
+.chart{min-height:158px}.chart .legend{display:flex;gap:.6rem .9rem;flex-wrap:wrap;font-size:.72rem;color:var(--mut);margin-top:.35rem;line-height:1.3}
+.chart svg rect,.chart svg circle{transition:opacity .4s ease,transform .4s ease;transform-box:fill-box;transform-origin:bottom}
+.chart svg rect{cursor:default}
+.chart svg .evbar rect,.chart svg rect[data-hour]{cursor:pointer}
+.chart svg rect:hover{filter:brightness(1.25)}
+@keyframes growbar{from{transform:scaleY(0);opacity:.2}to{transform:scaleY(1);opacity:1}}
+.chart svg.anim rect{animation:growbar .5s ease both}
+.chart svg.anim polyline{stroke-dasharray:1400;stroke-dashoffset:1400;animation:drawline 1.1s ease forwards}
+@keyframes drawline{to{stroke-dashoffset:0}}
+/* share CTA — big, on-brand, works on both languages */
+.share-cta{margin:2rem auto;max-width:720px;padding:1.4rem 1.2rem;border-radius:16px;
+  background:linear-gradient(135deg,rgba(46,230,166,.12),rgba(55,182,255,.10));
+  border:1px solid rgba(46,230,166,.35);text-align:center}
+.share-cta h3{margin:0 0 .3rem;font-size:1.25rem}
+.share-cta p{margin:.2rem 0 1rem;color:var(--mut)}
+.share-cta .btns{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
+.share-cta a,.share-cta button{display:inline-flex;align-items:center;gap:.4rem;font:inherit;
+  font-weight:700;font-size:1rem;padding:.7rem 1.3rem;border-radius:11px;border:0;cursor:pointer;
+  color:#fff;text-decoration:none;transition:transform .12s ease,filter .12s ease}
+.share-cta a:hover,.share-cta button:hover{transform:translateY(-2px);filter:brightness(1.12)}
+.share-cta .li{background:#0a66c2}.share-cta .fb{background:#1877f2}
+.share-cta .tw{background:#111}.share-cta .cp{background:#2ee6a6;color:#04120c}
+/* playlist countdown — prominent badge over the live view */
+.pl-timer{display:inline-flex;align-items:center;gap:.5rem;margin:.5rem 0;padding:.5rem .9rem;
+  border-radius:11px;background:rgba(55,182,255,.14);border:1px solid rgba(55,182,255,.4);
+  font-size:1rem;font-weight:700;color:#8fd3ff}
+.pl-timer b{color:#fff;font-variant-numeric:tabular-nums}
 .chart .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.25rem;vertical-align:middle}
 .dl{margin-top:1rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;color:var(--mut);font-size:.9rem}
 .research{background:var(--bg2);border-radius:18px;padding:1.4rem;margin:2rem 0}

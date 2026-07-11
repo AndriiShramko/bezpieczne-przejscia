@@ -78,6 +78,7 @@ SPEED_LIMIT_KMH = float(os.environ.get("SPEED_LIMIT_KMH", "50"))
 # monocular speed is ±30%: flag only well above the limit to avoid slander
 SPEED_FLAG_FACTOR = float(os.environ.get("SPEED_FLAG_FACTOR", "1.35"))
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+PUBLIC_BASE = os.environ.get("PUBLIC_BASE", "https://patrol.flyreelstudio.eu").rstrip("/")
 CLIPS_MAX_GB = float(os.environ.get("CLIPS_MAX_GB", "2.0"))
 DISK_MIN_FREE_GB = float(os.environ.get("DISK_MIN_FREE_GB", "2.0"))
 TG_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
@@ -206,9 +207,10 @@ class SpeedBook:
                         # ANOTHER object -> reset history (kills fake 100 km/h)
     MAX_KMH = 140       # urban camera: anything above is a measurement artifact
 
-    def __init__(self, m_per_px, scale_fn=None):
+    def __init__(self, m_per_px, scale_fn=None, walker=False):
         self.m_per_px = m_per_px
         self.scale_fn = scale_fn        # optional m_per_px(y) — perspective
+        self.walker = walker            # pedestrians: path-length (radial-aware)
         self.hist = {}  # tid -> deque[(t, x, y)]
 
     def _mpp(self, y):
@@ -230,6 +232,16 @@ class SpeedBook:
                 dt = now - t0
                 if dt > 0.2:  # never divide by a degenerate window
                     d_px = float(((x - x0) ** 2 + (y - y0) ** 2) ** 0.5)
+                    if self.walker:
+                        # a pedestrian walking toward/away from the camera barely
+                        # shifts its centroid — straight displacement then reads
+                        # a silly ~2 km/h. Use accumulated foot-path instead
+                        # (captures step-to-step motion), floored at displacement.
+                        path = 0.0
+                        for i in range(1, len(q)):
+                            path += ((q[i][1] - q[i-1][1]) ** 2
+                                     + (q[i][2] - q[i-1][2]) ** 2) ** 0.5
+                        d_px = max(d_px, 0.7 * path)
                     # perspective: meters per pixel at the MIDPOINT row of the
                     # movement — objects near the camera (bottom) cover fewer
                     # meters per pixel, the old constant scale inflated them
@@ -249,6 +261,24 @@ class SpeedBook:
 
     def is_moving(self, tid):
         return tid not in getattr(self, "stationary", set())
+
+    def heading_ok(self, tid, cx, cy, recede_px=10.0):
+        """True unless the track is clearly MOVING AWAY from (cx,cy). Used to
+        drop cars that already passed the zebra or that turn onto another road
+        — they sit in the wide zone bbox but are not driving TOWARD the
+        crossing. Unknown/short tracks return True (never hide a real crosser)."""
+        q = self.hist.get(tid)
+        if not q or len(q) < 3:
+            return True
+        x0, y0 = q[0][1], q[0][2]
+        x1, y1 = q[-1][1], q[-1][2]
+        mx, my = x1 - x0, y1 - y0
+        mlen = (mx * mx + my * my) ** 0.5
+        if mlen < 4.0:
+            return True                       # essentially not translating
+        tx, ty = cx - x1, cy - y1             # current pos -> zone centre
+        dot = (mx * tx + my * ty) / mlen      # projection of heading onto target
+        return dot > -recede_px               # not clearly receding
 
 
 class ConfirmBook:
@@ -1506,6 +1536,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         if not hasattr(speeds, "_pedbook"):
             speeds._pedbook = SpeedBook(m_per_px, speeds.scale_fn)
             speeds._bikebook = SpeedBook(m_per_px, speeds.scale_fn)
+        speeds._pedbook.walker = True
+        speeds._bikebook.walker = True
         ped_kmh = speeds._pedbook.update(ped_tracks, cts)
         bike_kmh = speeds._bikebook.update(bike_tracks, cts)
         for tid, v in veh_kmh.items():
@@ -1542,7 +1574,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         for z in zones:
             if zone_cooldown.get(z["id"], 0) > cts:
                 continue   # fresh episode just ended here — mute duplicates
-            zb = z["bbox"]
+            zcx = sum(px for px, _ in z["poly"]) / len(z["poly"])
+            zcy = sum(py for _, py in z["poly"]) / len(z["poly"])
             pz_p = [tid for tid, p in ped_tracks.items()
                     if z["zone"].contains(p) and not on_island(p)
                     and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
@@ -1550,9 +1583,12 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             pz_b = [tid for tid, p in bike_tracks.items()
                     if z["zone"].contains(p) and not on_island(p)
                     and bike_cb.confirmed(tid) and bikebook.is_moving(tid)]
+            # vehicle must be INSIDE the crossing polygon (not just its wide
+            # bbox) AND driving TOWARD the crossing — a car that already passed
+            # the zebra or turns onto another road is not a conflict
             vz = [tid for tid, p in veh_tracks.items()
-                  if zb[0] <= p[0] <= zb[2] and zb[1] <= p[1] <= zb[3]
-                  and veh_cb.confirmed(tid) and speeds.is_moving(tid)]
+                  if z["zone"].contains(p) and veh_cb.confirmed(tid)
+                  and speeds.is_moving(tid) and speeds.heading_ok(tid, zcx, zcy)]
             users = len(pz_p) + len(pz_b)
             if users and vz and users + len(vz) > len(ped_in) + len(veh_in_moving):
                 ped_in = pz_p + pz_b
@@ -1594,6 +1630,18 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         for i in islands:
             cv2.polylines(ann, [np.array(i.poly, np.int32)], True,
                           (255, 0, 255), 2)
+        # traffic-light heads (admin-drawn bbox) with the colour we read from
+        # them by HSV — so the operator sees the signal state on the stream
+        if isinstance(scene, dict):
+            _tlcol = {"red": (0, 0, 235), "green": (60, 200, 60),
+                      "amber": (0, 180, 235), "unknown": (150, 150, 150)}
+            for t in (scene.get("traffic_lights") or []):
+                b = t.get("bbox") if isinstance(t, dict) else None
+                if isinstance(b, (list, tuple)) and len(b) == 4:
+                    x1, y1 = int(b[0] * w), int(b[1] * h)
+                    x2, y2 = int(b[2] * w), int(b[3] * h)
+                    st = tl_states.get(t.get("id", "tl"), "unknown")
+                    cv2.rectangle(ann, (x1, y1), (x2, y2), _tlcol.get(st, (150, 150, 150)), 2)
         RED = (40, 40, 255)
         for d, tracks, book, col, mk, tag in (
                 [(d, ped_tracks, ped_kmh, (90, 230, 120), mark_ped, "KONFLIKT")
@@ -1867,6 +1915,8 @@ class H(BaseHTTPRequestHandler):
             return self._json(200, db.charts(cam))
         if p == "/api/stats":
             return self._json(200, db.stats())
+        if p.startswith("/share/"):
+            return self._share_page(p.rsplit("/", 1)[-1])
         if p.startswith("/snap/"):
             return self._file(os.path.join(SNAP_DIR, os.path.basename(p)), "image/jpeg")
         if p.startswith("/clip/"):
@@ -1944,6 +1994,16 @@ class H(BaseHTTPRequestHandler):
             ip = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[0]
             ok = db.vote(int(data.get("id", 0)), str(data.get("verdict", "")), ip)
             return self._json(200 if ok else 400, {"ok": ok})
+        if p == "/admin/event":
+            # admin bins / restores an event immediately (no crowd vote needed)
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            try:
+                eid = int(data.get("id", 0))
+            except (ValueError, TypeError):
+                return self._json(400, {"ok": False})
+            db.set_trashed(eid, 0 if data.get("restore") else 1)
+            return self._json(200, {"ok": True})
         if p == "/admin/scene":
             # admin saves a hand-corrected zone map (the AI draft is editable:
             # move/add/delete polygons, edit event rules) — validated, then the
@@ -1957,6 +2017,29 @@ class H(BaseHTTPRequestHandler):
             cam = S.cam_id or cams_load().get("active", "")
             json.dump(sc, open(scene_path(cam), "w", encoding="utf-8"),
                       ensure_ascii=False, indent=1)
+            return self._json(200, {"ok": True, "cam": cam})
+        if p == "/admin/scene/rules":
+            # fill/refresh the AI event rules for the active camera NOW, without
+            # touching the hand-drawn polygons
+            if not _admin_ok(self):
+                return self._json(403, {"ok": False})
+            cam = S.cam_id or cams_load().get("active", "")
+            sc = load_scene(cam)
+            if not (isinstance(sc, dict) and sc.get("crossings")):
+                return self._json(400, {"ok": False, "error": "no zone map yet"})
+            with S.lock:
+                jpg = S.frame_raw
+            if jpg is None:
+                jpg = None
+            else:
+                ok9, b9 = cv2.imencode(".jpg", jpg, [cv2.IMWRITE_JPEG_QUALITY, 82])
+                jpg = b9.tobytes() if ok9 else None
+            if jpg is None:
+                return self._json(503, {"ok": False, "error": "no frame"})
+            sc2 = dict(sc)
+            sc2["event_rules"] = ""      # force regeneration
+            threading.Thread(target=_rules_worker, args=(cam, jpg, sc2),
+                             daemon=True).start()
             return self._json(200, {"ok": True, "cam": cam})
         if p == "/admin/scene/recalibrate":
             # wipe the scene -> the worker re-runs the AI calibration
@@ -2001,6 +2084,78 @@ class H(BaseHTTPRequestHandler):
             cams_save(cfg)
             return self._json(200, cfg)
         return self._json(404, {"ok": False})
+
+    def _share_page(self, sid):
+        """Public share card for one event — Open Graph / Twitter meta so a
+        shared link renders with the event snapshot, the AI verdict and a clear
+        one-line pitch of the project (GEO/SEO)."""
+        try:
+            ev = db.get_event(int(sid))
+        except (ValueError, TypeError):
+            ev = None
+        base = PUBLIC_BASE
+        if not ev:
+            self.send_response(302)
+            self.send_header("Location", base + "/#live")
+            self.end_headers()
+            return
+        img = f"{base}/cv/snap/{ev['snap']}" if ev.get("snap") else base + "/assets/og.jpg"
+        vmap = {"violation": "AI: naruszenie / violation",
+                "no_violation": "AI: brak naruszenia / no violation",
+                "uncertain": "AI: niepewne / uncertain"}
+        verdict = vmap.get(ev.get("ai_verdict") or "", "oczekuje / pending")
+        desc_pl = ev.get("ai_pl") or ev.get("desc") or ""
+        desc_en = ev.get("ai_en") or ""
+        title = f"Bezpieczne Przejścia — zdarzenie #{ev['id']} · {verdict}"
+        og_desc = (desc_en or desc_pl or
+                   "Live AI watching a real Polish pedestrian crossing — verify the verdict yourself.")[:280]
+
+        def esc(s):
+            return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+        clip_html = ""
+        if ev.get("clip"):
+            clip_html = (f'<video controls autoplay muted playsinline poster="{esc(img)}" '
+                         f'src="{base}/cv/clip/{esc(ev["clip"])}" '
+                         'style="width:100%;border-radius:12px"></video>')
+        else:
+            clip_html = f'<img src="{esc(img)}" style="width:100%;border-radius:12px">'
+        html = f"""<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{esc(title)}</title>
+<meta name="description" content="{esc(og_desc)}">
+<meta property="og:type" content="video.other">
+<meta property="og:site_name" content="Bezpieczne Przejścia / SafeCross">
+<meta property="og:title" content="{esc(title)}">
+<meta property="og:description" content="{esc(og_desc)}">
+<meta property="og:image" content="{esc(img)}">
+<meta property="og:url" content="{base}/cv/share/{ev['id']}">
+{f'<meta property="og:video" content="{base}/cv/clip/{esc(ev["clip"])}">' if ev.get('clip') else ''}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{esc(title)}">
+<meta name="twitter:description" content="{esc(og_desc)}">
+<meta name="twitter:image" content="{esc(img)}">
+<style>body{{font:16px/1.6 system-ui;background:#0a0e14;color:#e6edf3;margin:0;padding:1.4rem;max-width:760px;margin:0 auto}}
+a.btn{{display:inline-block;background:#2ee6a6;color:#04120c;font-weight:700;padding:.7rem 1.2rem;border-radius:10px;text-decoration:none;margin-top:1rem}}
+.v{{display:inline-block;background:#3a1116;color:#ff8a97;border:1px solid #7a2230;border-radius:8px;padding:.15rem .5rem;font-size:.85rem;font-weight:700}}
+.mut{{color:#8b97a7}}</style></head><body>
+<p><a href="{base}/" style="color:#2ee6a6;font-weight:700;text-decoration:none">◆ Bezpieczne Przejścia / SafeCross</a></p>
+<h1 style="font-size:1.3rem">Zdarzenie #{ev['id']} na przejściu dla pieszych</h1>
+<p><span class="v">{esc(verdict)}</span> <span class="mut">· {esc((ev.get('ts') or '').replace('T',' ')[:16])} · ~{ev.get('kmh') or '?'} km/h</span></p>
+{clip_html}
+<p>{esc(desc_pl)}</p>
+<p class="mut">{esc(desc_en)}</p>
+<p class="mut">AI na żywo analizuje prawdziwe przejście dla pieszych w Polsce, a ludzie weryfikują każdy werdykt. Kod otwarty (Apache-2.0).</p>
+<a class="btn" href="{base}/#live">Zobacz kamerę na żywo → / Watch live</a>
+<a class="btn" style="background:#1a2432;color:#e6edf3" href="https://github.com/AndriiShramko/bezpieczne-przejscia">Kod na GitHub</a>
+</body></html>"""
+        b = html.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(b)))
+        self.send_header("Cache-Control", "public, max-age=300")
+        self.end_headers()
+        self.wfile.write(b)
 
     def _mjpeg(self):
         self.send_response(200)

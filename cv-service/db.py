@@ -47,6 +47,7 @@ _C.commit()
 for _mig in ("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0",
              "ALTER TABLE events ADD COLUMN tracks_json TEXT",
              "ALTER TABLE events ADD COLUMN flags TEXT",
+             "ALTER TABLE events ADD COLUMN trashed INTEGER DEFAULT 0",
              "ALTER TABLE hourly ADD COLUMN speeding INTEGER DEFAULT 0"):
     try:
         _C.execute(_mig)
@@ -54,6 +55,17 @@ for _mig in ("ALTER TABLE hourly ADD COLUMN bike INTEGER DEFAULT 0",
     except sqlite3.OperationalError as _e:
         if "duplicate column" not in str(_e).lower():
             raise  # a real DB problem must be loud, not swallowed
+# one-time backfill of hourly.speeding from events created before the column
+try:
+    if _C.execute("SELECT COALESCE(SUM(speeding),0) FROM hourly").fetchone()[0] == 0:
+        for cam, hr, n in _C.execute(
+                "SELECT cam_id, substr(ts_utc,1,13)||':00Z', COUNT(*) FROM events "
+                "WHERE kind='speeding' GROUP BY cam_id, substr(ts_utc,1,13)").fetchall():
+            _C.execute("UPDATE hourly SET speeding=? WHERE cam_id=? AND hour_utc=?",
+                       (n, cam, hr))
+        _C.commit()
+except sqlite3.OperationalError:
+    pass
 
 
 def _now():
@@ -136,9 +148,9 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     q = ("SELECT id,ts_utc,cam_id,description,snapshot,clip,duration_s,tl_state,"
          "max_veh_kmh,status,ai_verdict,ai_explanation_pl,ai_explanation_en,"
          "ai_confidence,confirm,refute,kind,flags FROM events")
-    # community-rejected events (people said "nothing there") go to the trash
-    # tab and disappear from every other view
-    TRASH = "(refute > confirm AND refute >= 2)"
+    # trashed = admin binned it, OR the community rejected it (2+ refutes over
+    # confirms). Either way it leaves every public view except the Trash tab.
+    TRASH = "(trashed=1 OR (refute > confirm AND refute >= 2))"
     where, args = [], []
     if tab == "violation":
         where.append("ai_verdict='violation'")
@@ -323,6 +335,26 @@ def ai_call_inc():
         _C.execute("INSERT INTO ai_usage(day,calls) VALUES(?,1) "
                    "ON CONFLICT(day) DO UPDATE SET calls=calls+1", (day,))
         _C.commit()
+
+
+def set_trashed(eid, val=1):
+    with _LOCK:
+        _C.execute("UPDATE events SET trashed=? WHERE id=?", (1 if val else 0, eid))
+        _C.commit()
+    return True
+
+
+def get_event(eid):
+    with _LOCK:
+        r = _C.execute(
+            "SELECT id,ts_utc,cam_id,description,snapshot,clip,duration_s,max_veh_kmh,"
+            "ai_verdict,ai_explanation_pl,ai_explanation_en,confirm,refute,kind "
+            "FROM events WHERE id=?", (eid,)).fetchone()
+    if not r:
+        return None
+    keys = ["id", "ts", "cam", "desc", "snap", "clip", "dur", "kmh", "ai_verdict",
+            "ai_pl", "ai_en", "confirm", "refute", "kind"]
+    return dict(zip(keys, r))
 
 
 def all_events_for_report(cam_id, limit=500):

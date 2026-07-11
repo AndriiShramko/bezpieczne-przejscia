@@ -61,13 +61,16 @@ zdarzeń, które AI czyta przy każdym werdykcie. Zapis działa bez restartu (ho
    <button class="sec" onclick="zeAdd('crossings')">+ przejście</button>
    <button class="sec" onclick="zeAdd('bike_crossings')">+ rowerowy</button>
    <button class="sec" onclick="zeAdd('islands')">+ wysepka</button>
+   <button class="sec" onclick="zeAdd('traffic_lights')">+ światła</button>
    <button class="sec" onclick="zeAdd('ignore_regions')">+ ignoruj</button>
   </div>
+  <p class="muted" style="margin:.3rem 0">Światła: zaznacz PROSTOKĄT wokół głowicy sygnalizatora — system czyta jego kolor (HSV) i zapisuje stan „czerwone/zielone". YOLO nie rozpoznaje koloru świateł, dlatego wskazujesz je ręcznie.</p>
   <div id="zlist" style="max-height:240px;overflow:auto;margin-top:8px"></div>
   <h3 style="margin:10px 0 4px;font-size:.95rem">Reguły zdarzeń (czyta AI przy werdyktach)</h3>
   <textarea id="zrules" rows="5" oninput="zeDirty()"></textarea>
   <div style="margin-top:8px">
    <button onclick="zeSave()">💾 Zapisz strefy</button>
+   <button class="sec" onclick="zeRules()">📜 Uzupełnij reguły AI</button>
    <button class="sec" onclick="zeRecal()">🤖 Rekalibruj AI</button>
    <button class="sec" onclick="zeLoad()">↺ Odśwież</button>
   </div>
@@ -144,8 +147,9 @@ function plToggle(){
 var Z={scene:null,img:new Image(),sel:null,drag:null,draw:null,W:1280,H:720,dirty:false};
 function zeDirty(){Z.dirty=true;var m=document.getElementById('zmsg');
   if(m&&!m.textContent.includes('niezapisane'))m.textContent='✏️ Masz niezapisane zmiany — kliknij „Zapisz strefy".';}
-var ZTYPES={crossings:'#ffd24d',bike_crossings:'#37e6e6',islands:'#ff5dc8',ignore_regions:'#8b97a7'};
-var ZNAME={crossings:'przejście',bike_crossings:'przejazd rower.',islands:'wysepka',ignore_regions:'ignoruj'};
+var ZTYPES={crossings:'#ffd24d',bike_crossings:'#37e6e6',islands:'#ff5dc8',traffic_lights:'#ff3b3b',ignore_regions:'#8b97a7'};
+var ZNAME={crossings:'przejście',bike_crossings:'przejazd rower.',islands:'wysepka',traffic_lights:'światła',ignore_regions:'ignoruj'};
+var ZBBOX={traffic_lights:1,ignore_regions:1};   // rectangle types
 function zc(){return document.getElementById('zc');}
 function zmsg(s){document.getElementById('zmsg').textContent=s;}
 function zeLoad(){
@@ -163,14 +167,15 @@ function zeLoad(){
         if(!Z.dirty)setTimeout(function(){if(!Z.dirty)zeLoad();},12000);}
       else zmsg('Brak mapy stref — narysuj ręcznie lub użyj „Rekalibruj AI".');
     }
-    ['crossings','bike_crossings','islands','ignore_regions'].forEach(k=>{if(!Array.isArray(Z.scene[k]))Z.scene[k]=[];});
+    ['crossings','bike_crossings','islands','traffic_lights','ignore_regions'].forEach(k=>{if(!Array.isArray(Z.scene[k]))Z.scene[k]=[];});
     var er=Z.scene.event_rules;document.getElementById('zrules').value=typeof er==='string'?er:JSON.stringify(er||'',null,1);
     zeList();zeRender();}).catch(function(){zmsg('Brak mapy stref — AI jeszcze nie skalibrowało lub użyj Rekalibruj.');});
 }
 function zePolys(){var out=[];['crossings','bike_crossings','islands'].forEach(function(k){
     (Z.scene[k]||[]).forEach(function(o,i){out.push({k:k,i:i,poly:o.polygon||[],id:o.id||k+i});});});
-  (Z.scene.ignore_regions||[]).forEach(function(o,i){var b=o.bbox||[0,0,0,0];
-    out.push({k:'ignore_regions',i:i,poly:[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]],id:o.label||('ign'+i),bbox:true});});
+  ['traffic_lights','ignore_regions'].forEach(function(k){
+    (Z.scene[k]||[]).forEach(function(o,i){var b=o.bbox||[0,0,0,0];
+      out.push({k:k,i:i,poly:[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]],id:o.id||o.label||(k[0]+i),bbox:true});});});
   return out;}
 function zeRender(){var c=zc(),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
   if(Z.img.complete)x.drawImage(Z.img,0,0,c.width,c.height);
@@ -208,7 +213,7 @@ document.getElementById('zc').addEventListener('mousedown',function(ev){
 document.getElementById('zc').addEventListener('contextmenu',function(ev){ev.preventDefault();});
 document.getElementById('zc').addEventListener('mousemove',function(ev){
   if(!Z.drag)return;var xy=zeXY(ev);var arr=Z.scene[Z.drag.k];
-  if(Z.drag.k==='ignore_regions'){var poly=zePolys().find(q=>q.k===Z.drag.k&&q.i===Z.drag.i).poly;
+  if(ZBBOX[Z.drag.k]){var poly=zePolys().find(q=>q.k===Z.drag.k&&q.i===Z.drag.i).poly;
     poly[Z.drag.j][0]=xy[0];poly[Z.drag.j][1]=xy[1];
     var xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);
     arr[Z.drag.i].bbox=[Math.min.apply(0,xs),Math.min.apply(0,ys),Math.max.apply(0,xs),Math.max.apply(0,ys)];}
@@ -220,8 +225,8 @@ document.getElementById('zc').addEventListener('click',function(ev){
 document.getElementById('zc').addEventListener('dblclick',function(ev){
   if(!Z.draw||Z.draw.pts.length<3){Z.draw=null;return;}
   var k=Z.draw.k,id=prompt('Nazwa/ID strefy:',k.slice(0,2)+(Z.scene[k].length+1));
-  if(k==='ignore_regions'){var xs=Z.draw.pts.map(p=>p[0]),ys=Z.draw.pts.map(p=>p[1]);
-    Z.scene[k].push({label:id||'ign',bbox:[Math.min.apply(0,xs),Math.min.apply(0,ys),Math.max.apply(0,xs),Math.max.apply(0,ys)]});}
+  if(ZBBOX[k]){var xs=Z.draw.pts.map(p=>p[0]),ys=Z.draw.pts.map(p=>p[1]);
+    Z.scene[k].push({id:id||k,label:id||k,bbox:[Math.min.apply(0,xs),Math.min.apply(0,ys),Math.max.apply(0,xs),Math.max.apply(0,ys)]});}
   else{Z.scene[k].push({id:id||k,polygon:Z.draw.pts});}
   Z.draw=null;zeDirty();zeList();zeRender();zmsg('Strefa dodana — pamiętaj Zapisz.');});
 function zeSave(){Z.scene.event_rules=document.getElementById('zrules').value;
@@ -233,5 +238,11 @@ function zeRecal(){if(!confirm('Usunąć mapę i pozwolić AI narysować ją od 
       if(!d.ok){zmsg('Błąd tokenu.');return;}
       zmsg('🤖 AI kalibruje strefy… (~1-2 min, odświeżę automatycznie)');
       setTimeout(zeLoad,15000);});}
+function zeRules(){
+  fetch('/cv/admin/scene/rules',{method:'POST',headers:h(),body:'{}'})
+    .then(r=>r.json()).then(function(d){
+      if(!d.ok){zmsg('Błąd: '+(d.error||'token / brak mapy stref'));return;}
+      zmsg('📜 AI uzupełnia reguły zdarzeń… (~20-40 s, odświeżę automatycznie)');
+      setTimeout(zeLoad,25000);});}
 zeLoad();
 </script></body></html>
