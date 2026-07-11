@@ -1624,7 +1624,10 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # top of a bike track: a genuine motor vehicle is never co-located with
         # a separately-tracked bicycle, and a real motorcycle produces NO
         # parallel BIKE detection, so neither is ever wrongly dropped.
-        _dedup_px = 0.06 * w
+        # Threshold kept TIGHT: the phantom is the SAME object, so its anchor
+        # nearly coincides with the bike's; a real car beside a cyclist sits
+        # farther away, so a genuine car-vs-cyclist conflict is NOT suppressed.
+        _dedup_px = 0.04 * w
         _bike_pts = list(bike_tracks.values())
         _phantom_veh = {tid for tid, vp in veh_tracks.items()
                         if any(abs(vp[0] - bx) < _dedup_px and abs(vp[1] - by) < _dedup_px
