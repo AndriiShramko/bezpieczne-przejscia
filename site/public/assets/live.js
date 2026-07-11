@@ -480,7 +480,15 @@
     }
     e.innerHTML = svgEl(W, H) + bars.join("") + "</svg>" +
       '<div class="legend"><i style="background:#ff9d5c"></i>' +
-      (L === "pl" ? "przekroczenia prędkości na 1000 pojazdów wg godziny (UTC)" : "speeding per 1000 vehicles by hour (UTC)") + "</div>";
+      (L === "pl" ? "przekroczenia prędkości na 1000 pojazdów wg godziny (UTC) — kliknij, by zobaczyć nagrania" : "speeding per 1000 vehicles by hour (UTC) — click to see recordings") + "</div>";
+    e.style.cursor = "pointer";
+    e.title = L === "pl" ? "Kliknij: nagrania możliwych przekroczeń prędkości" : "Click: recordings of possible speeding";
+    e.onclick = function () {
+      curTab = "speeding"; curHour = null;
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === "speeding"); });
+      lastSig = ""; loadEvents();
+      var evs = el("events"); if (evs) evs.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
   }
 
   /* ---------- boot ---------- */

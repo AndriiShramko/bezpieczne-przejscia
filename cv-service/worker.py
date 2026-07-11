@@ -259,17 +259,18 @@ class SpeedBook:
     JUMP_PX = 150       # one-step displacement above this = tracker jumped to
                         # ANOTHER object -> reset history (kills fake 100 km/h)
     MAX_KMH = 140       # urban camera: anything above is a measurement artifact
+    PED_HEIGHT_M = 1.70  # assumed pedestrian height — used as a per-frame ruler
 
     def __init__(self, m_per_px, scale_fn=None, walker=False):
         self.m_per_px = m_per_px
         self.scale_fn = scale_fn        # optional m_per_px(y) — perspective
         self.walker = walker            # pedestrians: path-length (radial-aware)
-        self.hist = {}  # tid -> deque[(t, x, y)]
+        self.hist = {}  # tid -> deque[(t, x, y, box_h)]
 
     def _mpp(self, y):
         return self.scale_fn(y) if self.scale_fn else self.m_per_px
 
-    def update(self, tracks, now):
+    def update(self, tracks, now, heights=None):
         out = {}
         self.stationary = set()
         stat_px = max(6.0, (MOVE_KMH_MIN / 3.6) / max(1e-6, self.m_per_px) * self.STAT_SEC)
@@ -279,9 +280,9 @@ class SpeedBook:
                 step = ((x - q[-1][1]) ** 2 + (y - q[-1][2]) ** 2) ** 0.5
                 if step > self.JUMP_PX:
                     q.clear()           # identity switch — start fresh
-            q.append((now, x, y))
+            q.append((now, x, y, float((heights or {}).get(tid, 0.0) or 0.0)))
             if len(q) >= 3 and q[-1][0] - q[0][0] >= 0.8:
-                t0, x0, y0 = q[0]
+                t0, x0, y0 = q[0][0], q[0][1], q[0][2]
                 dt = now - t0
                 if dt > 0.2:  # never divide by a degenerate window
                     d_px = float(((x - x0) ** 2 + (y - y0) ** 2) ** 0.5)
@@ -295,10 +296,20 @@ class SpeedBook:
                             path += ((q[i][1] - q[i-1][1]) ** 2
                                      + (q[i][2] - q[i-1][2]) ** 2) ** 0.5
                         d_px = max(d_px, 0.7 * path)
-                    # perspective: meters per pixel at the MIDPOINT row of the
-                    # movement — objects near the camera (bottom) cover fewer
-                    # meters per pixel, the old constant scale inflated them
-                    kmh = float((d_px / dt) * self._mpp((y0 + y) / 2.0) * 3.6)
+                    # SCALE: for a pedestrian, the most reliable, calibration-free
+                    # ruler is the person's OWN bounding-box height — ~1.70 m tall,
+                    # so metres-per-pixel = 1.70 / box_height at THAT distance. This
+                    # is perspective-correct from the very first frame (near = tall
+                    # box = small m/px, far = short box = large m/px), which fixes
+                    # the "same walker reads 2 km/h far and 6 km/h near" bug on
+                    # cameras with no horizon calibration and sparse autoscale data.
+                    # Vehicles keep the row-scale (their height is unreliable).
+                    hs = [p[3] for p in q if p[3] > 8.0]
+                    if self.walker and hs:
+                        mpp = self.PED_HEIGHT_M / (sorted(hs)[len(hs) // 2])
+                    else:
+                        mpp = self._mpp((y0 + y) / 2.0)
+                    kmh = float((d_px / dt) * mpp * 3.6)
                     if kmh <= self.MAX_KMH:
                         out[tid] = kmh
             span = q[-1][0] - q[0][0]
@@ -1647,7 +1658,20 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             speeds._bikebook = SpeedBook(m_per_px, speeds.scale_fn)
         speeds._pedbook.walker = True
         speeds._bikebook.walker = True
-        ped_kmh = speeds._pedbook.update(ped_tracks, cts)
+        # per-track pedestrian box height (the tracker's position is the matched
+        # detection's bottom-centre, so nearest-anchor recovers its box) — feeds
+        # the person's-own-height ruler in SpeedBook so speeds are distance-correct
+        # even with no camera calibration.
+        ped_heights = {}
+        for tid, pos in ped_tracks.items():
+            best_h, best_d = 0.0, 1e9
+            for d in peds:
+                dd = (d.anchor[0] - pos[0]) ** 2 + (d.anchor[1] - pos[1]) ** 2
+                if dd < best_d:
+                    best_d, best_h = dd, (d.xyxy[3] - d.xyxy[1])
+            if best_d < 25.0:
+                ped_heights[tid] = best_h
+        ped_kmh = speeds._pedbook.update(ped_tracks, cts, heights=ped_heights)
         bike_kmh = speeds._bikebook.update(bike_tracks, cts)
         for tid, v in veh_kmh.items():
             if v > 1.5 and int(now * 2) % 10 == 0:  # sample, don't flood
