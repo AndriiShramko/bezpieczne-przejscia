@@ -16,13 +16,29 @@
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/resources.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/resources.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/resources.html">
 <link rel="stylesheet" href="/assets/style.css">
+<script>
+/* auto-language: on first visit send the user to the version matching their
+   browser/system language; a manual switch (below) is remembered and wins. */
+(function(){try{
+  var chosen=localStorage.getItem('bp_lang');
+  var cur="pl";
+  if(chosen){ if(chosen!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[chosen];
+      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);} return; }
+  if(sessionStorage.getItem('bp_autolang'))return;
+  sessionStorage.setItem('bp_autolang','1');
+  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  if(!/^(en|pl|es|ru)$/.test(want))want='en';
+  if(want!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
+    location.replace(pre+'/'+location.search+location.hash);}
+}catch(e){}})();
+</script>
 
 </head>
 <body>
 <header class="nav">
  <a class="logo" href="/pl/">🚸 <span>Bezpieczne Przejścia</span></a>
  <nav><a href="/pl/">Na żywo</a><a href="/pl/how-it-works.html">Jak to działa</a><a href="/pl/accuracy.html">Skuteczność</a><a href="/pl/resources.html" class=cur>Wdrożenie</a><a href="/pl/compliance.html">Zgodność / RODO</a><a href="/pl/contact.html">Kontakt</a></nav>
- <span class="langs"><a class="lang" href="/resources.html">EN</a><a class="lang cur" href="/pl/resources.html">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
+ <span class="langs"><a class="lang" data-lang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/resources.html">EN</a><a class="lang cur" data-lang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/resources.html">PL</a><a class="lang" data-lang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
 </header>
 <div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
 <main>

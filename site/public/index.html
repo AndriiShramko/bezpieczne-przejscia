@@ -16,6 +16,22 @@
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/"><link rel="alternate" hreflang="es" href="https://patrol.flyreelstudio.eu/es/"><link rel="alternate" hreflang="ru" href="https://patrol.flyreelstudio.eu/ru/">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/">
 <link rel="stylesheet" href="/assets/style.css">
+<script>
+/* auto-language: on first visit send the user to the version matching their
+   browser/system language; a manual switch (below) is remembered and wins. */
+(function(){try{
+  var chosen=localStorage.getItem('bp_lang');
+  var cur="en";
+  if(chosen){ if(chosen!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[chosen];
+      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);} return; }
+  if(sessionStorage.getItem('bp_autolang'))return;
+  sessionStorage.setItem('bp_autolang','1');
+  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  if(!/^(en|pl|es|ru)$/.test(want))want='en';
+  if(want!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
+    location.replace(pre+'/'+location.search+location.hash);}
+}catch(e){}})();
+</script>
 
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
@@ -38,7 +54,7 @@
 <header class="nav">
  <a class="logo" href="/">🚸 <span>SafeCross</span></a>
  <nav><a href="/" class=cur>Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
- <span class="langs"><a class="lang cur" href="/">EN</a><a class="lang" href="/pl/">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
+ <span class="langs"><a class="lang cur" data-lang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/">EN</a><a class="lang" data-lang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/">PL</a><a class="lang" data-lang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
 </header>
 <div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
@@ -93,14 +109,14 @@
  <strong>moving</strong> vehicle meets a pedestrian in the crossing zone (a car stopped at a red light is not an event).</p>
  <h2 class="mt">Check the AI — click an event, watch the clip fullscreen, step through the rest</h2>
  <div class="tabs-row">
-  <button class="tab cur" data-tab="all">All</button>
-  <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab cur" data-tab="top">✓ Confirmed violations</button>
+  <button class="tab tab-cta" data-tab="unverified">🔎 Check unverified <span class="tab-badge" id="tab-unver"></span></button>
+  <button class="tab" data-tab="all">All</button>
   <button class="tab" data-tab="ped">Pedestrians</button>
   <button class="tab" data-tab="bike">Cyclists</button>
   <button class="tab" data-tab="child">Children / prams</button>
   <button class="tab" data-tab="speeding">Speeding (est.)</button>
   <button class="tab" data-tab="rejected">AI-rejected</button>
-  <button class="tab" data-tab="pending">Awaiting AI</button>
   <button class="tab" data-tab="trash">🗑 Trash</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Loading events…</p></div>

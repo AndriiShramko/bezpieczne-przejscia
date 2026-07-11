@@ -149,14 +149,14 @@ VERIFY_PL = """
  powstaje TYLKO gdy pojazd <strong>w ruchu</strong> spotyka pieszego w strefie przejścia (auto stojące na czerwonym to nie zdarzenie).</p>
  <h2 class="mt">Sprawdź AI — kliknij zdarzenie, obejrzyj klip na pełnym ekranie, przejdź do kolejnych</h2>
  <div class="tabs-row">
-  <button class="tab cur" data-tab="all">Wszystkie</button>
-  <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab cur" data-tab="top">✓ Potwierdzone naruszenia</button>
+  <button class="tab tab-cta" data-tab="unverified">🔎 Sprawdź niezweryfikowane <span class="tab-badge" id="tab-unver"></span></button>
+  <button class="tab" data-tab="all">Wszystkie</button>
   <button class="tab" data-tab="ped">Piesi</button>
   <button class="tab" data-tab="bike">Rowerzyści</button>
   <button class="tab" data-tab="child">Dzieci / wózki</button>
   <button class="tab" data-tab="speeding">Prędkość (szac.)</button>
   <button class="tab" data-tab="rejected">Odrzucone przez AI</button>
-  <button class="tab" data-tab="pending">Czekają na AI</button>
   <button class="tab" data-tab="trash">🗑 Kosz</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
@@ -186,14 +186,14 @@ VERIFY_EN = """
  <strong>moving</strong> vehicle meets a pedestrian in the crossing zone (a car stopped at a red light is not an event).</p>
  <h2 class="mt">Check the AI — click an event, watch the clip fullscreen, step through the rest</h2>
  <div class="tabs-row">
-  <button class="tab cur" data-tab="all">All</button>
-  <button class="tab" data-tab="violation">AI violations</button>
+  <button class="tab cur" data-tab="top">✓ Confirmed violations</button>
+  <button class="tab tab-cta" data-tab="unverified">🔎 Check unverified <span class="tab-badge" id="tab-unver"></span></button>
+  <button class="tab" data-tab="all">All</button>
   <button class="tab" data-tab="ped">Pedestrians</button>
   <button class="tab" data-tab="bike">Cyclists</button>
   <button class="tab" data-tab="child">Children / prams</button>
   <button class="tab" data-tab="speeding">Speeding (est.)</button>
   <button class="tab" data-tab="rejected">AI-rejected</button>
-  <button class="tab" data-tab="pending">Awaiting AI</button>
   <button class="tab" data-tab="trash">🗑 Trash</button>
  </div>
  <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
@@ -274,7 +274,8 @@ def head(lang, page, extra=""):
         f'<a href="{href(p)}"{" class=cur" if p == page else ""}>{t["nav"][p]}</a>'
         for p in PAGES[:-1])
     switch = "".join(
-        f'<a class="lang{" cur" if lg == lang else ""}" '
+        f'<a class="lang{" cur" if lg == lang else ""}" data-lang="{lg}" '
+        f'onclick="try{{localStorage.setItem(\'bp_lang\',\'{lg}\')}}catch(e){{}}" '
         f'href="{T[lg]["prefix"]}/{fname if (page == "index" or lg in FULL_LANGS) else ""}">'
         f'{LANG_LABEL[lg]}</a>' for lg in LANG_ORDER)
     hreflangs = "".join(
@@ -298,6 +299,22 @@ def head(lang, page, extra=""):
 {hreflangs}
 <link rel="alternate" hreflang="x-default" href="{BASE}/{fname}">
 <link rel="stylesheet" href="/assets/style.css">
+<script>
+/* auto-language: on first visit send the user to the version matching their
+   browser/system language; a manual switch (below) is remembered and wins. */
+(function(){{try{{
+  var chosen=localStorage.getItem('bp_lang');
+  var cur="{lang}";
+  if(chosen){{ if(chosen!==cur){{var pre={{en:'',pl:'/pl',es:'/es',ru:'/ru'}}[chosen];
+      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);}} return; }}
+  if(sessionStorage.getItem('bp_autolang'))return;
+  sessionStorage.setItem('bp_autolang','1');
+  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  if(!/^(en|pl|es|ru)$/.test(want))want='en';
+  if(want!==cur){{var pre={{en:'',pl:'/pl',es:'/es',ru:'/ru'}}[want];
+    location.replace(pre+'/'+location.search+location.hash);}}
+}}catch(e){{}}}})();
+</script>
 {extra}
 </head>
 <body>
@@ -833,6 +850,11 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .tabs-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 .tab{background:var(--panel);color:var(--mut);border:0;border-radius:20px;padding:.4rem .9rem;font-size:.85rem;cursor:pointer;font-weight:600}
 .tab.cur{background:var(--acc);color:#04120c}
+.tab-cta{background:#ff5d6c;color:#fff;animation:ctapulse 2.2s ease-in-out infinite}
+.tab-cta.cur{background:#ff3b4d;color:#fff}
+.tab-cta:hover{filter:brightness(1.1)}
+@keyframes ctapulse{0%,100%{box-shadow:0 0 0 0 rgba(255,93,108,.5)}50%{box-shadow:0 0 0 6px rgba(255,93,108,0)}}
+.tab-badge{background:rgba(0,0,0,.28);border-radius:10px;padding:0 .35rem;font-size:.78rem;margin-left:.15rem}
 .ev-media{position:relative;cursor:pointer;background:#000;aspect-ratio:16/9}
 .ev-media video,.ev-media img{width:100%;height:100%;object-fit:cover;display:block}
 .ev-media .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:#fff;text-shadow:0 2px 8px #000;opacity:.85}

@@ -65,7 +65,7 @@
 
   var voted = {};
   try { voted = JSON.parse(localStorage.getItem("bp_voted2") || "{}"); } catch (e) {}
-  var curTab = "all", curHour = null, events = [], lastSig = "";
+  var curTab = "top", curHour = null, events = [], lastSig = "";
   var SHARE = "https://patrol.flyreelstudio.eu/cv/share/";
   // admin mode: sign in ONCE in the /admin panel — the token is stored in this
   // browser (localStorage) and the main page picks it up automatically, so the
@@ -144,6 +144,9 @@
       }
       inf.textContent = bits.join("  ·  ");
     }
+    // unverified counter on the bright "check unverified" tab
+    var ub = el("tab-unver");
+    if (ub && d.stats) ub.textContent = d.stats.unverified ? d.stats.unverified : "";
     var src = el("live-source");
     if (src && d.source) {
       // camera name links to the ORIGINAL public stream page (source credit)

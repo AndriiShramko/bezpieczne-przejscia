@@ -1589,16 +1589,26 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                 continue   # fresh episode just ended here — mute duplicates
             zcx = sum(px for px, _ in z["poly"]) / len(z["poly"])
             zcy = sum(py for _, py in z["poly"]) / len(z["poly"])
-            pz_p = [tid for tid, p in ped_tracks.items()
-                    if z["zone"].contains(p) and not on_island(p)
-                    and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
-            # cyclists are crossing users too — a moving car must yield to them
-            pz_b = [tid for tid, p in bike_tracks.items()
-                    if z["zone"].contains(p) and not on_island(p)
-                    and bike_cb.confirmed(tid) and bikebook.is_moving(tid)]
-            # vehicle must be INSIDE the crossing polygon (not just its wide
-            # bbox) AND driving TOWARD the crossing — a car that already passed
-            # the zebra or turns onto another road is not a conflict
+            is_bike_zone = z.get("kind") == "bike"
+            # match the vulnerable user to the zone TYPE: a pedestrian crossing
+            # (zebra) conflicts only with PEDESTRIANS, a cyclist crossing only
+            # with CYCLISTS. Bike crossings sit right next to zebras, so a
+            # cyclist riding across his OWN lane used to fall inside the zebra
+            # polygon and fire a false pedestrian-conflict — this split fixes it.
+            if is_bike_zone:
+                pz_p = []
+                pz_b = [tid for tid, p in bike_tracks.items()
+                        if z["zone"].contains(p) and not on_island(p)
+                        and bike_cb.confirmed(tid) and bikebook.is_moving(tid)
+                        and bikebook.heading_ok(tid, zcx, zcy)]
+            else:
+                pz_p = [tid for tid, p in ped_tracks.items()
+                        if z["zone"].contains(p) and not on_island(p)
+                        and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
+                pz_b = []
+            # vehicle must be INSIDE this crossing polygon (not its wide bbox)
+            # AND driving TOWARD it — a car on its own lane that never crosses
+            # THIS zone, already passed it, or turns away is not a conflict
             vz = [tid for tid, p in veh_tracks.items()
                   if z["zone"].contains(p) and veh_cb.confirmed(tid)
                   and speeds.is_moving(tid) and speeds.heading_ok(tid, zcx, zcy)]
@@ -1895,7 +1905,7 @@ class H(BaseHTTPRequestHandler):
                      "ai_enabled": ai_analyst.enabled(),
                      "ai_calls_today": db.ai_calls_today()}
             d["stats"] = db.stats(d["cam_id"] or None)
-            d["events"] = db.list_events("all", 9, cam_id=d["cam_id"] or None)
+            d["events"] = db.list_events("top", 9, cam_id=d["cam_id"] or None)
             # camera playlist countdown for the front page
             try:
                 cfg = cams_load()

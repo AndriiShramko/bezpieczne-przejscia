@@ -154,7 +154,17 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     # for one person to hide a genuine event.
     TRASH = "(trashed=1 OR (refute - confirm >= 3))"
     where, args = [], []
-    if tab == "violation":
+    order = "id DESC"
+    if tab in ("top", "all_confirmed"):
+        # front-page default: clear violations first — HUMAN-confirmed at the
+        # very top, then AI-flagged violations. A visitor immediately sees the
+        # events people agreed are real.
+        where.append("((confirm > refute AND confirm > 0) OR ai_verdict='violation')")
+        order = "(confirm > refute AND confirm > 0) DESC, id DESC"
+    elif tab == "unverified":
+        # not yet checked by people (no human votes yet) — for participation
+        where.append("confirm=0 AND refute=0")
+    elif tab == "violation":
         where.append("ai_verdict='violation'")
     elif tab == "rejected":
         where.append("ai_verdict IN ('no_violation','uncertain')")
@@ -178,7 +188,7 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
         where.append("ts_utc LIKE ?"); args.append(hour[:13] + "%")
     if where:
         q += " WHERE " + " AND ".join(where)
-    q += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    q += f" ORDER BY {order} LIMIT ? OFFSET ?"
     args += [limit, offset]
     with _LOCK:
         rows = _C.execute(q, args).fetchall()
@@ -284,13 +294,18 @@ def stats(cam_id=None):
             f"SELECT COUNT(*) FROM events {w}{' AND' if w else ' WHERE'} "
             "(flags LIKE '%\"child\"%' OR flags LIKE '%\"stroller\"%')",
             args).fetchone()[0]
+        unver_n = _C.execute(
+            f"SELECT COUNT(*) FROM events {w}{' AND' if w else ' WHERE'} "
+            "confirm=0 AND refute=0 AND NOT (trashed=1 OR (refute-confirm>=3))",
+            args).fetchone()[0]
     return {"events_total": tot, "ai_analyzed": ai_done, "ai_violations": ai_viol,
             "human_judged": judged, "human_violations": human_viol,
             "ai_human_agreement_pct": round(100.0 * agree / judged, 1) if judged else None,
             "votes_total": votes_n,
             "cat_ped": int(cats.get("potential_conflict", 0)),
             "cat_speeding": int(cats.get("speeding", 0)),
-            "cat_bike": int(bike_n), "cat_child": int(child_n)}
+            "cat_bike": int(bike_n), "cat_child": int(child_n),
+            "unverified": int(unver_n)}
 
 
 def charts(cam_id, hours=48):
