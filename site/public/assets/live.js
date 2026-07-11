@@ -32,6 +32,35 @@
       aiToday: "AI analyses today",
       share: "Share:", copy: "Copy link", trash: "trash",
     },
+    es: {
+      live: 'EN VIVO', off: 'DESCONECTADO', perHour: '/h',
+      ped: 'peatones', veh: 'vehículos', bike: 'bicis', inFrame: 'en cuadro',
+      q: '¿Es una infracción real?', yes: '✓ Infracción', no: '✗ Falsa alarma',
+      noev: 'No hay eventos en esta pestaña: el sistema registra un episodio cuando un vehículo EN MOVIMIENTO coincide con un peatón en la zona del paso.',
+      conf: 'votan «infracción»', ref: 'votan «falsa alarma»',
+      aiViol: 'AI: INFRACCIÓN', aiNo: 'AI: sin infracción', aiUnc: 'AI: no concluyente',
+      aiWait: 'esperando análisis de AI', more: 'más', less: 'menos',
+      tabs: { violation: 'Infracciones AI', rejected: 'Descartadas por AI: ¡revísalas!', pending: 'Esperando AI', all: 'Todas' },
+      tl: 'semáforos', vmax: 'vel. máx.', epi: '● grabando episodio…',
+      fsNote: 'Los clips tienen baja resolución y pocos fps a propósito, para ahorrar recursos del servidor de demostración. En producción: FPS y resolución completos.',
+      aiToday: 'Análisis de AI hoy',
+      share: 'Compartir:', copy: 'Copiar enlace', trash: 'papelera',
+    },
+    ru: {
+      live: 'В ЭФИРЕ', off: 'НЕ В СЕТИ', perHour: '/ч',
+      ped: 'пешеходы', veh: 'транспорт', bike: 'велосипеды', inFrame: 'в кадре',
+      q: 'Это реальное нарушение?', yes: '✓ Нарушение', no: '✗ Ложная тревога',
+      noev: 'В этой вкладке нет событий — система записывает эпизод, когда ДВИЖУЩИЙСЯ транспорт встречает пешехода в зоне перехода.',
+      conf: 'голосов «нарушение»', ref: 'голосов «ложная тревога»',
+      aiViol: 'ИИ: НАРУШЕНИЕ', aiNo: 'ИИ: нарушения нет', aiUnc: 'ИИ: не уверен',
+      aiWait: 'ожидает анализа ИИ', more: 'подробнее', less: 'свернуть',
+      tabs: { violation: 'Нарушения ИИ', rejected: 'Отклонено ИИ — перепроверьте!', pending: 'Ожидает ИИ', all: 'Все' },
+      tl: 'сигналов', vmax: 'макс. скорость', epi: '● запись эпизода…',
+      fsNote: 'Клипы намеренно с низким разрешением/частотой кадров, чтобы экономить ресурсы демо-сервера. В продакшене — полные FPS/разрешение.',
+      aiToday: 'анализов ИИ сегодня',
+      share: 'Поделиться:', copy: 'Копировать ссылку', trash: 'корзина',
+    }
+  
   }[L];
 
   var voted = {};

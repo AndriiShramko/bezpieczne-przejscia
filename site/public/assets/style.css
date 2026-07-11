@@ -119,6 +119,11 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .share-cta a:hover,.share-cta button:hover{transform:translateY(-2px);filter:brightness(1.12)}
 .share-cta .li{background:#0a66c2}.share-cta .fb{background:#1877f2}
 .share-cta .tw{background:#111}.share-cta .cp{background:#2ee6a6;color:#04120c}
+/* language switcher (4 langs) */
+.langs{display:inline-flex;gap:.15rem;align-items:center}
+.langs .lang{padding:.2rem .45rem;border-radius:6px;font-size:.82rem;font-weight:700;color:var(--mut);text-decoration:none}
+.langs .lang.cur{background:var(--acc);color:#04120c}
+.langs .lang:not(.cur):hover{color:var(--fg)}
 /* playlist countdown — prominent badge over the live view */
 .pl-timer{display:inline-flex;align-items:center;gap:.5rem;margin:.5rem 0;padding:.5rem .9rem;
   border-radius:11px;background:rgba(55,182,255,.14);border:1px solid rgba(55,182,255,.4);

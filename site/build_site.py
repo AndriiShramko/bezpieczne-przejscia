@@ -6,6 +6,7 @@ feed with real-time counting + a crowd-verified event feed. Decision-maker
 statistics (sourced, Polish) lead the narrative. PL root + /en/.
 """
 import os
+from i18n_hero import HERO
 import shutil
 
 BASE = "https://patrol.flyreelstudio.eu"
@@ -15,7 +16,7 @@ PAGES = ["index", "how-it-works", "accuracy", "resources", "compliance", "contac
 
 T = {
     "pl": {
-        "lang": "pl", "prefix": "",
+        "lang": "pl", "prefix": "/pl",
         "brand": "Bezpieczne Przejścia",
         "disclaimer": ("Demonstrator technologiczny — pokazuje możliwości analizy wideo dla "
                        "bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem "
@@ -40,7 +41,7 @@ T = {
         },
     },
     "en": {
-        "lang": "en", "prefix": "/en",
+        "lang": "en", "prefix": "",
         "brand": "SafeCross",
         "disclaimer": ("Technology demonstrator — it shows what video analysis can do for "
                        "pedestrian safety. It is NOT official surveillance or law enforcement, "
@@ -61,6 +62,42 @@ T = {
             "compliance": "Compliance: GDPR & AI Act — privacy by design",
             "contact": "Contact — SafeCross",
             "privacy": "Privacy policy & legal notice",
+        },
+    },
+    "ru": {
+        "lang": "ru", "prefix": "/ru", "brand": "SafeCross",
+        "disclaimer": ("Технологический демонстратор — показывает, что видеоанализ может дать "
+                       "для безопасности пешеходов. Это НЕ официальный надзор и не контроль, "
+                       "он не налагает штрафов и никого не идентифицирует (лица и номера "
+                       "размываются). Поведенческие показатели ориентировочны и проверяются людьми."),
+        "meta_desc": ("Живое ИИ-демо безопасности пешеходных переходов: реальная камера, YOLOX "
+                      "и вердикты Gemini считают пешеходов и транспорт. Проверяйте решения ИИ сами."),
+        "nav": {"index": "В эфире", "how-it-works": "Как это работает",
+                "accuracy": "Точность", "resources": "Внедрение",
+                "compliance": "Соответствие / GDPR", "contact": "Контакт", "privacy": "Приватность"},
+        "titles": {
+            "index": "SafeCross — живой анализ безопасности пешеходных переходов (ИИ + проверка людьми)",
+            "how-it-works": "How it works", "accuracy": "Accuracy",
+            "resources": "Deployment", "compliance": "Compliance / GDPR",
+            "contact": "Contact — SafeCross", "privacy": "Privacy",
+        },
+    },
+    "es": {
+        "lang": "es", "prefix": "/es", "brand": "SafeCross",
+        "disclaimer": ("Demostrador tecnológico — muestra lo que el análisis de vídeo puede hacer "
+                       "por la seguridad peatonal. NO es vigilancia oficial ni control policial, "
+                       "no impone sanciones y no identifica a personas (caras y matrículas se "
+                       "difuminan). Las lecturas de comportamiento son indicativas y las verifican personas."),
+        "meta_desc": ("Demo de IA en vivo sobre seguridad de pasos de peatones: cámara real, "
+                      "YOLOX y veredictos de Gemini cuentan peatones y vehículos. Verifica la IA tú mismo."),
+        "nav": {"index": "En vivo", "how-it-works": "Cómo funciona",
+                "accuracy": "Precisión", "resources": "Implementación",
+                "compliance": "Cumplimiento / RGPD", "contact": "Contacto", "privacy": "Privacidad"},
+        "titles": {
+            "index": "SafeCross — análisis en vivo de seguridad en pasos de peatones (IA + verificación humana)",
+            "how-it-works": "How it works", "accuracy": "Accuracy",
+            "resources": "Deployment", "compliance": "Compliance / GDPR",
+            "contact": "Contact — SafeCross", "privacy": "Privacy",
         },
     },
 }
@@ -217,13 +254,32 @@ RESEARCH_EN = """
 </section>"""
 
 
+LANG_ORDER = ["en", "pl", "es", "ru"]         # English default (first, at /)
+LANG_LABEL = {"en": "EN", "pl": "PL", "es": "ES", "ru": "RU"}
+LANG_LOCALE = {"en": "en_US", "pl": "pl_PL", "es": "es_ES", "ru": "ru_RU"}
+# secondary pages exist only in en/pl — es/ru link them to the English version
+FULL_LANGS = {"en", "pl"}
+
+
 def head(lang, page, extra=""):
     t = T[lang]
-    other = "en" if lang == "pl" else "pl"
     fname = "" if page == "index" else page + ".html"
+    # secondary nav links fall back to English for es/ru (those pages aren't
+    # translated); the index (Live) always stays in-language
+    def href(p):
+        plang = lang if (p == "index" or lang in FULL_LANGS) else "en"
+        pre = T[plang]["prefix"]
+        return f'{pre}/{p if p != "index" else ""}{".html" if p != "index" else ""}'
     nav = "".join(
-        f'<a href="{t["prefix"]}/{p if p != "index" else ""}{".html" if p != "index" else ""}"'
-        f'{" class=cur" if p == page else ""}>{t["nav"][p]}</a>' for p in PAGES[:-1])
+        f'<a href="{href(p)}"{" class=cur" if p == page else ""}>{t["nav"][p]}</a>'
+        for p in PAGES[:-1])
+    switch = "".join(
+        f'<a class="lang{" cur" if lg == lang else ""}" '
+        f'href="{T[lg]["prefix"]}/{fname if (page == "index" or lg in FULL_LANGS) else ""}">'
+        f'{LANG_LABEL[lg]}</a>' for lg in LANG_ORDER)
+    hreflangs = "".join(
+        f'<link rel="alternate" hreflang="{lg}" href="{BASE}{T[lg]["prefix"]}/{fname}">'
+        for lg in LANG_ORDER if (page == "index" or lg in FULL_LANGS))
     return f"""<!DOCTYPE html>
 <html lang="{t['lang']}">
 <head>
@@ -235,12 +291,11 @@ def head(lang, page, extra=""):
 <meta property="og:title" content="{t['titles'][page]}">
 <meta property="og:description" content="{t['meta_desc']}">
 <meta property="og:url" content="{BASE}{t['prefix']}/{fname}">
-<meta property="og:locale" content="{'pl_PL' if lang == 'pl' else 'en_US'}">
+<meta property="og:locale" content="{LANG_LOCALE[lang]}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="{BASE}{t['prefix']}/{fname}">
-<link rel="alternate" hreflang="pl" href="{BASE}/{fname}">
-<link rel="alternate" hreflang="en" href="{BASE}/en/{fname}">
+{hreflangs}
 <link rel="alternate" hreflang="x-default" href="{BASE}/{fname}">
 <link rel="stylesheet" href="/assets/style.css">
 {extra}
@@ -249,7 +304,7 @@ def head(lang, page, extra=""):
 <header class="nav">
  <a class="logo" href="{t['prefix']}/">🚸 <span>{t['brand']}</span></a>
  <nav>{nav}</nav>
- <a class="lang" href="{T[other]['prefix']}/{fname}">{'EN' if lang == 'pl' else 'PL'}</a>
+ <span class="langs">{switch}</span>
 </header>
 <div class="disclaimer">{t['disclaimer']}</div>
 <main>"""
@@ -323,7 +378,37 @@ def page_index(lang):
  <p class="muted small" id="st-inframe"></p>
 </section>"""
 
-    if lang == "pl":
+    if lang in ("es", "ru"):
+        H = HERO[lang]
+        facts = "".join(f'<div class="fact"><b>{b}</b><span>{lb}</span></div>'
+                        for b, lb in H["facts"])
+        hooks = "".join(f'<div class="hook"><b>{b}</b><p>{tx}'
+                        f'<span class="src">{src}</span></p></div>'
+                        for b, tx, src in H["hooks"])
+        hero = f"""
+<section class="hero">
+ <div class="hero-copy">
+  <div class="kicker">{H['kicker']}</div>
+  <h1>{H['h1']}</h1>
+  <p class="lead">{H['lead']}</p>
+  <div class="hero-cta">
+   <a class="btn" href="#live">{H['cta1']}</a>
+   <a class="btn ghost" href="#kontakt">{H['cta2']}</a>
+  </div>
+ </div>
+ <aside class="hero-facts">{facts}</aside>
+</section>"""
+        why = f"""
+<section class="hooks"><h2>{H['why_title']}</h2>
+ <div class="hook-grid">{hooks}</div></section>"""
+        contact = f"""
+<section id="kontakt" class="contact">
+ <h2>{H['contact_h']}</h2>
+ <p class="lead">{H['contact_p']}</p>
+ {lead_form_html(lang)}
+</section>"""
+        verify, research = VERIFY_EN, RESEARCH_EN
+    elif lang == "pl":
         hero = """
 <section class="hero">
  <div class="hero-copy">
@@ -783,6 +868,11 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .share-cta a:hover,.share-cta button:hover{transform:translateY(-2px);filter:brightness(1.12)}
 .share-cta .li{background:#0a66c2}.share-cta .fb{background:#1877f2}
 .share-cta .tw{background:#111}.share-cta .cp{background:#2ee6a6;color:#04120c}
+/* language switcher (4 langs) */
+.langs{display:inline-flex;gap:.15rem;align-items:center}
+.langs .lang{padding:.2rem .45rem;border-radius:6px;font-size:.82rem;font-weight:700;color:var(--mut);text-decoration:none}
+.langs .lang.cur{background:var(--acc);color:#04120c}
+.langs .lang:not(.cur):hover{color:var(--fg)}
 /* playlist countdown — prominent badge over the live view */
 .pl-timer{display:inline-flex;align-items:center;gap:.5rem;margin:.5rem 0;padding:.5rem .9rem;
   border-radius:11px;background:rgba(55,182,255,.14);border:1px solid rgba(55,182,255,.4);
@@ -895,17 +985,25 @@ def main():
             p = os.path.join(PUB, entry)
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
     os.makedirs(os.path.join(PUB, "assets"), exist_ok=True)
-    os.makedirs(os.path.join(PUB, "en"), exist_ok=True)
+    for d in ("en", "pl", "es", "ru"):
+        os.makedirs(os.path.join(PUB, d), exist_ok=True)
     gen = {"index": page_index, "how-it-works": page_how, "accuracy": page_accuracy,
            "resources": page_resources, "compliance": page_compliance,
            "contact": page_contact, "privacy": page_privacy}
     n = 0
-    for lang in ("pl", "en"):
-        outdir = PUB if lang == "pl" else os.path.join(PUB, "en")
-        for page, fn in gen.items():
+    # English is the DEFAULT (site root); pl/es/ru live under their prefix.
+    # Secondary pages exist only in en+pl; es/ru get just the index.
+    plans = [("en", PUB, list(gen)),
+             ("en", os.path.join(PUB, "en"), list(gen)),   # /en/ kept for compat
+             ("pl", os.path.join(PUB, "pl"), list(gen)),
+             ("es", os.path.join(PUB, "es"), ["index"]),
+             ("ru", os.path.join(PUB, "ru"), ["index"])]
+    for lang, outdir, pages in plans:
+        os.makedirs(outdir, exist_ok=True)
+        for page in pages:
             fname = "index.html" if page == "index" else page + ".html"
             with open(os.path.join(outdir, fname), "w", encoding="utf-8") as f:
-                f.write(fn(lang))
+                f.write(gen[page](lang))
             n += 1
     with open(os.path.join(PUB, "assets", "style.css"), "w", encoding="utf-8") as f:
         f.write(CSS)

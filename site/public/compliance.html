@@ -1,49 +1,48 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zgodność: RODO i AI Act — privacy by design</title>
-<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<title>Compliance: GDPR & AI Act — privacy by design</title>
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Zgodność: RODO i AI Act — privacy by design">
-<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<meta property="og:title" content="Compliance: GDPR & AI Act — privacy by design">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/compliance.html">
-<meta property="og:locale" content="pl_PL">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/compliance.html">
-<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/compliance.html">
-<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/compliance.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/compliance.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/compliance.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/compliance.html">
 <link rel="stylesheet" href="/assets/style.css">
 
 </head>
 <body>
 <header class="nav">
- <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
- <nav><a href="/">Na żywo</a><a href="/how-it-works.html">Jak to działa</a><a href="/accuracy.html">Skuteczność</a><a href="/resources.html">Wdrożenie</a><a href="/compliance.html" class=cur>Zgodność / RODO</a><a href="/contact.html">Kontakt</a></nav>
- <a class="lang" href="/en/compliance.html">EN</a>
+ <a class="logo" href="/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/">Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html" class=cur>Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
+ <span class="langs"><a class="lang cur" href="/compliance.html">EN</a><a class="lang" href="/pl/compliance.html">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
 </header>
-<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
-<h1>Zgodność: RODO i AI Act — privacy by design</h1>
-<p class="note">Teza: <strong>twarze i tablice rozmywane, kadry nieprzechowywane, brak identyfikacji i rejestru;
-zapisywane tylko liczniki i rozmyte zrzuty zdarzeń do weryfikacji. Egzekwowanie zostaje przy organie.</strong></p>
+<h1>Compliance: GDPR & AI Act — privacy by design</h1>
+<p class="note">Thesis: <strong>faces and plates blurred, frames not stored, no identification and no register;
+only counters and blurred event snapshots are saved for verification. Enforcement stays with the authority.</strong></p>
 <ul>
- <li><strong>Rozmycie twarzy/tablic</strong> na etapie analizy; kadr istnieje tylko ulotnie w RAM.</li>
- <li><strong>Zero biometrii:</strong> twarz to jedynie region do rozmycia — bez embeddingów (AI Act art. 5).</li>
- <li><strong>Minimalizacja (art. 5 RODO):</strong> na dysk trafiają liczniki + rozmyte zrzuty zdarzeń, bez danych osobowych w wyniku.</li>
- <li><strong>Podstawa przetwarzania w chwili analizy:</strong> uzasadniony interes (art. 6 ust. 1 lit. f, cel = bezpieczeństwo ruchu) — LIA + DPIA przed wdrożeniem produkcyjnym na własnej/permissioned kamerze.</li>
- <li><strong>Brak decyzji zautomatyzowanych wobec osób (art. 22)</strong> i brak rejestru wykroczeń (art. 10).</li>
- <li><strong>Rola:</strong> Andrii Shramko (JDG, NIP PL7543116302) jako administrator (demo); wdrożenie u organu = podmiot przetwarzający (art. 28) na jego podstawie prawnej.</li>
+ <li><strong>Face/plate blur</strong> at the analysis stage; the frame exists only transiently in RAM.</li>
+ <li><strong>Zero biometrics:</strong> a face is only a region to blur — no embeddings (AI Act Art. 5).</li>
+ <li><strong>Minimisation (GDPR Art. 5):</strong> disk holds counters + blurred event snapshots, no personal data in the output.</li>
+ <li><strong>Basis for the processing moment:</strong> legitimate interest (Art. 6(1)(f), road safety) — LIA + DPIA before any production deployment on an own/permissioned camera.</li>
+ <li><strong>No automated decisions about individuals (Art. 22)</strong> and no register of offences (Art. 10).</li>
+ <li><strong>Role:</strong> Andrii Shramko (sole trader, VAT PL7543116302) as controller (demo); an authority deployment = processor (Art. 28) on their legal basis.</li>
 </ul>
-<p class="note">Ten demonstrator działa na publicznej kamerze w celach pokazu technologii; wdrożenie klienckie
-wymaga zgody właściciela kamery i podpisu prawnika (LIA/DPIA).</p></main>
+<p class="note">This demonstrator runs on a public camera to show the technology; a client deployment requires
+the camera owner's permission and a lawyer's sign-off (LIA/DPIA).</p></main>
 <footer>
  <div class="foot-grid">
-  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
-  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
    <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
  </div>

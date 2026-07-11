@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SafeCross — live pedestrian-crossing safety analysis (AI + human verification)</title>
-<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
+<title>SafeCross — análisis en vivo de seguridad en pasos de peatones (IA + verificación humana)</title>
+<meta name="description" content="Demo de IA en vivo sobre seguridad de pasos de peatones: cámara real, YOLOX y veredictos de Gemini cuentan peatones y vehículos. Verifica la IA tú mismo.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="SafeCross — live pedestrian-crossing safety analysis (AI + human verification)">
-<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
-<meta property="og:url" content="https://patrol.flyreelstudio.eu/">
-<meta property="og:locale" content="en_US">
+<meta property="og:title" content="SafeCross — análisis en vivo de seguridad en pasos de peatones (IA + verificación humana)">
+<meta property="og:description" content="Demo de IA en vivo sobre seguridad de pasos de peatones: cámara real, YOLOX y veredictos de Gemini cuentan peatones y vehículos. Verifica la IA tú mismo.">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/es/">
+<meta property="og:locale" content="es_ES">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
-<link rel="canonical" href="https://patrol.flyreelstudio.eu/">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/es/">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/"><link rel="alternate" hreflang="es" href="https://patrol.flyreelstudio.eu/es/"><link rel="alternate" hreflang="ru" href="https://patrol.flyreelstudio.eu/ru/">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/">
 <link rel="stylesheet" href="/assets/style.css">
@@ -36,31 +36,23 @@
 </head>
 <body>
 <header class="nav">
- <a class="logo" href="/">🚸 <span>SafeCross</span></a>
- <nav><a href="/" class=cur>Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
- <span class="langs"><a class="lang cur" href="/">EN</a><a class="lang" href="/pl/">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
+ <a class="logo" href="/es/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/es/" class=cur>En vivo</a><a href="/how-it-works.html">Cómo funciona</a><a href="/accuracy.html">Precisión</a><a href="/resources.html">Implementación</a><a href="/compliance.html">Cumplimiento / RGPD</a><a href="/contact.html">Contacto</a></nav>
+ <span class="langs"><a class="lang" href="/">EN</a><a class="lang" href="/pl/">PL</a><a class="lang cur" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
 </header>
-<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
+<div class="disclaimer">Demostrador tecnológico — muestra lo que el análisis de vídeo puede hacer por la seguridad peatonal. NO es vigilancia oficial ni control policial, no impone sanciones y no identifica a personas (caras y matrículas se difuminan). Las lecturas de comportamiento son indicativas y las verifican personas.</div>
 <main>
 <section class="hero">
  <div class="hero-copy">
-  <div class="kicker">Live video analysis · real camera · human verification</div>
-  <h1>Over <span class="hot">100 people</span> still die on Polish pedestrian crossings every year.</h1>
-  <p class="lead">Since the law change of 1 June 2021, pedestrians entering a crossing have priority —
-  deaths on crossings fell by 23.6% (KRBRD, 2019–2023), yet 131 people were still killed on marked
-  crossings in 2023. We show a real crossing LIVE: the system counts pedestrians, cyclists and
-  vehicles, AI judges every conflict situation, and you verify its verdicts — because even one
-  violation at a crossing is one too many.</p>
+  <div class="kicker">Análisis de vídeo en vivo · cámara real · verificación humana</div>
+  <h1>Más de <span class="hot">100 personas</span> siguen muriendo cada año en los pasos de peatones de Polonia.</h1>
+  <p class="lead">Desde el cambio legal del 1 de junio de 2021, el peatón que entra en un paso tiene prioridad: las muertes en pasos de peatones bajaron un 23.6% (KRBRD, 2019–2023), pero aun así 131 personas murieron en pasos señalizados en 2023. Mostramos un paso real EN VIVO: el sistema cuenta peatones, ciclistas y vehículos, la AI evalúa cada situación de conflicto y tú verificas sus veredictos, porque incluso una sola infracción en un paso ya es demasiado.</p>
   <div class="hero-cta">
-   <a class="btn" href="#live">Watch the live camera ↓</a>
-   <a class="btn ghost" href="#kontakt">For government</a>
+   <a class="btn" href="#live">Ver la cámara en vivo ↓</a>
+   <a class="btn ghost" href="#kontakt">Para gobiernos</a>
   </div>
  </div>
- <aside class="hero-facts">
-  <div class="fact"><b>458</b><span>pedestrians killed in 2023 — ~1 in 4 of all road deaths</span></div>
-  <div class="fact"><b>131</b><span>of them on marked crossings (2023)</span></div>
-  <div class="fact"><b>PLN 2.57M</b><span>unit cost of a single road fatality (KRBRD)</span></div>
- </aside>
+ <aside class="hero-facts"><div class="fact"><b>458</b><span>peatones muertos en 2023 — ~1 de cada 4 del total de muertes en carretera</span></div><div class="fact"><b>131</b><span>de ellos en pasos señalizados (2023)</span></div><div class="fact"><b>PLN 2.57M</b><span>coste unitario de una sola víctima mortal en carretera (KRBRD)</span></div></aside>
 </section>
 <section id="live" class="live-wrap">
  <div class="live-head">
@@ -117,19 +109,8 @@
   <a class="btn ghost" href="/cv/report.html" target="_blank">HTML report</a>
   <a class="btn ghost" href="/cv/report.csv">CSV data</a></p>
 </section>
-<section class="hooks">
- <h2>Why this matters to government</h2>
- <div class="hook-grid">
-  <div class="hook"><b>PLN 52bn / yr</b><p>the cost of road crashes to Poland — ~1.7% of GDP.
-  One fixed crossing can pay back the whole program.<span class="src">KRBRD, PANDORA 2022</span></p></div>
-  <div class="hook"><b>−23.6%</b><p>drop in pedestrian DEATHS on crossings after the 2021 law
-  (crashes −7.8%). It works — let's finish the job.<span class="src">KRBRD 2019–2023</span></p></div>
-  <div class="hook"><b>12.2 / M</b><p>pedestrian death rate per million residents — among the worst in the EU-27.
-  <span class="src">Polish Road Safety Observatory</span></p></div>
-  <div class="hook"><b>Vision Zero</b><p>EU: −50% deaths by 2030, zero by 2050 (Safe System).
-  We supply the objective data missing from today's infrastructure decisions.<span class="src">EU Road Safety Framework</span></p></div>
- </div>
-</section>
+<section class="hooks"><h2>Por qué esto importa a los gobiernos</h2>
+ <div class="hook-grid"><div class="hook"><b>PLN 52bn / año</b><p>el coste de los accidentes de tráfico para Polonia — ~1.7% del PIB. Un solo paso mejorado puede amortizar todo el programa.<span class="src">KRBRD, PANDORA 2022</span></p></div><div class="hook"><b>−23.6%</b><p>caída de las MUERTES de peatones en pasos tras la ley de 2021 (accidentes −7.8%). Funciona: terminemos el trabajo.<span class="src">KRBRD 2019–2023</span></p></div><div class="hook"><b>12.2 / M</b><p>tasa de mortalidad de peatones por millón de habitantes — de las peores de la UE-27.<span class="src">Observatorio Polaco de Seguridad Vial</span></p></div><div class="hook"><b>Vision Zero</b><p>UE: −50% de muertes para 2030, cero para 2050 (Safe System). Aportamos los datos objetivos que hoy faltan en las decisiones sobre infraestructura.<span class="src">Marco de Seguridad Vial de la UE</span></p></div></div></section>
 <section class="research">
  <h2>Open source · for researchers and integrators</h2>
  <p class="lead">The whole project is open (Apache-2.0) — <strong>anyone can reproduce, verify or extend it</strong>.
@@ -148,111 +129,115 @@
    <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
    <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
-</section><section id="about" class="about-section" lang="en">
-  <h2>About the project</h2>
+</section><section id="about" class="about-section" lang="es">
+  <h2>Sobre el proyecto</h2>
   <p class="about-lead">
-    <strong>Bezpieczne Przejścia</strong> (“Safe Crossings”) is a personal
-    project of <strong>Andrii Shramko</strong> — a VR, volumetric-video and
-    computer-vision engineer. No grant, no company, no budget: one small CPU
-    server, open code and a public city webcam.
+    <strong>Bezpieczne Przejścia</strong> («Pasos Seguros») es un proyecto
+    personal de <strong>Andrii Shramko</strong>, ingeniero de VR, vídeo
+    volumétrico y visión por computador. Sin subvención, sin empresa, sin
+    presupuesto: un pequeño servidor con CPU, código abierto y una cámara web
+    pública de la ciudad.
   </p>
   <p>
-    The goal is simple: <strong>to show that road-safety monitoring can be
-    transparent, cheap and open</strong>. An AI watches a live pedestrian
-    crossing, flags dangerous situations and explains its decisions — and any
-    visitor can verify and vote on those verdicts. Faces and license plates are
-    blurred; only anonymized statistics ever touch the disk. All code is public
-    (Apache-2.0).
+    El objetivo es simple: <strong>demostrar que la monitorización de la
+    seguridad vial puede ser transparente, barata y abierta</strong>. Una AI
+    observa en vivo un paso de peatones, señala situaciones peligrosas y explica
+    sus decisiones, y cualquier visitante puede verificar y votar esos
+    veredictos. Los rostros y las matrículas se difuminan; solo estadísticas
+    anonimizadas llegan al disco. Todo el código es público (Apache-2.0).
   </p>
   <p class="about-invite">
-    <strong>Cities, road authorities, companies and researchers are invited to
-    collaborate</strong>: share a camera over a crossing, pilot the system in
-    your municipality, or build on the code.
-    <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">Code on GitHub</a>
-    · <a href="#contact">get in touch via the contact form</a>.
+    <strong>Se invita a ciudades, autoridades viales, empresas e investigadores
+    a colaborar</strong>: comparte una cámara sobre un paso, pon a prueba el
+    sistema en tu municipio o construye sobre el código.
+    <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">Código en GitHub</a>
+    · <a href="#contact">ponte en contacto mediante el formulario</a>.
   </p>
 
   <div class="share-cta">
-    <h3>Like the project? Share it 👇</h3>
-    <p>The more people see it, the likelier it reaches a city that needs it.</p>
+    <h3>¿Te gusta el proyecto? Compártelo 👇</h3>
+    <p>Cuanta más gente lo vea, más probable es que llegue a una ciudad que lo necesita.</p>
     <div class="btns">
-      <a class="li" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fpatrol.flyreelstudio.eu">in LinkedIn</a>
+      <a class="li" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fpatrol.flyreelstudio.eu">en LinkedIn</a>
       <a class="fb" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fpatrol.flyreelstudio.eu">Facebook</a>
       <a class="tw" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=A%20live%20AI%20is%20watching%20a%20real%20Polish%20pedestrian%20crossing%20%E2%80%94%20come%20verify%20its%20verdicts.&url=https%3A%2F%2Fpatrol.flyreelstudio.eu">X / Twitter</a>
-      <button class="cp" onclick="navigator.clipboard.writeText('https://patrol.flyreelstudio.eu').then(()=>{this.textContent='✓ Copied!';})">📋 Copy link</button>
+      <button class="cp" onclick="navigator.clipboard.writeText('https://patrol.flyreelstudio.eu').then(()=>{this.textContent='✓ ¡Copiado!';})">📋 Copiar enlace</button>
     </div>
   </div>
-</section><!-- EN -->
-<section id="faq" class="faq">
- <h2>Frequently asked questions — no marketing, honestly</h2>
+</section>
+<!-- ES -->
+<section id="faq" class="faq" lang="es">
+ <h2>Preguntas frecuentes — sin marketing, con honestidad</h2>
  <details>
-  <summary>How does the system detect violations?</summary>
-  <p>The system does not guess from a single frame. An episode is created only when local kinematics shows two
-  things at once: a pedestrian is <strong>walking</strong> on the crossing and a vehicle is
-  <strong>moving</strong> through the same zone (a car stopped at a red light is not an episode). A sequence of
-  up to 8 frames then goes to the AI, which issues a verdict with an explanation. Humans have the final say —
-  every verdict can be confirmed or refuted.</p>
+  <summary>¿Cómo detecta el sistema las infracciones?</summary>
+  <p>El sistema no adivina a partir de un solo fotograma. Solo se crea un episodio cuando la cinemática local muestra dos
+  cosas a la vez: un peatón <strong>camina</strong> por el paso y un vehículo se <strong>mueve</strong> por la misma
+  zona (un coche parado en un semáforo en rojo no es un episodio). Una secuencia de hasta 8 fotogramas se envía
+  entonces a la AI, que emite un veredicto con una explicación. La última palabra la tienen las personas:
+  cada veredicto puede confirmarse o refutarse.</p>
  </details>
  <details>
-  <summary>Does the AI make mistakes?</summary>
-  <p>Yes — and we don't hide it. That is why every verdict has ✓/✗ buttons: any visitor can confirm or refute
-  the AI's judgement. From those votes we compute AI↔human agreement and publish it live on the home page.
-  We treat events as candidates, not as facts.</p>
+  <summary>¿Se equivoca la AI?</summary>
+  <p>Sí, y no lo ocultamos. Por eso cada veredicto tiene botones ✓/✗: cualquier visitante puede confirmar o refutar
+  el juicio de la AI. Con esos votos calculamos la concordancia AI↔humano y la publicamos en vivo en la página de
+  inicio. Tratamos los eventos como candidatos, no como hechos.</p>
  </details>
  <details>
-  <summary>How is vehicle speed measured?</summary>
-  <p>It is a monocular estimate: pixel displacement between frames converted through a known lane scale. The
-  result is indicative — the error can reach ±30%. It is <strong>not</strong> a radar or a measurement
-  instrument, and it is not legal evidence of anything.</p>
+  <summary>¿Cómo se mide la velocidad de los vehículos?</summary>
+  <p>Es una estimación monocular: el desplazamiento en píxeles entre fotogramas convertido mediante una escala de
+  carril conocida. El resultado es orientativo: el error puede alcanzar el ±30%. <strong>No</strong> es un radar ni un
+  instrumento de medición, y no constituye prueba legal de nada.</p>
  </details>
  <details>
-  <summary>What about privacy and GDPR?</summary>
-  <p>The system identifies no one: tracking uses ephemeral in-memory IDs, and only aggregate counters and
-  short event clips reach the disk. Blurring of faces and licence plates is available. This is a research
-  demonstrator, not surveillance or enforcement — no register of offences is created. Details on the
-  <a href="/en/compliance.html">Compliance / GDPR</a> page.</p>
+  <summary>¿Qué pasa con la privacidad y el RGPD?</summary>
+  <p>El sistema no identifica a nadie: el seguimiento usa identificadores efímeros en memoria, y solo llegan al disco
+  contadores agregados y breves clips de eventos. Está disponible el difuminado de rostros y matrículas. Es un
+  demostrador de investigación, no vigilancia ni sanción: no se crea ningún registro de infracciones. Más detalles en
+  la página de <a href="/en/compliance.html">Cumplimiento / RGPD</a>.</p>
  </details>
  <details>
-  <summary>Why does the video lag a few seconds and run at a low FPS?</summary>
-  <p>The source is an HLS stream, which by design splits video into multi-second segments — hence the delay.
-  The analysis runs on a CPU with a limited compute budget, so we process a few frames per second instead of
-  the full 25. A smoothing queue keeps the preview fluid instead of a choppy "live at any cost" picture.</p>
+  <summary>¿Por qué el vídeo va con unos segundos de retraso y a pocos FPS?</summary>
+  <p>La fuente es un stream HLS que, por diseño, divide el vídeo en segmentos de varios segundos, de ahí el retraso.
+  El análisis se ejecuta en una CPU con un presupuesto de cómputo limitado, así que procesamos unos pocos fotogramas
+  por segundo en lugar de los 25 completos. Una cola de suavizado mantiene la previsualización fluida en vez de una
+  imagen entrecortada «en directo a toda costa».</p>
  </details>
  <details>
-  <summary>Are bicycles counted?</summary>
-  <p>Yes — bicycles are a separate detection class with separate statistics, because their behaviour at a
-  crossing differs from pedestrians and cars. Motorcycles are counted as vehicles.</p>
+  <summary>¿Se cuentan las bicicletas?</summary>
+  <p>Sí: las bicicletas son una clase de detección aparte, con estadísticas propias, porque su comportamiento en un
+  paso difiere del de los peatones y los coches. Las motocicletas se cuentan como vehículos.</p>
  </details>
  <details>
-  <summary>Where do the cameras come from?</summary>
-  <p>From public webcams made available by municipalities. The source of each camera is credited next to the
-  preview. We do not install our own cameras and we do not use closed CCTV systems.</p>
+  <summary>¿De dónde salen las cámaras?</summary>
+  <p>De cámaras web públicas facilitadas por los ayuntamientos. La fuente de cada cámara se acredita junto a la
+  previsualización. No instalamos cámaras propias ni usamos sistemas de CCTV cerrados.</p>
  </details>
  <details>
-  <summary>Can I run this at my own crossing?</summary>
-  <p>Yes — the whole project is open source under Apache-2.0:
+  <summary>¿Puedo usarlo en mi propio paso?</summary>
+  <p>Sí: todo el proyecto es de código abierto bajo Apache-2.0:
   <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
-  You need a public camera stream and a small server — CPU is enough, no GPU. The method is portable: the AI
-  describes the scene once (zones, lanes, directions), then the analysis runs automatically.</p>
+  Necesitas un stream de cámara público y un servidor pequeño; basta con CPU, sin GPU. El método es portable: la AI
+  describe la escena una vez (zonas, carriles, direcciones) y luego el análisis se ejecuta de forma automática.</p>
  </details>
  <details>
-  <summary>How much does it cost?</summary>
-  <p>Almost nothing. Detection runs locally on a CPU, AI verdicts fit within the free daily tier, and hosting
-  is a small VPS. The code is open — the only real cost is the server and your setup time.</p>
+  <summary>¿Cuánto cuesta?</summary>
+  <p>Casi nada. La detección se ejecuta localmente en una CPU, los veredictos de la AI caben en la capa gratuita
+  diaria y el alojamiento es un pequeño VPS. El código es abierto: el único coste real es el servidor y tu tiempo de
+  configuración.</p>
  </details>
  <details>
-  <summary>What does the AI do, and what does YOLO do?</summary>
-  <p>It is a cooperation of three "models". <strong>YOLOX</strong> is perception: it finds pedestrians and
-  vehicles in every frame, locally and for free, but it doesn't "understand" the scene. <strong>Gemini</strong>
-  is understanding: it describes the crossing topology once, then judges each episode from a frame sequence.
-  <strong>Humans</strong> are the final check — they confirm or refute the verdicts, and true accuracy is
-  computed from that.</p>
+  <summary>¿Qué hace la AI y qué hace YOLO?</summary>
+  <p>Es la cooperación de tres «modelos». <strong>YOLOX</strong> es la percepción: encuentra peatones y vehículos en
+  cada fotograma, de forma local y gratuita, pero no «entiende» la escena. <strong>Gemini</strong> es la comprensión:
+  describe una vez la topología del paso y luego juzga cada episodio a partir de una secuencia de fotogramas.
+  <strong>Las personas</strong> son la comprobación final: confirman o refutan los veredictos, y de ahí se calcula la
+  precisión real.</p>
  </details>
 </section>
 
 <section id="kontakt" class="contact">
- <h2>Let's talk about your crossing</h2>
- <p class="lead">For a municipality, road authority, company or research project. I reply within 1–2 business days.</p>
+ <h2>Hablemos de tu paso de peatones</h2>
+ <p class="lead">Para un municipio, autoridad de carreteras, empresa o proyecto de investigación. Respondo en 1–2 días laborables.</p>
  <form id="leadform" autocomplete="on">
  <label>Full name*<input name="name" type="text" required autocomplete="name"></label>
  <label>Organisation<input name="organization" type="text" autocomplete="organization"></label>
@@ -262,7 +247,7 @@
  <label class="wide">Message*<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
  <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>I consent to processing my data to handle this inquiry (controller: Andrii Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
- <input type="hidden" name="lang" value="en">
+ <input type="hidden" name="lang" value="es">
  <button type="submit">Send</button>
 </form>
 <p id="formok" class="ok" style="display:none">✅ Thank you! Your inquiry arrived — I'll be in touch soon.</p>
@@ -283,8 +268,8 @@ fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},bod
 </div></main>
 <footer>
  <div class="foot-grid">
-  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
-  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
+  <div><strong>🚸 SafeCross</strong><p class="muted">Demostrador tecnológico — muestra lo que el análisis de vídeo puede hacer por la seguridad peatonal. NO es vigilancia oficial ni control policial, no impone sanciones y no identifica a personas (caras y matrículas se difuminan). Las lecturas de comportamiento son indicativas y las verifican personas.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/es/privacy.html">Privacidad</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
    <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
  </div>

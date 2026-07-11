@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jak to działa — pipeline, model, uczciwe ograniczenia</title>
-<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<title>How it works — pipeline, model, honest limitations</title>
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Jak to działa — pipeline, model, uczciwe ograniczenia">
-<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<meta property="og:title" content="How it works — pipeline, model, honest limitations">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/how-it-works.html">
-<meta property="og:locale" content="pl_PL">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/how-it-works.html">
-<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/how-it-works.html">
-<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/how-it-works.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/how-it-works.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/how-it-works.html">
 <link rel="stylesheet" href="/assets/style.css">
 
@@ -27,28 +26,28 @@
 </head>
 <body>
 <header class="nav">
- <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
- <nav><a href="/">Na żywo</a><a href="/how-it-works.html" class=cur>Jak to działa</a><a href="/accuracy.html">Skuteczność</a><a href="/resources.html">Wdrożenie</a><a href="/compliance.html">Zgodność / RODO</a><a href="/contact.html">Kontakt</a></nav>
- <a class="lang" href="/en/how-it-works.html">EN</a>
+ <a class="logo" href="/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/">Live</a><a href="/how-it-works.html" class=cur>How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
+ <span class="langs"><a class="lang cur" href="/how-it-works.html">EN</a><a class="lang" href="/pl/how-it-works.html">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
 </header>
-<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
-<h1>Jak to działa — i czego celowo NIE robimy</h1>
+<h1>How it works — and what we deliberately do NOT do</h1>
 <ol class="pipeline">
- <li><strong>Źródło:</strong> publiczna kamera przejścia (24/7). Analiza działa na żywo; kadr istnieje tylko w pamięci.</li>
- <li><strong>Detekcja:</strong> model <code>YOLOX</code> (licencja Apache-2.0, bez AGPL) na CPU wykrywa pieszych i pojazdy.</li>
- <li><strong>Prywatność:</strong> twarze i tablice są rozmywane natychmiast po detekcji, przed czymkolwiek innym.</li>
- <li><strong>Śledzenie:</strong> efemeryczne ID w pamięci — liczymy nowych pieszych/pojazdy, bez zapisywania kadrów.</li>
- <li><strong>Zdarzenia:</strong> gdy pojazd i pieszy są jednocześnie w strefie przejścia — flagujemy kandydata i zapisujemy rozmyty zrzut.</li>
- <li><strong>Weryfikacja ludzi:</strong> użytkownicy potwierdzają/odrzucają. Realną trafność liczymy z głosów.</li>
+ <li><strong>Source:</strong> a public 24/7 crossing camera. Analysis runs live; the frame exists only in RAM.</li>
+ <li><strong>Detection:</strong> a <code>YOLOX</code> model (Apache-2.0, no AGPL) on CPU finds pedestrians and vehicles.</li>
+ <li><strong>Privacy:</strong> faces and plates are blurred immediately after detection, before anything else.</li>
+ <li><strong>Tracking:</strong> ephemeral in-RAM IDs — we count new pedestrians/vehicles, storing no frames.</li>
+ <li><strong>Events:</strong> when a vehicle and a pedestrian are in the crossing zone at once, we flag a candidate and save a blurred snapshot.</li>
+ <li><strong>Human verification:</strong> users confirm/refute. True accuracy is computed from the votes.</li>
 </ol>
-<p class="note">To <strong>narzędzie przesiewowe</strong>, nie przyrząd pomiarowy. Liczby to estymaty,
-zdarzenia to kandydaci potwierdzani przez ludzi. Nigdy nie podajemy „wskaźnika naruszeń” jako twardej liczby —
-szczegóły na stronie <a href="/accuracy.html">Skuteczność</a>.</p></main>
+<p class="note">This is a <strong>screening tool</strong>, not a measurement instrument. Counts are estimates,
+events are human-confirmed candidates. We never state a "violation rate" as a hard number — see
+<a href="/en/accuracy.html">Accuracy</a>.</p></main>
 <footer>
  <div class="foot-grid">
-  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
-  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
    <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
  </div>

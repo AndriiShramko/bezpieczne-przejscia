@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bezpieczne Przejścia — analiza bezpieczeństwa przejść na żywo (AI + weryfikacja ludzi)</title>
+<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bezpieczne Przejścia — analiza bezpieczeństwa przejść na żywo (AI + weryfikacja ludzi)">
+<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/pl/">
+<meta property="og:locale" content="pl_PL">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0a0e14">
+<link rel="canonical" href="https://patrol.flyreelstudio.eu/pl/">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/"><link rel="alternate" hreflang="es" href="https://patrol.flyreelstudio.eu/es/"><link rel="alternate" hreflang="ru" href="https://patrol.flyreelstudio.eu/ru/">
+<link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/">
+<link rel="stylesheet" href="/assets/style.css">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Person","name":"Andrii Shramko","jobTitle":"Computer Vision / VR / 3D specialist",
+  "knowsAbout":["computer vision","pedestrian safety analytics","road safety","3D Gaussian Splatting","volumetric capture"],
+  "sameAs":["https://www.linkedin.com/in/andriishramko"]},
+ {"@type":"Organization","name":"Shramko Research Team","founder":"Andrii Shramko","vatID":"PL7543116302"},
+ {"@type":"SoftwareApplication","name":"Bezpieczne Przejścia / SafeCross","applicationCategory":"Computer vision, road-safety analytics","operatingSystem":"Linux","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}},
+ {"@type":"WebSite","name":"Bezpieczne Przejścia / SafeCross","url":"https://patrol.flyreelstudio.eu","inLanguage":["pl","en"]}
+]}</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Czy system identyfikuje ludzi lub pojazdy?","acceptedAnswer":{"@type":"Answer","text":"Nie. Twarze i tablice rejestracyjne są rozmywane na wejściu, kadry nie są przechowywane, nie powstają embeddingi twarzy. Zapisywane są tylko liczniki oraz zrzuty zdarzeń z rozmytymi danymi do weryfikacji."}},
+ {"@type":"Question","name":"Czy AI sam decyduje, że doszło do naruszenia?","acceptedAnswer":{"@type":"Answer","text":"Nie. AI FLAGUJE kandydatów na zdarzenia; ostateczną ocenę „czy kierowca ustąpił” podejmują ludzie, potwierdzając lub odrzucając każdy zrzut. Z tych głosów liczymy realną trafność."}},
+ {"@type":"Question","name":"Skąd biorą się dane na stronie?","acceptedAnswer":{"@type":"Answer","text":"Z prawdziwej publicznej kamery przejścia w Polsce, analizowanej na żywo modelem wizji komputerowej. Widać wideo z nałożonymi ramkami i licznikami."}}
+]}</script>
+<script defer src="/assets/live.js"></script>
+</head>
+<body>
+<header class="nav">
+ <a class="logo" href="/pl/">🚸 <span>Bezpieczne Przejścia</span></a>
+ <nav><a href="/pl/" class=cur>Na żywo</a><a href="/pl/how-it-works.html">Jak to działa</a><a href="/pl/accuracy.html">Skuteczność</a><a href="/pl/resources.html">Wdrożenie</a><a href="/pl/compliance.html">Zgodność / RODO</a><a href="/pl/contact.html">Kontakt</a></nav>
+ <span class="langs"><a class="lang" href="/">EN</a><a class="lang cur" href="/pl/">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
+</header>
+<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
+<main>
+<section class="hero">
+ <div class="hero-copy">
+  <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
+  <h1>Na polskich przejściach wciąż ginie <span class="hot">ponad 100 osób</span> rocznie.</h1>
+  <p class="lead">Od nowelizacji z 1 czerwca 2021 r. pieszy wchodzący na pasy ma pierwszeństwo —
+  liczba zabitych na przejściach spadła o 23,6% (KRBRD, 2019–2023), ale w 2023 r. na oznakowanych
+  przejściach zginęło nadal 131 osób. Pokazujemy ruch na prawdziwym przejściu NA ŻYWO: system
+  liczy pieszych, rowerzystów i pojazdy, AI ocenia każdą sytuację konfliktową, a Ty weryfikujesz
+  jego werdykty — bo na przejściu nawet jedno naruszenie to o jedno za dużo.</p>
+  <div class="hero-cta">
+   <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
+   <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
+  </div>
+ </div>
+ <aside class="hero-facts">
+  <div class="fact"><b>458</b><span>pieszych zginęło w 2023 — ok. 1 na 4 ofiary na drogach</span></div>
+  <div class="fact"><b>131</b><span>z nich na oznakowanych przejściach (2023)</span></div>
+  <div class="fact"><b>2,57 mln zł</b><span>jednostkowy koszt jednej ofiary śmiertelnej (KRBRD)</span></div>
+ </aside>
+</section>
+<section id="live" class="live-wrap">
+ <div class="live-head">
+  <h2>Kamera na żywo — AI liczy w czasie rzeczywistym</h2>
+  <span class="epi-badge" id="epi-badge" style="display:none">● nagrywam epizod…</span>
+  <span class="live-badge off" id="live-badge">○ OFFLINE</span>
+ </div>
+ <p class="muted" id="live-source">Publiczna kamera przejścia (PL) · 24/7</p>
+ <div class="live-stage">
+  <img id="live-img" alt="Podgląd na żywo z analizą AI (twarze i tablice rozmyte)">
+  <div class="live-offline" id="live-offline"><span>Kamera chwilowo niedostępna — ponawiam…</span></div>
+ </div>
+ <div id="ticker" class="ticker"></div>
+ <div class="stats">
+  <div class="stat" id="st-ped"><div class="big">—</div><div class="lbl">pieszych (sesja)</div><div class="sub"></div></div>
+  <div class="stat" id="st-veh"><div class="big">—</div><div class="lbl">pojazdów (sesja)</div><div class="sub"></div></div>
+  <div class="stat" id="st-ev"><div class="big">—</div><div class="lbl">zdarzeń</div><div class="sub"></div></div>
+  <div class="stat" id="st-acc"><div class="big">—</div><div class="lbl">zgodność AI↔ludzie</div><div class="sub"></div></div>
+ </div>
+ <p class="muted small" id="st-inframe"></p>
+</section>
+<section class="verify">
+ <h2>Jak to działa: 3 modele, które współpracują</h2>
+ <div class="pipe3">
+  <div><b>1 · YOLOX — lokalnie, za darmo</b><span>Percepcja: wykrywa pieszych i pojazdy w każdej klatce. Szybki, ale „nie rozumie” sceny.</span></div>
+  <div><b>2 · AI-analityk — Gemini Flash-Lite, grosze</b><span>Zrozumienie: raz opisuje przejście (pasy, sygnalizacja, kierunki), a potem ocenia KAŻDY epizod — werdykt + wyjaśnienie po polsku.</span></div>
+  <div><b>3 · Ludzie — za darmo</b><span>Weryfikacja: potwierdzasz lub odrzucasz werdykt AI. Liczymy realną zgodność AI↔ludzie.</span></div>
+ </div>
+ <p class="note">Razem dają wynik zbliżony do drogiego, „nieograniczonego” agenta AI — ale za grosze. Zdarzenie
+ powstaje TYLKO gdy pojazd <strong>w ruchu</strong> spotyka pieszego w strefie przejścia (auto stojące na czerwonym to nie zdarzenie).</p>
+ <h2 class="mt">Sprawdź AI — kliknij zdarzenie, obejrzyj klip na pełnym ekranie, przejdź do kolejnych</h2>
+ <div class="tabs-row">
+  <button class="tab cur" data-tab="all">Wszystkie</button>
+  <button class="tab" data-tab="violation">Naruszenia wg AI</button>
+  <button class="tab" data-tab="ped">Piesi</button>
+  <button class="tab" data-tab="bike">Rowerzyści</button>
+  <button class="tab" data-tab="child">Dzieci / wózki</button>
+  <button class="tab" data-tab="speeding">Prędkość (szac.)</button>
+  <button class="tab" data-tab="rejected">Odrzucone przez AI</button>
+  <button class="tab" data-tab="pending">Czekają na AI</button>
+  <button class="tab" data-tab="trash">🗑 Kosz</button>
+ </div>
+ <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
+</section>
+<section class="charts">
+ <h2>Statystyka przejścia — na żywo z bazy danych</h2>
+ <div class="chart-grid">
+  <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
+  <div class="chart-card"><h3>Przekroczenia prędkości wg pory dnia</h3><div class="chart" id="chart-tod"></div></div>
+  <div class="chart-card"><h3>Rozkład prędkości pojazdów (orientacyjnie)</h3><div class="chart" id="chart-speed"></div></div>
+  <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
+ </div>
+ <p class="dl">Pobierz pełną analitykę przejścia:
+  <a class="btn ghost" href="/cv/report.html" target="_blank">Raport HTML</a>
+  <a class="btn ghost" href="/cv/report.csv">Dane CSV</a></p>
+</section>
+<section class="hooks">
+ <h2>Dlaczego to ważne dla samorządu i KRBRD</h2>
+ <div class="hook-grid">
+  <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
+  Jedno naprawione przejście potrafi zwrócić koszt całego programu.<span class="src">KRBRD, PANDORA 2022</span></p></div>
+  <div class="hook"><b>−23,6%</b><p>spadek liczby ZABITYCH pieszych na przejściach po nowelizacji z 2021 r.
+  (wypadki −7,8%). Działa — trzeba dokończyć.<span class="src">KRBRD 2019–2023</span></p></div>
+  <div class="hook"><b>12,2 / mln</b><p>śmiertelność pieszych na milion mieszkańców — jedna z najwyższych w UE-27.
+  <span class="src">Polskie Obserwatorium BRD</span></p></div>
+  <div class="hook"><b>Vision Zero</b><p>UE: −50% ofiar do 2030, zero do 2050 (Safe System).
+  Dostarczamy obiektywne dane, których brakuje w decyzjach o infrastrukturze.<span class="src">EU Road Safety Framework</span></p></div>
+ </div>
+</section>
+<section class="research">
+ <h2>Open source · dla badaczy i integratorów</h2>
+ <p class="lead">Cały projekt jest otwarty (Apache-2.0) — <strong>każdy może go powtórzyć, zweryfikować lub rozwinąć</strong>.
+ To celowo tani, wielomodelowy system (lokalny detektor + tania LLM + weryfikacja ludzi), który zbliża się jakością
+ do drogiego, „nieograniczonego” agenta AI, ale kosztuje grosze.</p>
+ <div class="cols3">
+  <div><h3>Co jest w repo</h3><ul><li>Serwis CV (YOLOX ONNX, trekking, strefy, epizody, klipy).</li>
+   <li>Warstwa AI: scene-context + analiza zdarzeń (tania LLM).</li><li>Baza danych, API, panel admina kamer.</li>
+   <li>Frontend, raporty, docker-compose z limitami zasobów.</li></ul></div>
+  <div><h3>Dla badaczy</h3><ul><li>Zbieramy anonimowe wyjaśnienia AI + oceny ludzi → zbiór do badań nad
+   surrogate-safety i „did-not-yield”.</li><li>Metoda przenośna na dowolne przejście (opisz scenę → analizuj).</li>
+   <li>Uczciwy profil błędów i granic (patrz „Skuteczność”).</li></ul></div>
+  <div><h3>Współpraca</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Polska).
+   Wdrożenia, konsultacje, wspólne badania i granty (KRBRD, NCBR, Horizon).
+   <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
+ </div>
+</section><section id="about">      — Polish variant
+    3. <section id="about">      — English variant
+    4. Share buttons block       — plain HTML + tiny inline JS, no SDKs
+  Use the PL blocks on the Polish page and the EN blocks on /en/.
+  The share block is language-neutral except for the button labels —
+  both label sets are provided below.
+-->
+
+<!-- ============================================================
+     1a. OG / meta — POLISH page (put inside <head> of the PL root)
+     ============================================================ -->
+<!--
+<title>Bezpieczne Przejścia — AI na żywo patrzy na polskie przejście dla pieszych</title>
+<meta name="description" content="Otwarty eksperyment: YOLOX i Gemini analizują na żywo przejście dla pieszych, wskazują konflikty i tłumaczą swoje werdykty. Każdy werdykt możesz sprawdzić i ocenić sam.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/">
+<meta property="og:site_name" content="Bezpieczne Przejścia">
+<meta property="og:title" content="AI na żywo patrzy na polskie przejście dla pieszych — sprawdź jego werdykty">
+<meta property="og:description" content="Otwarty, darmowy i prywatnościowy monitoring bezpieczeństwa: YOLOX + Gemini + weryfikacja przez ludzi. Kod open source (Apache-2.0).">
+<meta property="og:image" content="https://patrol.flyreelstudio.eu/og-cover.jpg">
+<!~~ og-cover.jpg: 1200×630, a blurred live-frame screenshot with the project name overlaid ~~>
+<meta property="og:locale" content="pl_PL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+-->
+
+<!-- ============================================================
+     1b. OG / meta — ENGLISH page (put inside <head> of /en/)
+     ============================================================ -->
+<!--
+<title>Live AI watching a Polish pedestrian crossing — verify its verdicts yourself</title>
+<meta name="description" content="An open experiment: YOLOX and Gemini watch a live pedestrian crossing, flag conflicts and explain their verdicts. Every verdict can be checked and voted on by anyone.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://patrol.flyreelstudio.eu/en/">
+<meta property="og:site_name" content="Bezpieczne Przejścia / Safe Crossings">
+<meta property="og:title" content="Live AI watching a Polish pedestrian crossing — verify its verdicts yourself">
+<meta property="og:description" content="Open, free and privacy-first road-safety monitoring: YOLOX + Gemini + human verification. Open source (Apache-2.0).">
+<meta property="og:image" content="https://patrol.flyreelstudio.eu/og-cover.jpg">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="pl_PL">
+<meta name="twitter:card" content="summary_large_image">
+-->
+
+<!-- shared styles for the about + share blocks -->
+<style>
+  .about-section { max-width: 720px; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+  .about-section h2 { margin-bottom: .75rem; }
+  .about-section .about-lead { font-size: 1.08em; }
+  .about-section .about-invite { border-left: 3px solid #2e7d32; padding: .6rem 1rem; margin-top: 1rem; background: rgba(46,125,50,.07); }
+    .share-cta{margin:2rem auto;max-width:720px;padding:1.4rem 1.2rem;border-radius:16px;
+    background:linear-gradient(135deg,rgba(46,230,166,.12),rgba(55,182,255,.10));
+    border:1px solid rgba(46,230,166,.35);text-align:center}
+  .share-cta h3{margin:0 0 .3rem;font-size:1.25rem}
+  .share-cta p{margin:.2rem 0 1rem;color:#8b97a7}
+  .share-cta .btns{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
+  .share-cta a,.share-cta button{display:inline-flex;align-items:center;gap:.4rem;font:inherit;
+    font-weight:700;font-size:1rem;padding:.7rem 1.3rem;border-radius:11px;border:0;cursor:pointer;
+    color:#fff;text-decoration:none;transition:transform .12s ease,filter .12s ease}
+  .share-cta a:hover,.share-cta button:hover{transform:translateY(-2px);filter:brightness(1.12)}
+  .share-cta .li{background:#0a66c2}.share-cta .fb{background:#1877f2}
+  .share-cta .tw{background:#111}.share-cta .cp{background:#2ee6a6;color:#04120c}
+
+</style>
+
+<!-- ============================================================
+     2. ABOUT — POLISH
+     ============================================================ -->
+<section id="about" class="about-section" lang="pl">
+  <h2>O projekcie</h2>
+  <p class="about-lead">
+    <strong>Bezpieczne Przejścia</strong> to osobisty projekt
+    <strong>Andrii Shramko</strong> — inżyniera VR, wolumetrycznego wideo
+    i widzenia komputerowego. Bez grantu, bez firmy, bez budżetu:
+    jeden mały serwer CPU, otwarty kod i publiczna kamera miejska.
+  </p>
+  <p>
+    Cel jest prosty: <strong>pokazać, że monitoring bezpieczeństwa drogowego może
+    być transparentny, tani i otwarty</strong>. Sztuczna inteligencja obserwuje
+    przejście dla pieszych na żywo, wskazuje niebezpieczne sytuacje i tłumaczy
+    swoje decyzje — a każdy odwiedzający może te werdykty zweryfikować i ocenić.
+    Twarze i tablice rejestracyjne są rozmywane, na dysku zostają tylko
+    zanonimizowane statystyki. Cały kod jest publiczny (Apache-2.0).
+  </p>
+  <p class="about-invite">
+    <strong>Zapraszam do współpracy</strong> miasta, zarządców dróg, firmy
+    i badaczy: udostępnij kamerę nad przejściem, przetestuj system w swojej
+    gminie albo rozwijaj kod razem ze mną.
+    <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">Kod na GitHubie</a>
+    · <a href="#contact">napisz przez formularz kontaktowy</a>.
+  </p>
+
+  <!-- share block, PL labels -->
+  <div class="share-block" data-share-text="AI na żywo patrzy na polskie przejście dla pieszych — sprawdź jego werdykty sam:">
+    <div class="share-title">Udostępnij projekt:</div>
+    <button class="share-btn" data-share="linkedin">LinkedIn</button>
+    <button class="share-btn" data-share="facebook">Facebook</button>
+    <button class="share-btn" data-share="x">X / Twitter</button>
+    <button class="share-btn" data-share="copy" data-copied-label="Skopiowano!">Kopiuj link</button>
+    <span class="share-copied" hidden>Skopiowano!</span>
+  </div>
+</section><!-- FAQ — Bezpieczne Przejścia / SafeCross. Two sections: PL first, EN below (marked <!— EN —>).
+Suggested CSS additions for the CSS block in build_site.py (uses existing vars):
+.faq{margin:2.4rem 0}
+.faq details{background:var(--panel);border-radius:12px;padding:.2rem 1rem;margin:.6rem 0}
+.faq summary{cursor:pointer;font-weight:700;padding:.65rem 0;color:var(--tx)}
+.faq details[open] summary{color:var(--acc)}
+.faq details p{color:#cdd6e0;font-size:.95rem;margin:.2rem 0 .9rem}
+-->
+
+<!-- PL -->
+<section id="faq" class="faq">
+ <h2>Najczęstsze pytania — bez marketingu, uczciwie</h2>
+ <details>
+  <summary>Jak system wykrywa naruszenia?</summary>
+  <p>System nie zgaduje z pojedynczej klatki. Epizod powstaje tylko wtedy, gdy lokalna kinematyka pokazuje
+  dwie rzeczy naraz: pieszy <strong>idzie</strong> po przejściu i pojazd <strong>jedzie</strong> przez tę samą
+  strefę (auto stojące na czerwonym to nie epizod). Wtedy sekwencja do 8 klatek trafia do AI, które wydaje
+  werdykt z wyjaśnieniem po polsku. Ostatnie słowo mają ludzie — każdy werdykt można potwierdzić lub odrzucić.</p>
+ </details>
+ <details>
+  <summary>Czy AI się myli?</summary>
+  <p>Tak — i nie ukrywamy tego. Dlatego przy każdym werdykcie są przyciski ✓/✗: każdy odwiedzający może
+  potwierdzić lub odrzucić ocenę AI. Z tych głosów liczymy zgodność AI↔ludzie i publikujemy ją na żywo na
+  stronie głównej. Zdarzenia traktujemy jako kandydatów, nie jako fakty.</p>
+ </details>
+ <details>
+  <summary>Jak mierzona jest prędkość pojazdów?</summary>
+  <p>To estymata monokularna: przesunięcie obiektu w pikselach między klatkami przeliczamy przez znaną skalę
+  pasa ruchu. Wynik jest orientacyjny — błąd może sięgać ±30%. To <strong>nie</strong> jest radar ani przyrząd
+  pomiarowy i nie stanowi żadnego dowodu prawnego.</p>
+ </details>
+ <details>
+  <summary>Co z prywatnością i RODO?</summary>
+  <p>System nikogo nie identyfikuje: śledzenie używa efemerycznych ID w pamięci, a na dysk trafiają tylko
+  zbiorcze liczniki i krótkie klipy zdarzeń. Dostępne jest rozmywanie twarzy i tablic rejestracyjnych.
+  To demonstrator badawczy, nie nadzór ani egzekwowanie prawa — nie powstaje żaden rejestr wykroczeń.
+  Szczegóły na stronie <a href="/compliance.html">Zgodność / RODO</a>.</p>
+ </details>
+ <details>
+  <summary>Dlaczego wideo ma kilka sekund opóźnienia i niski FPS?</summary>
+  <p>Źródłem jest strumień HLS, który z natury dzieli wideo na kilkusekundowe segmenty — stąd opóźnienie.
+  Analiza działa na CPU z ograniczonym budżetem obliczeń, więc przetwarzamy kilka klatek na sekundę zamiast
+  pełnych 25. Kolejka wygładzająca dba o płynny podgląd zamiast rwanego obrazu „na żywo za wszelką cenę".</p>
+ </details>
+ <details>
+  <summary>Czy liczone są rowery?</summary>
+  <p>Tak — rowery to osobna klasa detekcji z osobnymi statystykami, bo ich zachowanie na przejściu różni się
+  od pieszych i aut. Motocykle są liczone jako pojazdy.</p>
+ </details>
+ <details>
+  <summary>Skąd pochodzą kamery?</summary>
+  <p>Z publicznych kamer internetowych udostępnianych przez miasta. Źródło każdej kamery jest podane przy
+  podglądzie. Nie instalujemy własnych kamer i nie korzystamy z zamkniętych systemów monitoringu.</p>
+ </details>
+ <details>
+  <summary>Czy mogę uruchomić to na swoim skrzyżowaniu?</summary>
+  <p>Tak — cały projekt jest open source na licencji Apache-2.0:
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
+  Potrzebny jest publiczny strumień z kamery i mały serwer — wystarczy CPU, bez GPU. Metoda jest przenośna:
+  AI raz opisuje scenę (strefy, pasy, kierunki), a potem analiza działa automatycznie.</p>
+ </details>
+ <details>
+  <summary>Ile to kosztuje?</summary>
+  <p>Prawie nic. Detekcja działa lokalnie na CPU, werdykty AI mieszczą się w darmowym dziennym limicie
+  (free tier), a hosting to mały VPS. Kod jest otwarty — jedyny realny koszt to serwer i czas na konfigurację.</p>
+ </details>
+ <details>
+  <summary>Co robi AI, a co YOLO?</summary>
+  <p>To współpraca trzech „modeli". <strong>YOLOX</strong> to percepcja: wykrywa pieszych i pojazdy w każdej
+  klatce, lokalnie i za darmo, ale „nie rozumie" sceny. <strong>Gemini</strong> to zrozumienie: raz opisuje
+  topologię przejścia, a potem ocenia każdy epizod na podstawie sekwencji klatek. <strong>Ludzie</strong> są
+  ostateczną kontrolą — potwierdzają lub odrzucają werdykty, i z tego liczymy realną trafność.</p>
+ </details>
+</section>
+
+
+<section id="kontakt" class="contact">
+ <h2>Porozmawiajmy o Twoim przejściu</h2>
+ <p class="lead">Dla samorządu, zarządu dróg, firmy lub projektu badawczego. Odpowiadam w 1–2 dni robocze.</p>
+ <form id="leadform" autocomplete="on">
+ <label>Imię i nazwisko*<input name="name" type="text" required autocomplete="name"></label>
+ <label>Organizacja<input name="organization" type="text" autocomplete="organization"></label>
+ <label>Rola<input name="role" type="text" autocomplete="organization-title"></label>
+ <label>Segment<select name="segment"><option>Samorząd / zarząd dróg</option><option>KRBRD / administracja</option><option>Firma</option><option>Projekt UE / nauka</option><option>Inne</option></select></label>
+ <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
+ <label class="wide">Wiadomość*<textarea name="message" rows="4" required></textarea></label>
+ <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>Zgadzam się na przetwarzanie danych w celu obsługi zapytania (administrator: Andrii Shramko, JDG; <a href='/privacy.html'>polityka prywatności</a>).*</span></label>
+ <input type="hidden" name="lang" value="pl">
+ <button type="submit">Wyślij</button>
+</form>
+<p id="formok" class="ok" style="display:none">✅ Dziękuję! Zapytanie dotarło — odezwę się wkrótce.</p>
+<p id="formerr" class="err" style="display:none">❌ Nie udało się wysłać. Napisz: zmei116@gmail.com</p>
+
+<script>(function(){var f=document.getElementById('leadform');if(!f)return;
+f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
+var d=Object.fromEntries(new FormData(f).entries());
+fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
+.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
+</section>
+<div id="lightbox" class="lightbox" style="display:none">
+ <button class="lb-close" aria-label="close">✕</button>
+ <button class="lb-prev" aria-label="prev">‹</button>
+ <div class="lb-body"><div class="lb-stage"></div><div class="lb-info"></div></div>
+ <button class="lb-next" aria-label="next">›</button>
+</div></main>
+<footer>
+ <div class="foot-grid">
+  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
+  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/pl/privacy.html">Prywatność</a> ·
+   <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+ </div>
+ <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
+</footer>
+</body></html>

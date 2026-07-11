@@ -1,67 +1,66 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Skuteczność i ryzyko błędów — uczciwa ocena techniczna</title>
-<meta name="description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<title>Accuracy & error risk — an honest technical assessment</title>
+<meta name="description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Skuteczność i ryzyko błędów — uczciwa ocena techniczna">
-<meta property="og:description" content="Bezpieczne Przejścia — analiza wideo AI na żywo z prawdziwej kamery: liczenie pieszych i pojazdów, wykrywanie sytuacji konfliktowych na przejściu, weryfikacja przez ludzi. Realny ruch na realnym przejściu, na żywo. Demonstrator dla samorządów i KRBRD, prywatność by design.">
+<meta property="og:title" content="Accuracy & error risk — an honest technical assessment">
+<meta property="og:description" content="SafeCross — live AI video analysis from a real camera: pedestrian and vehicle counting, crossing-conflict detection, human verification. Real traffic on a real crossing, live. A demonstrator for road authorities, privacy by design.">
 <meta property="og:url" content="https://patrol.flyreelstudio.eu/accuracy.html">
-<meta property="og:locale" content="pl_PL">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/accuracy.html">
-<link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/accuracy.html">
-<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/en/accuracy.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/accuracy.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/accuracy.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/accuracy.html">
 <link rel="stylesheet" href="/assets/style.css">
 
 </head>
 <body>
 <header class="nav">
- <a class="logo" href="/">🚸 <span>Bezpieczne Przejścia</span></a>
- <nav><a href="/">Na żywo</a><a href="/how-it-works.html">Jak to działa</a><a href="/accuracy.html" class=cur>Skuteczność</a><a href="/resources.html">Wdrożenie</a><a href="/compliance.html">Zgodność / RODO</a><a href="/contact.html">Kontakt</a></nav>
- <a class="lang" href="/en/accuracy.html">EN</a>
+ <a class="logo" href="/">🚸 <span>SafeCross</span></a>
+ <nav><a href="/">Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html" class=cur>Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
+ <span class="langs"><a class="lang cur" href="/accuracy.html">EN</a><a class="lang" href="/pl/accuracy.html">PL</a><a class="lang" href="/es/">ES</a><a class="lang" href="/ru/">RU</a></span>
 </header>
-<div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
+<div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
-<h1>Skuteczność i ryzyko błędów — uczciwie</h1>
-<p class="note"><strong>Najważniejsze:</strong> to narzędzie przesiewowe. Z jednej nieskalibrowanej
-kamery nie da się podać obronnego „wskaźnika naruszeń”. Dlatego: liczby podajemy jako estymaty,
-zdarzenia jako kandydatów, a prawdziwą trafność liczymy z weryfikacji ludzi.</p>
-<h2>Gdzie AI się myli i dlaczego</h2>
+<h1>Accuracy & error risk — honestly</h1>
+<p class="note"><strong>Bottom line:</strong> this is a screening tool. From one uncalibrated camera you
+cannot state a defensible "violation rate". So: counts are estimates, events are candidates, and true
+accuracy is computed from human verification.</p>
+<h2>Where the AI is wrong, and why</h2>
 <ul>
- <li><strong>Przesłonięcia:</strong> na przejściu trajektorie się przecinają — pieszy zasłonięty przez pojazd
- to najtrudniejszy przypadek; tracker gubi ID, licznik zaniża.</li>
- <li><strong>Perspektywa jednej kamery:</strong> skrót perspektywiczny sprawia, że pojazd jeszcze przed pasami
- „nakłada się” w obrazie na strefę przejścia — to <strong>główne źródło fałszywych alarmów</strong>.</li>
- <li><strong>Małe obiekty / panorama:</strong> daleki pieszy ma kilkadziesiąt pikseli — skuteczność dla małych
- obiektów bywa 2–3× niższa (COCO).</li>
- <li><strong>Noc, deszcz, odblaski:</strong> obraz spoza rozkładu treningowego — gwałtowny spadek trafności; te okresy traktujemy jako niskiej pewności.</li>
- <li><strong>Brak metryki (głębi):</strong> bez homografii pracujemy w pikselach — stąd niepewne prędkości i „czy zdążył zahamować”.</li>
+ <li><strong>Occlusion:</strong> at a crossing trajectories intersect — a pedestrian hidden by a vehicle is
+ the hardest case; the tracker loses the ID, the count undershoots.</li>
+ <li><strong>Single-camera perspective:</strong> foreshortening makes a vehicle still short of the stop line
+ <em>appear</em> to overlap the crossing in image space — the <strong>biggest source of false positives</strong>.</li>
+ <li><strong>Small objects / panorama:</strong> a distant pedestrian is tens of pixels — small-object accuracy is
+ routinely 2–3× lower (COCO).</li>
+ <li><strong>Night, rain, glare:</strong> out-of-distribution imagery — a steep accuracy cliff; we treat those periods as low-confidence.</li>
+ <li><strong>No metric depth:</strong> without homography we work in pixels — hence uncertain speeds and "did it stop in time".</li>
 </ul>
-<h2>Czego się realnie spodziewać</h2>
+<h2>What to realistically expect</h2>
 <ul>
- <li>Detekcja pieszych/pojazdów w dzień, dobre ujęcie: użyteczna, ale niedoskonała (małe obiekty i tłok obniżają recall).</li>
- <li>Zdarzenie „nie ustąpił” z pojedynczej kamery bez kalibracji: <strong>dużo fałszywych alarmów</strong> — dlatego weryfikacja ludzi jest obowiązkowa.</li>
+ <li>Daytime pedestrian/vehicle detection on a good view: useful but imperfect (small objects and crowding lower recall).</li>
+ <li>"Failure to yield" from a single uncalibrated camera: <strong>many false positives</strong> — which is why human verification is mandatory.</li>
 </ul>
-<h2>Jak liczymy prawdziwą trafność</h2>
-<p>Każde sflagowane zdarzenie ma zrzut. Ludzie głosują potwierdź/odrzuć. Precyzja = potwierdzone / ocenione.
-Ten wskaźnik widać na żywo na stronie głównej — rośnie wiarygodnie w miarę głosów.</p>
-<h2>Co doprowadzi do maksimum</h2>
+<h2>How we compute true accuracy</h2>
+<p>Every flagged event has a snapshot. Humans vote confirm/refute. Precision = confirmed / judged.
+That figure is shown live on the home page and grows trustworthy as votes accumulate.</p>
+<h2>What pushes it to the maximum</h2>
 <ol>
- <li><strong>Kalibracja metryczna (homografia)</strong> — największy zysk: odblokowuje prędkość, PET/TTC, poprawne „nie ustąpił”.</li>
- <li><strong>Wyższe fps + wygładzanie czasowe</strong> — mniej zgubionych ID.</li>
- <li><strong>Większy model / dobór kamery</strong> (tight framing) — wyższy recall.</li>
- <li><strong>Aktywne uczenie z głosów ludzi</strong> — model uczy się na własnych błędach.</li>
- <li><strong>Ograniczenie twierdzeń do tego, co pewne</strong> — uczciwość jako przewaga przed audytem.</li>
+ <li><strong>Metric calibration (homography)</strong> — biggest win: unlocks speed, PET/TTC, correct "did not yield".</li>
+ <li><strong>Higher fps + temporal smoothing</strong> — fewer ID switches.</li>
+ <li><strong>Bigger model / camera choice</strong> (tight framing) — higher recall.</li>
+ <li><strong>Active learning from human votes</strong> — the model learns from its own mistakes.</li>
+ <li><strong>Restricting claims to what's reliable</strong> — honesty as an advantage in front of an audit.</li>
 </ol></main>
 <footer>
  <div class="foot-grid">
-  <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
-  <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/privacy.html">Prywatność</a> ·
+  <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
+  <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
    <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
  </div>

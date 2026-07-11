@@ -1,0 +1,69 @@
+<!-- ES -->
+<section id="faq" class="faq" lang="es">
+ <h2>Preguntas frecuentes — sin marketing, con honestidad</h2>
+ <details>
+  <summary>¿Cómo detecta el sistema las infracciones?</summary>
+  <p>El sistema no adivina a partir de un solo fotograma. Solo se crea un episodio cuando la cinemática local muestra dos
+  cosas a la vez: un peatón <strong>camina</strong> por el paso y un vehículo se <strong>mueve</strong> por la misma
+  zona (un coche parado en un semáforo en rojo no es un episodio). Una secuencia de hasta 8 fotogramas se envía
+  entonces a la AI, que emite un veredicto con una explicación. La última palabra la tienen las personas:
+  cada veredicto puede confirmarse o refutarse.</p>
+ </details>
+ <details>
+  <summary>¿Se equivoca la AI?</summary>
+  <p>Sí, y no lo ocultamos. Por eso cada veredicto tiene botones ✓/✗: cualquier visitante puede confirmar o refutar
+  el juicio de la AI. Con esos votos calculamos la concordancia AI↔humano y la publicamos en vivo en la página de
+  inicio. Tratamos los eventos como candidatos, no como hechos.</p>
+ </details>
+ <details>
+  <summary>¿Cómo se mide la velocidad de los vehículos?</summary>
+  <p>Es una estimación monocular: el desplazamiento en píxeles entre fotogramas convertido mediante una escala de
+  carril conocida. El resultado es orientativo: el error puede alcanzar el ±30%. <strong>No</strong> es un radar ni un
+  instrumento de medición, y no constituye prueba legal de nada.</p>
+ </details>
+ <details>
+  <summary>¿Qué pasa con la privacidad y el RGPD?</summary>
+  <p>El sistema no identifica a nadie: el seguimiento usa identificadores efímeros en memoria, y solo llegan al disco
+  contadores agregados y breves clips de eventos. Está disponible el difuminado de rostros y matrículas. Es un
+  demostrador de investigación, no vigilancia ni sanción: no se crea ningún registro de infracciones. Más detalles en
+  la página de <a href="/en/compliance.html">Cumplimiento / RGPD</a>.</p>
+ </details>
+ <details>
+  <summary>¿Por qué el vídeo va con unos segundos de retraso y a pocos FPS?</summary>
+  <p>La fuente es un stream HLS que, por diseño, divide el vídeo en segmentos de varios segundos, de ahí el retraso.
+  El análisis se ejecuta en una CPU con un presupuesto de cómputo limitado, así que procesamos unos pocos fotogramas
+  por segundo en lugar de los 25 completos. Una cola de suavizado mantiene la previsualización fluida en vez de una
+  imagen entrecortada «en directo a toda costa».</p>
+ </details>
+ <details>
+  <summary>¿Se cuentan las bicicletas?</summary>
+  <p>Sí: las bicicletas son una clase de detección aparte, con estadísticas propias, porque su comportamiento en un
+  paso difiere del de los peatones y los coches. Las motocicletas se cuentan como vehículos.</p>
+ </details>
+ <details>
+  <summary>¿De dónde salen las cámaras?</summary>
+  <p>De cámaras web públicas facilitadas por los ayuntamientos. La fuente de cada cámara se acredita junto a la
+  previsualización. No instalamos cámaras propias ni usamos sistemas de CCTV cerrados.</p>
+ </details>
+ <details>
+  <summary>¿Puedo usarlo en mi propio paso?</summary>
+  <p>Sí: todo el proyecto es de código abierto bajo Apache-2.0:
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a>.
+  Necesitas un stream de cámara público y un servidor pequeño; basta con CPU, sin GPU. El método es portable: la AI
+  describe la escena una vez (zonas, carriles, direcciones) y luego el análisis se ejecuta de forma automática.</p>
+ </details>
+ <details>
+  <summary>¿Cuánto cuesta?</summary>
+  <p>Casi nada. La detección se ejecuta localmente en una CPU, los veredictos de la AI caben en la capa gratuita
+  diaria y el alojamiento es un pequeño VPS. El código es abierto: el único coste real es el servidor y tu tiempo de
+  configuración.</p>
+ </details>
+ <details>
+  <summary>¿Qué hace la AI y qué hace YOLO?</summary>
+  <p>Es la cooperación de tres «modelos». <strong>YOLOX</strong> es la percepción: encuentra peatones y vehículos en
+  cada fotograma, de forma local y gratuita, pero no «entiende» la escena. <strong>Gemini</strong> es la comprensión:
+  describe una vez la topología del paso y luego juzga cada episodio a partir de una secuencia de fotogramas.
+  <strong>Las personas</strong> son la comprobación final: confirman o refutan los veredictos, y de ahí se calcula la
+  precisión real.</p>
+ </details>
+</section>
