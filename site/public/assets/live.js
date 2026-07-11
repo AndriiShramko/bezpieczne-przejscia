@@ -37,12 +37,19 @@
   try { voted = JSON.parse(localStorage.getItem("bp_voted2") || "{}"); } catch (e) {}
   var curTab = "all", curHour = null, events = [], lastSig = "";
   var SHARE = "https://patrol.flyreelstudio.eu/cv/share/";
-  // admin mode: /#live?admin=<token> once, then remembered in this browser
+  // admin mode: open /?admin=<token> (query OR hash) once — the token is kept
+  // only for THIS tab (sessionStorage) and scrubbed from the URL so it never
+  // lands in history/logs or a shared link.
   var ADMIN = "";
   try {
-    var qa = (location.search.match(/[?&]admin=([^&]+)/) || [])[1];
-    if (qa) { ADMIN = decodeURIComponent(qa); localStorage.setItem("bp_admin", ADMIN); }
-    else ADMIN = localStorage.getItem("bp_admin") || "";
+    var qa = ((location.search + "&" + location.hash).match(/[?&#]admin=([^&#]+)/) || [])[1];
+    if (qa) {
+      ADMIN = decodeURIComponent(qa);
+      sessionStorage.setItem("bp_admin", ADMIN);
+      history.replaceState({}, "", location.pathname + (location.hash.replace(/[?&#]?admin=[^&#]+/, "") || "#live"));
+    } else {
+      ADMIN = sessionStorage.getItem("bp_admin") || "";
+    }
   } catch (e) {}
 
   function el(i) { return document.getElementById(i); }

@@ -262,11 +262,15 @@ class SpeedBook:
     def is_moving(self, tid):
         return tid not in getattr(self, "stationary", set())
 
-    def heading_ok(self, tid, cx, cy, recede_px=10.0):
-        """True unless the track is clearly MOVING AWAY from (cx,cy). Used to
-        drop cars that already passed the zebra or that turn onto another road
-        — they sit in the wide zone bbox but are not driving TOWARD the
-        crossing. Unknown/short tracks return True (never hide a real crosser)."""
+    def heading_ok(self, tid, cx, cy, recede_px=12.0):
+        """True unless the track is clearly a TURN-AWAY — a car that turns onto
+        another road or reverses out, rather than driving across the crossing.
+        The direction is judged from the track's ENTRY point toward the zone
+        centre, NOT its current position: a car driving straight through keeps
+        heading toward where it entered aiming, so it stays valid for the whole
+        transit (only a genuine turn/U-turn flips the sign). Zone membership
+        (contains) already handles 'already past the zebra'. Unknown/short
+        tracks return True (never hide a real crosser)."""
         q = self.hist.get(tid)
         if not q or len(q) < 3:
             return True
@@ -276,9 +280,14 @@ class SpeedBook:
         mlen = (mx * mx + my * my) ** 0.5
         if mlen < 4.0:
             return True                       # essentially not translating
-        tx, ty = cx - x1, cy - y1             # current pos -> zone centre
-        dot = (mx * tx + my * ty) / mlen      # projection of heading onto target
-        return dot > -recede_px               # not clearly receding
+        tx, ty = cx - x0, cy - y0             # ENTRY point -> zone centre
+        tlen = (tx * tx + ty * ty) ** 0.5
+        if tlen < 4.0:
+            return True                       # entered right at the centre
+        # cosine between heading and entry->centre direction: a straight
+        # crosser is ~+1 the whole way; a turn-away goes negative
+        cos = (mx * tx + my * ty) / (mlen * tlen)
+        return cos > -0.35
 
 
 class ConfirmBook:
@@ -758,10 +767,11 @@ def _draw_scene_polys(img, scene):
     return g
 
 
-def _rules_worker(cam_id, jpeg_bytes, scene_copy):
-    """Background: generate missing event_rules for an existing zone map
-    (hand-drawn or legacy) and merge them into the scene file — unless the
-    admin edited the file meanwhile."""
+def _rules_worker(cam_id, jpeg_bytes, scene_copy, force=False):
+    """Background: generate event_rules for an existing zone map (hand-drawn or
+    legacy) and merge them into the scene file — unless the admin edited the
+    file meanwhile. With force=True (the '📜 fill rules' button) it OVERWRITES
+    existing rules; otherwise it only fills when rules are absent."""
     try:
         try:
             mtime0 = os.path.getmtime(scene_path(cam_id))
@@ -776,7 +786,7 @@ def _rules_worker(cam_id, jpeg_bytes, scene_copy):
             sc = json.load(open(scene_path(cam_id), encoding="utf-8"))
         except (OSError, ValueError):
             return
-        if not isinstance(sc, dict) or sc.get("event_rules"):
+        if not isinstance(sc, dict) or (sc.get("event_rules") and not force):
             return
         sc["event_rules"] = rules
         sc["_rules_tried"] = time.time()
@@ -1276,9 +1286,12 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         scene_has_zones = isinstance(scene, dict) and bool(
             (scene.get("crossings") or []) + (scene.get("bike_crossings") or []))
         if not scene_has_zones:
-            mp = [(p[0] * w, p[1] * h) for p in cam["poly"]]
-            zs.append({"id": "main", "kind": "ped", "poly": mp,
-                       "zone": PolygonZone(mp), "bbox": poly_bbox(mp, w, h)})
+            raw = cam.get("poly") or _default_cams()["cameras"][0]["poly"]
+            mp = [(p[0] * w, p[1] * h) for p in raw
+                  if isinstance(p, (list, tuple)) and len(p) >= 2]
+            if len(mp) >= 3:   # a degenerate poly must never crash the loop
+                zs.append({"id": "main", "kind": "ped", "poly": mp,
+                           "zone": PolygonZone(mp), "bbox": poly_bbox(mp, w, h)})
         isl = []
         if isinstance(scene, dict):
             def add(items, prefix, kind):
@@ -2039,7 +2052,7 @@ class H(BaseHTTPRequestHandler):
             sc2 = dict(sc)
             sc2["event_rules"] = ""      # force regeneration
             threading.Thread(target=_rules_worker, args=(cam, jpg, sc2),
-                             daemon=True).start()
+                             kwargs={"force": True}, daemon=True).start()
             return self._json(200, {"ok": True, "cam": cam})
         if p == "/admin/scene/recalibrate":
             # wipe the scene -> the worker re-runs the AI calibration
@@ -2066,7 +2079,10 @@ class H(BaseHTTPRequestHandler):
             if data.get("delete"):
                 cfg["cameras"] = [c for c in cfg["cameras"] if c["id"] != data["delete"]]
             elif cam and cam.get("id") and cam.get("url"):
-                cam.setdefault("poly", [[0.3, 0.6], [0.7, 0.6], [0.7, 0.85], [0.3, 0.85]])
+                dp = [[0.3, 0.6], [0.7, 0.6], [0.7, 0.85], [0.3, 0.85]]
+                poly = cam.get("poly")
+                if not (isinstance(poly, list) and len(poly) >= 3):
+                    cam["poly"] = dp   # a degenerate poly would crash the loop
                 cam.setdefault("m_per_px_fullw", 0.075)
                 others = [c for c in cfg["cameras"] if c["id"] != cam["id"]]
                 cfg["cameras"] = others + [cam]

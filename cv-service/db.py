@@ -148,9 +148,11 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     q = ("SELECT id,ts_utc,cam_id,description,snapshot,clip,duration_s,tl_state,"
          "max_veh_kmh,status,ai_verdict,ai_explanation_pl,ai_explanation_en,"
          "ai_confidence,confirm,refute,kind,flags FROM events")
-    # trashed = admin binned it, OR the community rejected it (2+ refutes over
-    # confirms). Either way it leaves every public view except the Trash tab.
-    TRASH = "(trashed=1 OR (refute > confirm AND refute >= 2))"
+    # trashed = admin binned it, OR the community clearly rejected it (net
+    # refutes >= 3, one vote per IP). Either way it leaves every public view
+    # except the Trash tab. A high-ish threshold + per-IP dedup makes it hard
+    # for one person to hide a genuine event.
+    TRASH = "(trashed=1 OR (refute - confirm >= 3))"
     where, args = [], []
     if tab == "violation":
         where.append("ai_verdict='violation'")
@@ -192,6 +194,11 @@ def vote(event_id, verdict, ip):
     col = "confirm" if verdict == "violation" else "refute"
     with _LOCK:
         if not _C.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone():
+            return False
+        # ONE vote per (event, ip): stops a single visitor stuffing the ballot
+        # (and, with the trash rule, silently hiding a real event on their own)
+        if _C.execute("SELECT 1 FROM votes WHERE event_id=? AND ip=?",
+                      (event_id, ip)).fetchone():
             return False
         _C.execute(f"UPDATE events SET {col}={col}+1 WHERE id=?", (event_id,))
         _C.execute("INSERT INTO votes(event_id,verdict,ts_utc,ip) VALUES(?,?,?,?)",
