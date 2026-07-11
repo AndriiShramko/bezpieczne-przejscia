@@ -1,7 +1,8 @@
 /* Live command-center v2: real-time counters, AI-verdict event tabs with video
    clips, fullscreen gallery, charts, crowd verification. Talks to /cv/*. */
 (function () {
-  var L = (document.documentElement.lang === "en") ? "en" : "pl";
+  var L = (["en", "pl", "es", "ru"].indexOf(document.documentElement.lang) >= 0)
+    ? document.documentElement.lang : "en";
   var T = {
     pl: {
       live: "NA ŻYWO", off: "OFFLINE", perHour: "/godz.",
@@ -37,18 +38,19 @@
   try { voted = JSON.parse(localStorage.getItem("bp_voted2") || "{}"); } catch (e) {}
   var curTab = "all", curHour = null, events = [], lastSig = "";
   var SHARE = "https://patrol.flyreelstudio.eu/cv/share/";
-  // admin mode: open /?admin=<token> (query OR hash) once — the token is kept
-  // only for THIS tab (sessionStorage) and scrubbed from the URL so it never
-  // lands in history/logs or a shared link.
+  // admin mode: sign in ONCE in the /admin panel — the token is stored in this
+  // browser (localStorage) and the main page picks it up automatically, so the
+  // "move to trash" buttons appear here without any URL tricks. A URL token
+  // (?admin= / #admin=) still works as a fallback and is scrubbed from the URL.
   var ADMIN = "";
   try {
     var qa = ((location.search + "&" + location.hash).match(/[?&#]admin=([^&#]+)/) || [])[1];
     if (qa) {
       ADMIN = decodeURIComponent(qa);
-      sessionStorage.setItem("bp_admin", ADMIN);
+      localStorage.setItem("bp_admin", ADMIN);
       history.replaceState({}, "", location.pathname + (location.hash.replace(/[?&#]?admin=[^&#]+/, "") || "#live"));
     } else {
-      ADMIN = sessionStorage.getItem("bp_admin") || "";
+      ADMIN = localStorage.getItem("bp_admin") || "";
     }
   } catch (e) {}
 
@@ -262,6 +264,13 @@
       aiBadge(e) + " " + esc(expl) +
       '<div class="ev-actions" style="max-width:420px;margin-top:.5rem">' +
       vbtn(e.id, "violation", T.yes, voted[e.id]) + vbtn(e.id, "false_alarm", T.no, voted[e.id]) + "</div>" +
+      '<div class="lb-share">' + T.share +
+        ' <a class="li" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(SHARE + e.id) + '">in LinkedIn</a>' +
+        ' <a class="fb" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(SHARE + e.id) + '">Facebook</a>' +
+        ' <a class="tw" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url=' + encodeURIComponent(SHARE + e.id) + '">X</a>' +
+        ' <a class="cp" href="#" data-copy="' + SHARE + e.id + '">📋 ' + T.copy + "</a>" +
+        (ADMIN ? ' <a class="tr" href="#" data-trash="' + e.id + '">🗑 ' + (curTab === "trash" ? (L === "pl" ? "przywróć" : "restore") : T.trash) + "</a>" : "") +
+      "</div>" +
       '<div class="muted small" style="margin-top:.4rem">' + T.fsNote + " (" + (boxIdx + 1) + "/" + events.length + ")</div>";
   }
   function nav(d) { if (boxIdx < 0) return; boxIdx = (boxIdx + d + events.length) % events.length; renderBox(); }
@@ -422,6 +431,19 @@
     img.addEventListener("error", function () {
       setLive(false);
       setTimeout(function () { img.src = "/cv/live.mjpg?" + Date.now(); }, 4000);
+    });
+  }
+  // admin banner — visible only when signed in (via /admin panel or URL token)
+  if (ADMIN) {
+    var ab = document.createElement("div");
+    ab.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:200;background:#141c28;border:1px solid #2ee6a6;color:#e6edf3;padding:.5rem .8rem;border-radius:10px;font-size:.85rem;box-shadow:0 4px 16px rgba(0,0,0,.5)";
+    ab.innerHTML = "🛡️ " + (L === "pl" ? "Tryb admina" : L === "es" ? "Modo admin" : L === "ru" ? "Режим админа" : "Admin mode") +
+      ' — <a href="#" id="admin-out" style="color:#ff8a97">' + (L === "pl" ? "Wyloguj" : L === "es" ? "Salir" : L === "ru" ? "Выйти" : "Sign out") + "</a>";
+    document.body.appendChild(ab);
+    ab.querySelector("#admin-out").addEventListener("click", function (e) {
+      e.preventDefault();
+      try { localStorage.removeItem("bp_admin"); } catch (x) {}
+      location.reload();
     });
   }
   // local 1 s ticking of the camera-rotation countdown

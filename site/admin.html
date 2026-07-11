@@ -81,9 +81,14 @@ zdarzeń, które AI czyta przy każdym werdykcie. Zapis działa bez restartu (ho
 <script>
 function tok(){return document.getElementById('tok').value.trim();}
 function h(){return {'Content-Type':'application/json','X-Admin-Token':tok()};}
+// remember the last-used token so you don't retype it, and so the MAIN PAGE
+// shows the "move to trash" buttons once you have signed in here
+try{var _t=localStorage.getItem('bp_admin');if(_t)document.getElementById('tok').value=_t;}catch(e){}
 function loadAll(){
   fetch('/cv/admin/cameras',{headers:h()}).then(r=>r.json()).then(function(cfg){
-    if(cfg.ok===false){document.getElementById('cams').innerHTML='<p class="muted">Błędny token.</p>';return;}
+    if(cfg.ok===false){document.getElementById('cams').innerHTML='<p class="muted">Błędny token.</p>';
+      try{localStorage.removeItem('bp_admin');}catch(e){}return;}
+    try{localStorage.setItem('bp_admin',tok());}catch(e){}   // sign-in shared with the main page
     window._cfg=cfg;
     var pl=cfg.playlist||{enabled:false,interval_min:10,cameras:[]};
     var rows=cfg.cameras.map(function(c){var act=cfg.active===c.id;

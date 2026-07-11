@@ -733,6 +733,12 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .ev-share{font-size:.76rem;color:var(--mut);margin-top:.45rem}
 .ev-share a{color:#8fd3ff;text-decoration:none;margin-right:.15rem}
 .ev-share a:hover{text-decoration:underline}
+/* big share buttons inside the fullscreen event card */
+.lb-share{margin-top:.7rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--mut)}
+.lb-share a{display:inline-flex;align-items:center;gap:.3rem;color:#fff;text-decoration:none;font-weight:700;font-size:.95rem;padding:.55rem 1rem;border-radius:10px;transition:filter .12s,transform .12s}
+.lb-share a:hover{filter:brightness(1.14);transform:translateY(-1px)}
+.lb-share .li{background:#0a66c2}.lb-share .fb{background:#1877f2}.lb-share .tw{background:#111}
+.lb-share .cp{background:#2ee6a6;color:#04120c}.lb-share .tr{background:#3a1116;color:#ff8a97}
 .epi-badge{background:#2f1216;color:#ff8a92;font-weight:800;font-size:.72rem;padding:.15rem .55rem;border-radius:20px;margin-right:.4rem;animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.4}}
 .pipe3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem;margin:1rem 0}
