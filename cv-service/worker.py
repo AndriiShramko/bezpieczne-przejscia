@@ -122,6 +122,18 @@ DEFAULT_GLOBAL_RULES = """UNIVERSAL RULES — apply to every pedestrian crossing
    zone polygon. A person on the sidewalk who merely falls inside the drawn zone is not a
    crossing user.
 9. Prams/strollers, wheelchairs and shopping carts are NOT motor vehicles.
+10. LESSON FROM REJECTED EVENTS: the most common junk pattern is ONE pedestrian plus ONE
+    slow vehicle (2-15 km/h) that waited or crept, then proceeded once the pedestrian had
+    cleared its lane — usually passing BEHIND the pedestrian. That is a lawfully resolved
+    situation: verdict no_violation, and it is NOT worth keeping as an event.
+11. A vehicle passing BEHIND a crossing user (pedestrian or cyclist) who has already
+    passed that vehicle's lane and is moving away from it is not a violation — only a
+    vehicle cutting through the path AHEAD of the user, or forcing them to stop, slow
+    down or jump back, violates.
+12. EMERGENCY OVERRIDE: any visible collision, a person being hit or falling, a crash
+    between vehicles, or another road emergency MUST be verdict "violation" with
+    severity "high" and emergency=true — such an event must NEVER be dismissed,
+    whatever the other rules say.
 """
 
 
@@ -1122,6 +1134,22 @@ def disk_guard():
             clips = sorted((os.path.join(CLIP_DIR, f) for f in os.listdir(CLIP_DIR)),
                            key=os.path.getmtime)
             total = sum(os.path.getsize(c) for c in clips) / 1e9
+            # free JUNK first: clips of events both the AI and humans rejected
+            # (trash / consensus-false) — footage of rough, confirmed violations
+            # survives on disk the longest
+            if total > CLIPS_MAX_GB * 0.85 or free_gb < DISK_MIN_FREE_GB + 1.0:
+                junk = {os.path.basename(j) for j in db.junk_clips()}
+                keep = []
+                for c in clips:
+                    if os.path.basename(c) in junk:
+                        try:
+                            total -= os.path.getsize(c) / 1e9
+                            os.remove(c)
+                        except OSError:
+                            keep.append(c)
+                    else:
+                        keep.append(c)
+                clips = keep
             while clips and (total > CLIPS_MAX_GB or free_gb < DISK_MIN_FREE_GB + 0.5):
                 c = clips.pop(0)
                 total -= os.path.getsize(c) / 1e9
@@ -1188,6 +1216,13 @@ def analyzer_loop():
                     db.merge_flags(eid, vul)   # children / strollers / wheelchairs
                 if res.get("phone_suspect") is True:
                     db.merge_flags(eid, {"phone": True})
+                if res.get("severity") in ("low", "medium", "high"):
+                    db.merge_flags(eid, {"severity": res["severity"]})
+                if res.get("emergency") is True:
+                    # collision / person hit / crash — must never be lost
+                    db.merge_flags(eid, {"emergency": True})
+                    tg_alert(f"[patrol] 🚨 EMERGENCY suspected on event #{eid} "
+                             f"({cam_id}): {res.get('explanation_en','')[:200]}")
                 with S.lock:
                     S.ticker.appendleft(
                         f"AI #{eid}: {'NARUSZENIE' if res['verdict']=='violation' else ('OK/fałszywy alarm' if res['verdict']=='no_violation' else 'niepewne')}")
@@ -1719,6 +1754,39 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                         if any(abs(vp[0] - bx) < _dedup_px and abs(vp[1] - by) < _dedup_px
                                for bx, by in _bike_pts)}
 
+        # "Car politely passing BEHIND a pedestrian who is almost done crossing"
+        # — the most common junk episode (a waiting/creeping car proceeds once
+        # the pedestrian has cleared its lane; PL law even allows it once the
+        # pedestrian left the roadway). Kinematic test: the car counts as a
+        # conflict ONLY if at least one crossing user is NOT clearly receding
+        # from it. A pair whose distance grows monotonically = the user already
+        # passed and is walking away = no episode. Gated to SLOW cars
+        # (<25 km/h): a car flying past right behind someone's heels is still
+        # worth recording and an AI verdict.
+        def _pair_receding(v_tid, user_ids, lookback=1.4):
+            vq = speeds.hist.get(v_tid)
+            if not vq or len(vq) < 3:
+                return False
+            def _at(q, t):
+                for p in q:
+                    if p[0] >= t:
+                        return p
+                return q[-1]
+            t_now = vq[-1][0]
+            vp_now, vp_past = vq[-1], _at(vq, t_now - lookback)
+            if vp_now[0] - vp_past[0] < 0.6:
+                return False              # not enough history to judge
+            for utid in user_ids:
+                uq = pedbook.hist.get(utid) or bikebook.hist.get(utid)
+                if not uq or len(uq) < 3:
+                    return False
+                up_now, up_past = uq[-1], _at(uq, t_now - lookback)
+                d_now = ((vp_now[1] - up_now[1]) ** 2 + (vp_now[2] - up_now[2]) ** 2) ** 0.5
+                d_past = ((vp_past[1] - up_past[1]) ** 2 + (vp_past[2] - up_past[2]) ** 2) ** 0.5
+                if not (d_now > d_past * 1.15 + 8.0):
+                    return False          # this user is NOT clearly walking away
+            return True
+
         ped_in, veh_in_moving, hit_zone = [], [], None
         mark_ped, mark_bike = set(), set()   # participant tids (for red marking)
         for z in zones:
@@ -1750,6 +1818,13 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                   if z["zone"].contains(p) and veh_cb.confirmed(tid)
                   and tid not in _phantom_veh
                   and speeds.is_moving(tid) and speeds.heading_ok(tid, zcx, zcy)]
+            # drop SLOW cars every crossing user is clearly receding from —
+            # the "proceeded politely behind the pedestrian" non-event
+            _zu = pz_p + pz_b
+            if _zu:
+                vz = [tid for tid in vz
+                      if not (veh_kmh.get(tid, 99.0) < 25.0
+                              and _pair_receding(tid, _zu))]
             users = len(pz_p) + len(pz_b)
             if users and vz and users + len(vz) > len(ped_in) + len(veh_in_moving):
                 ped_in = pz_p + pz_b

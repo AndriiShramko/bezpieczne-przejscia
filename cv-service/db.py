@@ -152,7 +152,11 @@ def list_events(tab="all", limit=12, offset=0, cam_id=None, hour=None):
     # refutes >= 3, one vote per IP). Either way it leaves every public view
     # except the Trash tab. A high-ish threshold + per-IP dedup makes it hard
     # for one person to hide a genuine event.
-    TRASH = "(trashed=1 OR (refute - confirm >= 3))"
+    # trash = admin-binned, OR community consensus (net 3 refutes), OR the AI
+    # and at least one human AGREE it is not a violation (keeps the public
+    # feed and the disk focused on rough, real violations)
+    TRASH = ("(trashed=1 OR (refute - confirm >= 3) "
+             "OR (ai_verdict='no_violation' AND refute > confirm))")
     where, args = [], []
     order = "id DESC"
     if tab in ("top", "all_confirmed"):
@@ -213,16 +217,40 @@ def vote(event_id, verdict, ip):
     with _LOCK:
         if not _C.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone():
             return False
-        # ONE vote per (event, ip): stops a single visitor stuffing the ballot
-        # (and, with the trash rule, silently hiding a real event on their own)
-        if _C.execute("SELECT 1 FROM votes WHERE event_id=? AND ip=?",
-                      (event_id, ip)).fetchone():
-            return False
+        # ONE vote per (event, ip) — but a visitor may CHANGE their mind: voting
+        # again with the OTHER verdict moves the vote (people correct their own
+        # mistakes; the per-IP ceiling of one net vote still stops ballot
+        # stuffing). Re-clicking the same verdict is an idempotent no-op.
+        prev = _C.execute("SELECT verdict FROM votes WHERE event_id=? AND ip=?",
+                          (event_id, ip)).fetchone()
+        if prev:
+            if prev[0] == verdict:
+                return True         # same choice again — nothing to change
+            old_col = "confirm" if prev[0] == "violation" else "refute"
+            _C.execute(f"UPDATE events SET {old_col}=MAX(0,{old_col}-1), "
+                       f"{col}={col}+1 WHERE id=?", (event_id,))
+            _C.execute("UPDATE votes SET verdict=?, ts_utc=? WHERE event_id=? AND ip=?",
+                       (verdict, _now(), event_id, ip))
+            _C.commit()
+            return True
         _C.execute(f"UPDATE events SET {col}={col}+1 WHERE id=?", (event_id,))
         _C.execute("INSERT INTO votes(event_id,verdict,ts_utc,ip) VALUES(?,?,?,?)",
                    (event_id, verdict, _now(), ip))
         _C.commit()
     return True
+
+
+def junk_clips(limit=300):
+    """Clip filenames of trashed / consensus-false events — the FIRST candidates
+    for deletion when the disk needs freeing, so rough real violations keep
+    their footage the longest."""
+    with _LOCK:
+        rows = _C.execute(
+            "SELECT clip FROM events WHERE clip IS NOT NULL AND clip != '' AND "
+            "(trashed=1 OR (refute - confirm >= 3) OR "
+            " (ai_verdict='no_violation' AND refute > confirm)) "
+            "ORDER BY id LIMIT ?", (limit,)).fetchall()
+    return [r[0] for r in rows]
 
 
 def bump_counts(cam_id, ped=0, veh=0, observed_s=0.0, bike=0):

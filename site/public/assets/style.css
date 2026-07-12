@@ -61,9 +61,16 @@ background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip
 .ev-desc{font-size:.82rem;color:var(--mut);margin-bottom:.5rem;min-height:2.4em}
 .ev-q{font-weight:700;margin-bottom:.5rem}
 .ev-actions{display:flex;gap:.5rem}
-.vbtn{flex:1;border:0;border-radius:9px;padding:.55rem;font-weight:700;cursor:pointer;font-size:.85rem}
+.vbtn{flex:1;border:0;border-radius:9px;padding:.55rem;font-weight:700;cursor:pointer;font-size:.85rem;
+  transition:transform .12s ease, filter .12s ease, outline-color .12s ease}
 .vbtn.confirm{background:#22301f;color:#7fe08a}.vbtn.refute{background:#2f1c1f;color:#ff9aa2}
+.vbtn:hover{transform:translateY(-1px);filter:brightness(1.25)}
+.vbtn:active{transform:scale(.96)}
 .vbtn.mine{outline:2px solid var(--acc)}
+.vbtn.voting{animation:vpulse .7s ease-in-out infinite;pointer-events:none}
+.vbtn.flash{animation:vflash .45s ease-out}
+@keyframes vpulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes vflash{0%{transform:scale(1);filter:brightness(2.1)}100%{transform:scale(1);filter:brightness(1)}}
 .vbtn:disabled{opacity:.55;cursor:default}
 .ev-tally{font-size:.78rem;color:var(--mut);margin-top:.5rem}
 .ev-share{font-size:.76rem;color:var(--mut);margin-top:.45rem}

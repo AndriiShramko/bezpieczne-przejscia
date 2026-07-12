@@ -370,6 +370,15 @@ Decide what actually happened. Return ONLY JSON:
 - vulnerable: {{"child": true|false, "stroller": true|false, "wheelchair": true|false}} —
   are clearly visible children, prams/strollers or wheelchair users involved? Mention it
   in the explanations if true (these cases matter most for road-safety statistics);
+- severity: "low" | "medium" | "high" — ONLY meaningful when verdict is "violation".
+  "high" = pedestrian forced to stop/jump back, near-miss, vehicle at speed through an
+  occupied crossing; "medium" = clear failure to yield without immediate danger;
+  "low" = technical violation, no real risk (e.g. proceeded while the pedestrian was
+  at the very edge of the roadway). Storage is limited — only rough violations matter;
+- emergency: true|false — is there any sign of a COLLISION, a person being hit or
+  falling, a crash between vehicles, or another road emergency? If yes: verdict MUST be
+  "violation", severity "high", and it must NEVER be dismissed as a false alarm —
+  describe exactly what happened in the explanations;
 - what_would_help: one short sentence — what extra data would make this decidable."""
 
 

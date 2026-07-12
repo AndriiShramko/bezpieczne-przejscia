@@ -237,23 +237,34 @@
     }).join("");
   }
   function vbtn(id, verdict, label, votedV) {
-    var done = votedV != null, mine = votedV === verdict;
+    // never permanently disabled: people may change their mind — clicking the
+    // OTHER button moves the vote (the server swaps it per-IP). Your current
+    // choice is highlighted with .mine.
+    var mine = votedV === verdict;
     return '<button class="vbtn ' + (verdict === "violation" ? "confirm" : "refute") + (mine ? " mine" : "") + '"' +
-      (done ? " disabled" : "") + ' data-id="' + id + '" data-v="' + verdict + '">' + label + "</button>";
+      ' data-id="' + id + '" data-v="' + verdict + '" title="' +
+      (mine ? (L === "pl" ? "Twój głos — kliknij drugi przycisk, by zmienić" : "Your vote — click the other button to change") : "") +
+      '">' + (mine ? "✓ " : "") + label + "</button>";
   }
 
   document.addEventListener("click", function (ev) {
     var b = ev.target.closest && ev.target.closest(".vbtn");
-    if (b && !b.disabled) {
+    if (b && !b.classList.contains("voting")) {
       var id = b.getAttribute("data-id"), verdict = b.getAttribute("data-v");
-      b.disabled = true;
-      // lock BOTH buttons of this event everywhere (cards + lightbox) at once
-      document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = true; });
+      if (voted[id] === verdict) {          // same choice again — just blink it
+        b.classList.add("flash"); setTimeout(function () { b.classList.remove("flash"); }, 450);
+        return;
+      }
+      // instant visual feedback: pulse while the vote is in flight
+      var pair = document.querySelectorAll('.vbtn[data-id="' + id + '"]');
+      b.classList.add("voting");
       fetch("/cv/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: Number(id), verdict: verdict }) })
         .then(function (r) {
+          pair.forEach(function (x) { x.classList.remove("voting"); });
           if (r.ok) {
             voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {}
+            b.classList.add("flash"); setTimeout(function () { b.classList.remove("flash"); }, 450);
             lastSig = "";
             // in the fullscreen viewer, jump straight to the NEXT event to review
             // after voting (keeps the review flow moving). loadEvents() then keeps
@@ -261,8 +272,7 @@
             if (boxIdx >= 0 && events.length > 1) nav(1);
             loadEvents();
           }
-          else document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; });
-        }).catch(function () { document.querySelectorAll('.vbtn[data-id="' + id + '"]').forEach(function (x) { x.disabled = false; }); });
+        }).catch(function () { pair.forEach(function (x) { x.classList.remove("voting"); }); });
       return;
     }
     var tb = ev.target.closest && ev.target.closest(".tab");
