@@ -75,6 +75,13 @@ FAST_EVENT_KMH = float(os.environ.get("FAST_EVENT_KMH", "20"))
 # so it only makes an event if it is on a near-collision course (handled
 # separately). Tunable if the feed shows too many / too few episodes.
 CREEP_EVENT_KMH = float(os.environ.get("CREEP_EVENT_KMH", "10"))
+# The single crossing polygon is broad (no per-lane calibration), so it covers
+# the zebra AND the traffic lanes: a car driving normally on its own lane and a
+# pedestrian on the crossing are both "in the zone" yet never actually meet.
+# A real conflict REQUIRES the car to come near the user. This is the smallest
+# NORMALISED (dx/w, dy/h) gap the car ever closes to a crossing user; above it
+# they are on different lanes and it is not a conflict. Env-tunable.
+CONFLICT_DIST = float(os.environ.get("CONFLICT_DIST", "0.09"))
 MIN_CLIP_SEC = float(os.environ.get("MIN_CLIP_SEC", "3"))
 BLUR = os.environ.get("BLUR", "1") not in ("0", "false", "off")
 # Live MJPEG must fit a residential uplink when the node runs at home:
@@ -1892,24 +1899,46 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             # crash be dismissed.)
             _zu = pz_p + pz_b
             if _zu:
+                def _closest_user_dist(tid):
+                    # smallest NORMALISED gap (dx/w, dy/h — matching the stored
+                    # trajectories) this vehicle ever closes to any crossing user
+                    # over the recent window: how near the car actually gets.
+                    vq = speeds.hist.get(tid)
+                    vp = veh_tracks.get(tid)
+                    best = 9e9
+                    for u in _zu:
+                        uq = pedbook.hist.get(u) or bikebook.hist.get(u)
+                        up = ped_tracks.get(u) or bike_tracks.get(u)
+                        if vq and len(vq) >= 2 and uq and len(uq) >= 2:
+                            for vs in list(vq)[-8:]:
+                                us = min(uq, key=lambda s: abs(s[0] - vs[0]))
+                                if abs(us[0] - vs[0]) > 0.6:
+                                    continue
+                                d = (((vs[1]-us[1])/w)**2 + ((vs[2]-us[2])/h)**2) ** 0.5
+                                if d < best:
+                                    best = d
+                        elif vp and up:
+                            d = (((vp[0]-up[0])/w)**2 + ((vp[1]-up[1])/h)**2) ** 0.5
+                            if d < best:
+                                best = d
+                    return best
                 def _keep_veh(tid):
                     vk = veh_kmh.get(tid, 99.0)
                     if vk >= FAST_EVENT_KMH:
                         return True                      # clearly flew through
-                    vp = veh_tracks.get(tid)
-                    if vp is None:
+                    dmin = _closest_user_dist(tid)
+                    # PROXIMITY GATE: if the car never comes near a crossing user,
+                    # it is on a different lane of the broad zone — not a conflict.
+                    if dmin > CONFLICT_DIST:
                         return False
-                    ups = [ped_tracks.get(u) or bike_tracks.get(u) for u in _zu]
-                    ups = [u for u in ups if u]
-                    # near-miss / possible contact: keep even when slow (a crash
-                    # must never be filtered out — the AI emergency override then
-                    # takes over). TIGHT: nearly touching in the frame.
-                    if any(((vp[0] - u[0]) ** 2 + (vp[1] - u[1]) ** 2) ** 0.5 < 0.035 * w
-                           for u in ups):
+                    # genuinely adjacent -> near-miss / possible contact: keep even
+                    # when slow (a crash must never be filtered; the AI emergency
+                    # override then guarantees it is recorded).
+                    if dmin < 0.45 * CONFLICT_DIST:
                         return True
-                    # the car has already PASSED every crossing user (they are all
-                    # walking away from it) — whether it went in front or, the
-                    # dominant junk case, BEHIND them: not a fresh conflict.
+                    # close-ish but the car has already PASSED every user (they are
+                    # walking away from it) — went in front, or the dominant junk
+                    # case, BEHIND them: not a fresh conflict.
                     if _pair_receding(tid, _zu):
                         return False
                     # otherwise it only counts if it is really DRIVING THROUGH,
