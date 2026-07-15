@@ -1748,22 +1748,42 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             # false-violation case)
             return any(i.contains(p) for i in islands)
 
-        # A cyclist whose bicycle flickers between the BIKE and the MOTORCYCLE
-        # (=VEHICLE) class from frame to frame spawns BOTH a bike track and a
-        # phantom "vehicle" track at the SAME spot — the cyclist then conflicts
-        # with HIMSELF and fires a bogus "failed to yield" event with no real
-        # car present (events #505, #513). Suppress any vehicle track sitting on
-        # top of a bike track: a genuine motor vehicle is never co-located with
-        # a separately-tracked bicycle, and a real motorcycle produces NO
-        # parallel BIKE detection, so neither is ever wrongly dropped.
-        # Threshold kept TIGHT: the phantom is the SAME object, so its anchor
-        # nearly coincides with the bike's; a real car beside a cyclist sits
-        # farther away, so a genuine car-vs-cyclist conflict is NOT suppressed.
-        _dedup_px = 0.04 * w
-        _bike_pts = list(bike_tracks.values())
-        _phantom_veh = {tid for tid, vp in veh_tracks.items()
-                        if any(abs(vp[0] - bx) < _dedup_px and abs(vp[1] - by) < _dedup_px
-                               for bx, by in _bike_pts)}
+        # A vulnerable user's OWN wheeled thing is often mis-read as a motor
+        # vehicle that then "conflicts" with its owner: a BICYCLE flickers to
+        # the MOTORCYCLE(=VEHICLE) class (#505/#513), a PRAM/stroller or a
+        # wheelchair reads as a small vehicle (#774) — either way the phantom
+        # track SHADOWS the user's own track (same path, same walking/cycling
+        # pace). Because the class flickers frame to frame, the two tracks rarely
+        # hold a fresh position in the SAME frame, so a current-frame test misses
+        # it — compare TRAJECTORIES over the window instead. A vehicle that
+        # shadows a pedestrian or a bike for most of the window IS that user's
+        # own accessory, not a threat. (A real motorcycle has no parallel bike
+        # track; a real car does not shadow a walker/cyclist — it is faster and
+        # independent — so neither is ever wrongly dropped.)
+        def _shadows_user(vtid):
+            vq = speeds.hist.get(vtid)
+            vp_now = veh_tracks.get(vtid)
+            for book in (pedbook, bikebook):
+                for utid, uq in book.hist.items():
+                    if len(uq) < 3:
+                        continue
+                    if not vq or len(vq) < 3:      # short veh track: current-frame test
+                        up = uq[-1]
+                        if vp_now and abs(vp_now[0]-up[1]) < 0.045*w and abs(vp_now[1]-up[2]) < 0.045*w:
+                            return True
+                        continue
+                    close = total = 0
+                    for vs in list(vq)[-8:]:
+                        us = min(uq, key=lambda s: abs(s[0]-vs[0]))
+                        if abs(us[0]-vs[0]) > 0.6:
+                            continue
+                        total += 1
+                        if abs(vs[1]-us[1]) < 0.055*w and abs(vs[2]-us[2]) < 0.055*w:
+                            close += 1
+                    if total >= 3 and close >= total * 0.6:
+                        return True
+            return False
+        _phantom_veh = {tid for tid in veh_tracks if _shadows_user(tid)}
 
         # "Car politely passing BEHIND a pedestrian who is almost done crossing"
         # — the most common junk episode (a waiting/creeping car proceeds once
@@ -1802,7 +1822,12 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
         # window is a person PRINTED/STUCK on that vehicle (ad wrap, poster, a
         # photo on the bodywork) — it moves WITH the car, not on its own feet.
         # Exclude it from crossing users so a decal can't fabricate a conflict.
+        # SPEED GATE: a real pedestrian (even pushing a pram) walks slowly; a
+        # decal moves at the vehicle's pace. Only treat FAST "pedestrians" as
+        # decals, so a slow walker glued to their own stroller is never removed.
         def _ped_on_vehicle(ptid):
+            if ped_kmh.get(ptid, 0.0) < 11.0:
+                return False
             pq = pedbook.hist.get(ptid)
             if not pq or len(pq) < 4:
                 return False
