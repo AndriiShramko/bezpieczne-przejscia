@@ -65,6 +65,16 @@ FG_MIN = float(os.environ.get("FG_MIN", "0.05"))        # foreground fraction =>
 MIN_TRACK_FRAMES = int(os.environ.get("MIN_TRACK_FRAMES", "4"))
 MIN_MOVE_PX = float(os.environ.get("MIN_MOVE_PX", "16"))  # on PROC-width frame
 MIN_EVENT_FRAMES = int(os.environ.get("MIN_EVENT_FRAMES", "3"))
+# A conflict is worth recording ONLY if the vehicle drove through FAST (did NOT
+# yield). A car that slowed/waited and then proceeded — the dominant false
+# positive — reads well below this. A genuine "flew through" violation is 25+.
+# Slow near-misses / collisions are still caught by the proximity floor + the
+# AI emergency override, so this does not hide real danger.
+FAST_EVENT_KMH = float(os.environ.get("FAST_EVENT_KMH", "20"))
+# below this a car near a crossing is creeping / yielding, not driving through —
+# so it only makes an event if it is on a near-collision course (handled
+# separately). Tunable if the feed shows too many / too few episodes.
+CREEP_EVENT_KMH = float(os.environ.get("CREEP_EVENT_KMH", "10"))
 MIN_CLIP_SEC = float(os.environ.get("MIN_CLIP_SEC", "3"))
 BLUR = os.environ.get("BLUR", "1") not in ("0", "false", "off")
 # Live MJPEG must fit a residential uplink when the node runs at home:
@@ -1216,7 +1226,8 @@ def analyzer_loop():
                     db.merge_flags(eid, vul)   # children / strollers / wheelchairs
                 if res.get("phone_suspect") is True:
                     db.merge_flags(eid, {"phone": True})
-                if res.get("severity") in ("low", "medium", "high"):
+                if (res.get("verdict") == "violation"
+                        and res.get("severity") in ("low", "medium", "high")):
                     db.merge_flags(eid, {"severity": res["severity"]})
                 if res.get("emergency") is True:
                     # collision / person hit / crash — must never be lost
@@ -1787,6 +1798,32 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                     return False          # this user is NOT clearly walking away
             return True
 
+        # A "pedestrian" whose track stays GLUED to a moving vehicle across the
+        # window is a person PRINTED/STUCK on that vehicle (ad wrap, poster, a
+        # photo on the bodywork) — it moves WITH the car, not on its own feet.
+        # Exclude it from crossing users so a decal can't fabricate a conflict.
+        def _ped_on_vehicle(ptid):
+            pq = pedbook.hist.get(ptid)
+            if not pq or len(pq) < 4:
+                return False
+            samples = list(pq)[-6:]
+            for vtid, vq in speeds.hist.items():
+                # a PARKED car's poster never starts a moving-vehicle event, so
+                # only compare against vehicles that are actually moving
+                if len(vq) < 4 or vtid in getattr(speeds, "stationary", set()):
+                    continue
+                close = total = 0
+                for ps in samples:
+                    vs = min(vq, key=lambda s: abs(s[0] - ps[0]))
+                    if abs(vs[0] - ps[0]) > 0.5:
+                        continue
+                    total += 1
+                    if abs(ps[1] - vs[1]) < 0.05 * w and abs(ps[2] - vs[2]) < 0.05 * w:
+                        close += 1
+                if total >= 3 and close >= total - 1:
+                    return True
+            return False
+
         ped_in, veh_in_moving, hit_zone = [], [], None
         mark_ped, mark_bike = set(), set()   # participant tids (for red marking)
         for z in zones:
@@ -1809,7 +1846,8 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
             else:
                 pz_p = [tid for tid, p in ped_tracks.items()
                         if z["zone"].contains(p) and not on_island(p)
-                        and ped_cb.confirmed(tid) and pedbook.is_moving(tid)]
+                        and ped_cb.confirmed(tid) and pedbook.is_moving(tid)
+                        and not _ped_on_vehicle(tid)]
                 pz_b = []
             # vehicle must be INSIDE this crossing polygon (not its wide bbox)
             # AND driving TOWARD it — a car on its own lane that never crosses
@@ -1818,13 +1856,41 @@ def _run_camera(det, cam, frame_interval, cfg, grab, pub):
                   if z["zone"].contains(p) and veh_cb.confirmed(tid)
                   and tid not in _phantom_veh
                   and speeds.is_moving(tid) and speeds.heading_ok(tid, zcx, zcy)]
-            # drop SLOW cars every crossing user is clearly receding from —
-            # the "proceeded politely behind the pedestrian" non-event
+            # KEEP only vehicles that did NOT yield. A conflict is worth an
+            # event only if the vehicle drove through FAST (>= FAST_EVENT_KMH) —
+            # OR it came dangerously close to a crossing user who is NOT already
+            # walking away from it (a genuine near-miss / possible contact, kept
+            # even at low speed). A car that slowed/waited and then proceeded,
+            # especially BEHIND a pedestrian who already cleared its lane, is a
+            # lawful non-event and is dropped. (Collisions are still caught: the
+            # proximity branch fires, and the AI emergency override never lets a
+            # crash be dismissed.)
             _zu = pz_p + pz_b
             if _zu:
-                vz = [tid for tid in vz
-                      if not (veh_kmh.get(tid, 99.0) < 25.0
-                              and _pair_receding(tid, _zu))]
+                def _keep_veh(tid):
+                    vk = veh_kmh.get(tid, 99.0)
+                    if vk >= FAST_EVENT_KMH:
+                        return True                      # clearly flew through
+                    vp = veh_tracks.get(tid)
+                    if vp is None:
+                        return False
+                    ups = [ped_tracks.get(u) or bike_tracks.get(u) for u in _zu]
+                    ups = [u for u in ups if u]
+                    # near-miss / possible contact: keep even when slow (a crash
+                    # must never be filtered out — the AI emergency override then
+                    # takes over). TIGHT: nearly touching in the frame.
+                    if any(((vp[0] - u[0]) ** 2 + (vp[1] - u[1]) ** 2) ** 0.5 < 0.035 * w
+                           for u in ups):
+                        return True
+                    # the car has already PASSED every crossing user (they are all
+                    # walking away from it) — whether it went in front or, the
+                    # dominant junk case, BEHIND them: not a fresh conflict.
+                    if _pair_receding(tid, _zu):
+                        return False
+                    # otherwise it only counts if it is really DRIVING THROUGH,
+                    # not creeping / yielding at walking pace.
+                    return vk >= CREEP_EVENT_KMH
+                vz = [tid for tid in vz if _keep_veh(tid)]
             users = len(pz_p) + len(pz_b)
             if users and vz and users + len(vz) > len(ped_in) + len(veh_in_moving):
                 ped_in = pz_p + pz_b

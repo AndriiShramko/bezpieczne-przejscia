@@ -111,7 +111,10 @@ def merge_flags(eid, extra):
             cur = _json.loads(row[0]) if row and row[0] else {}
         except ValueError:
             pass
-        cur.update({k: True for k, v in extra.items() if v})
+        # keep the real value for non-boolean flags (e.g. severity="high");
+        # boolean flags collapse to True
+        cur.update({k: (True if isinstance(v, bool) else v)
+                    for k, v in extra.items() if v})
         _C.execute("UPDATE events SET flags=? WHERE id=?", (_json.dumps(cur), eid))
         _C.commit()
 
