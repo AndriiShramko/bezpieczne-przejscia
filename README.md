@@ -286,7 +286,9 @@ Issues and PRs welcome. Especially useful:
 
 - tracking quality (better association than centroid tracking at ~3 fps),
 - homography-based speed estimation from a few road measurements,
-- local VLM benchmarks on GPU hosts (`AI_BACKEND=local` is ready to test),
+- local VLM benchmarks on GPU hosts (`AI_BACKEND=local` is ready to test —
+  see [docs/research/nvidia-cosmos-3.md](docs/research/nvidia-cosmos-3.md)
+  for a candidate model to try there),
 - new public cameras (with the operator's permission) and translations.
 
 Ground rules: keep the dependency chain **AGPL-free**, and keep privacy
