@@ -1,5 +1,10 @@
 # Deploy runbook — patrol.flyreelstudio.eu (OPERATOR GATES APPLY)
 
+> **Static-site releases (current, 2026-10):** `bash deploy/deploy_static.sh` — builds `site/public`,
+> refuses the release if any page lacks the GA4 id `G-4561KTT50X` (see `docs/analytics.md`), backs up
+> `~/patrol/dist` on the hub and extracts the new build in place. The live stack is `~/patrol` on the hub
+> (not the compose files below, which are the original first-deploy plan).
+
 Target (default per spec): a shared production server that already co-hosts a
 neighbouring web app. **The stack is additive and must not touch the
 neighbour.** Safer alternative: any separate node / Cloudflare Pages.
