@@ -185,3 +185,17 @@ footer{border-top:1px solid var(--line);margin-top:3rem;padding:1.6rem 1.4rem;co
 .fine{max-width:1160px;margin:1.2rem auto 0;font-size:.78rem}
 @media(max-width:820px){.hero{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}
 form{grid-template-columns:1fr}.foot-grid{grid-template-columns:1fr}.nav nav{display:none}}
+/* consent banner (GA4 only after "Akceptuję"); both buttons identical = equal weight */
+.sa-banner{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:90;
+width:min(760px,calc(100% - 24px));display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;
+background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:.85rem 1rem;
+box-shadow:0 8px 28px rgba(0,0,0,.55);color:var(--tx);font-size:.86rem}
+.sa-banner[hidden]{display:none!important}
+.sa-banner p{margin:0;flex:1 1 320px;color:#cdd6e0}
+.sa-banner code{font-size:.85em}
+.sa-actions{display:flex;gap:.6rem;flex:0 0 auto}
+.sa-btn{min-width:8.5rem;font:inherit;font-weight:700;font-size:.92rem;padding:.6rem 1rem;border-radius:10px;
+cursor:pointer;background:var(--panel);color:var(--tx);border:1px solid var(--acc)}
+.sa-btn:hover{background:#1f2b3b}
+.sa-btn:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+@media(max-width:520px){.sa-actions{width:100%}.sa-btn{flex:1;min-width:0}}

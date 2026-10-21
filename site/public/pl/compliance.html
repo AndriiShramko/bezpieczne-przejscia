@@ -15,30 +15,35 @@
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/pl/compliance.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/compliance.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/compliance.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/compliance.html">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=dc763f252d">
 <script>
-/* auto-language: on first visit send the user to the version matching their
-   browser/system language; a manual switch (below) is remembered and wins. */
+/* auto-language — ONLY on the root "/" (x-default, WEB-TECH-BASELINE T9): send the
+   visitor to the version matching the browser language; a manual switch (below) is
+   remembered and wins. Localized URLs and deep links are never redirected. The
+   external referrer is kept for analytics (otherwise the session is self-referral). */
 (function(){try{
-  var chosen=localStorage.getItem('bp_lang');
-  var cur="pl";
-  if(chosen){ if(chosen!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[chosen];
-      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);} return; }
-  if(sessionStorage.getItem('bp_autolang'))return;
-  sessionStorage.setItem('bp_autolang','1');
-  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
-  if(!/^(en|pl|es|ru)$/.test(want))want='en';
-  if(want!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
-    location.replace(pre+'/'+location.search+location.hash);}
+  if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
+  var cur="pl", want=localStorage.getItem('bp_lang');
+  if(!want){
+    if(sessionStorage.getItem('bp_autolang'))return;
+    sessionStorage.setItem('bp_autolang','1');
+    want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  }
+  var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
+  if(pre===undefined||want===cur)return;
+  sessionStorage.setItem('sa_ref',document.referrer||'');
+  window.__saRedirect=1;
+  location.replace(pre+'/'+location.search+location.hash);
 }catch(e){}})();
 </script>
 
+<script defer src="/shramko-analytics.js?v=a15804e9a1" data-ga="G-4561KTT50X" data-skip-if="bp_admin"></script>
 </head>
 <body>
 <header class="nav">
  <a class="logo" href="/pl/">🚸 <span>Bezpieczne Przejścia</span></a>
  <nav><a href="/pl/">Na żywo</a><a href="/pl/how-it-works.html">Jak to działa</a><a href="/pl/accuracy.html">Skuteczność</a><a href="/pl/resources.html">Wdrożenie</a><a href="/pl/compliance.html" class=cur>Zgodność / RODO</a><a href="/pl/contact.html">Kontakt</a></nav>
- <span class="langs"><a class="lang" data-lang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/compliance.html">EN</a><a class="lang cur" data-lang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/compliance.html">PL</a><a class="lang" data-lang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
+ <span class="langs"><a class="lang" data-lang="en" hreflang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/compliance.html">EN</a><a class="lang cur" data-lang="pl" hreflang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/compliance.html">PL</a><a class="lang" data-lang="es" hreflang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" hreflang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
 </header>
 <div class="disclaimer">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</div>
 <main>
@@ -59,10 +64,18 @@ wymaga zgody właściciela kamery i podpisu prawnika (LIA/DPIA).</p></main>
  <div class="foot-grid">
   <div><strong>🚸 Bezpieczne Przejścia</strong><p class="muted">Demonstrator technologiczny — pokazuje możliwości analizy wideo dla bezpieczeństwa pieszych. NIE jest oficjalnym nadzorem ani egzekwowaniem prawa, nie nakłada kar, nie identyfikuje osób (twarze i tablice są rozmywane). Dane behawioralne mają charakter poglądowy i są weryfikowane przez ludzi.</p></div>
   <div>Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302<br><a href="/pl/privacy.html">Prywatność</a> ·
+   <a href="/pl/privacy.html#cookies" data-sa-consent="settings">Ustawienia cookies</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
-   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me" data-cta="linkedin">LinkedIn</a></div>
  </div>
  <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
-  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">GitHub (Apache-2.0)</a></p>
 </footer>
+<div id="sa-banner" class="sa-banner" role="region" aria-label="Zgoda na cookies analityczne" hidden>
+ <p>Za Twoją zgodą używamy Google Analytics 4 (cookies <code>_ga</code>), żeby wiedzieć, jak korzystasz ze strony. Bez zgody nic nie trafia do Google. Zgodę wycofasz w każdej chwili linkiem „Ustawienia cookies” w stopce. <a href="/pl/privacy.html#cookies">Polityka prywatności</a></p>
+ <div class="sa-actions">
+  <button type="button" class="sa-btn" data-sa-consent="reject">Odrzucam</button>
+  <button type="button" class="sa-btn" data-sa-consent="accept">Akceptuję</button>
+ </div>
+</div>
 </body></html>

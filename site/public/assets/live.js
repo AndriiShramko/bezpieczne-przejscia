@@ -84,6 +84,8 @@
   } catch (e) {}
 
   function el(i) { return document.getElementById(i); }
+  // GA4 events via /shramko-analytics.js — a no-op until the visitor accepted analytics
+  function track(name, params) { try { if (window.ShramkoAnalytics) window.ShramkoAnalytics.event(name, params || {}); } catch (e) {} }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function num(n) { return (n == null) ? "—" : Number(n).toLocaleString(L === "pl" ? "pl-PL" : "en-US"); }
 
@@ -92,7 +94,24 @@
     fetch("/cv/state.json", { cache: "no-store" }).then(function (r) { return r.json(); })
       .then(render).catch(function () { setLive(false); });
   }
+  var camId = "", liveSeen = false, liveVisible = false, offlineSent = false;
+  function liveView() {
+    if (liveSeen || !liveVisible || !camId) return;
+    liveSeen = true;
+    track("live_view", { cam_id: camId });
+  }
+  (function () {
+    var sec = el("live");
+    if (!sec || !("IntersectionObserver" in window)) return;
+    new IntersectionObserver(function (en) {
+      liveVisible = en.some(function (x) { return x.isIntersecting && x.intersectionRatio >= 0.5; });
+      var b = el("live-badge");
+      if (liveVisible && b && / on$/.test(b.className)) liveView();
+    }, { threshold: [0, 0.5, 1] }).observe(sec);
+  })();
   function setLive(on) {
+    if (on) liveView();
+    else if (!offlineSent && document.readyState === "complete") { offlineSent = true; track("live_offline", { cam_id: camId || "unknown" }); }
     var b = el("live-badge");
     if (b) { b.textContent = on ? "● " + T.live : "○ " + T.off; b.className = "live-badge " + (on ? "on" : "off"); }
     var o = el("live-offline"); if (o) o.style.display = on ? "none" : "flex";
@@ -110,6 +129,7 @@
       e.style.cursor = "pointer";
       e.title = L === "pl" ? "Kliknij, aby zobaczyć wszystkie nagrania zdarzeń" : "Click to see all event recordings";
       e.addEventListener("click", function () {
+        track("cta_click", { cta_id: id === "st-ev" ? "stat_events" : "stat_accuracy", cta_location: "live" });
         curTab = map[id]; curHour = null;
         document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === curTab); });
         lastSig = ""; loadEvents();
@@ -120,6 +140,7 @@
     });
   })();
   function render(d) {
+    if (d.cam_id) camId = String(d.cam_id).slice(0, 40);
     setLive(d.live);
     setStat("st-ped", num(d.ped_total), num(d.ped_per_hour) + " " + T.perHour);
     setStat("st-veh", num(d.veh_total), num(d.veh_per_hour) + " " + T.perHour);
@@ -263,6 +284,7 @@
         .then(function (r) {
           pair.forEach(function (x) { x.classList.remove("voting"); });
           if (r.ok) {
+            track("event_vote", { vote: verdict, tab: curTab, cta_location: boxIdx >= 0 ? "lightbox" : "card" });
             voted[id] = verdict; try { localStorage.setItem("bp_voted2", JSON.stringify(voted)); } catch (e) {}
             b.classList.add("flash"); setTimeout(function () { b.classList.remove("flash"); }, 450);
             lastSig = "";
@@ -278,6 +300,7 @@
     var tb = ev.target.closest && ev.target.closest(".tab");
     if (tb) {
       curTab = tb.getAttribute("data-tab");
+      track("tab_select", { tab: curTab });
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x === tb); });
       lastSig = ""; loadEvents();
       return;
@@ -306,6 +329,7 @@
   /* ---------- fullscreen gallery ---------- */
   var boxIdx = -1;
   function openBox(i) {
+    track("event_open", { tab: curTab });
     boxIdx = i;
     var bx = el("lightbox");
     if (!bx) return;
@@ -325,7 +349,7 @@
     var bx = el("lightbox");
     var expl = (L === "pl" ? e.ai_pl : e.ai_en) || e.desc || "";
     bx.querySelector(".lb-stage").innerHTML = e.clip
-      ? '<video controls autoplay loop muted playsinline src="/cv/clip/' + esc(e.clip) + '" poster="/cv/snap/' + esc(e.snap) + '"></video>'
+      ? '<video data-sa-video="event_clip" controls autoplay loop muted playsinline src="/cv/clip/' + esc(e.clip) + '" poster="/cv/snap/' + esc(e.snap) + '"></video>'
       : '<img src="/cv/snap/' + esc(e.snap) + '" alt="">';
     bx.querySelector(".lb-info").innerHTML =
       "<b>#" + e.id + "</b> · " + esc((e.ts || "").replace("T", " ").slice(0, 19)) + " UTC · " +
@@ -426,6 +450,7 @@
     e.style.cursor = "pointer";
     e.title = L === "pl" ? "Kliknij: nagrania możliwych przekroczeń prędkości" : "Click: recordings of possible speeding";
     e.onclick = function () {
+      track("cta_click", { cta_id: "chart_speed_hist", cta_location: "charts" });
       curTab = "speeding"; curHour = null;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === "speeding"); });
       lastSig = ""; loadEvents();
@@ -456,6 +481,7 @@
     e.querySelectorAll(".evbar").forEach(function (g) {
       g.addEventListener("click", function () {
         var hr = g.getAttribute("data-hour");
+        track("cta_click", { cta_id: "chart_events_hour", cta_location: "charts" });
         curHour = (curHour === hr) ? null : hr;
         lastSig = ""; loadEvents(); drawCharts();
         var evs = el("events"); if (evs && curHour) evs.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -494,6 +520,7 @@
     e.style.cursor = "pointer";
     e.title = L === "pl" ? "Kliknij: nagrania możliwych przekroczeń prędkości" : "Click: recordings of possible speeding";
     e.onclick = function () {
+      track("cta_click", { cta_id: "chart_speeding_tod", cta_location: "charts" });
       curTab = "speeding"; curHour = null;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("cur", x.getAttribute("data-tab") === "speeding"); });
       lastSig = ""; loadEvents();

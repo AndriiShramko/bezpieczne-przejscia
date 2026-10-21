@@ -15,33 +15,38 @@
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/contact.html">
 <link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/contact.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/contact.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/contact.html">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=dc763f252d">
 <script>
-/* auto-language: on first visit send the user to the version matching their
-   browser/system language; a manual switch (below) is remembered and wins. */
+/* auto-language — ONLY on the root "/" (x-default, WEB-TECH-BASELINE T9): send the
+   visitor to the version matching the browser language; a manual switch (below) is
+   remembered and wins. Localized URLs and deep links are never redirected. The
+   external referrer is kept for analytics (otherwise the session is self-referral). */
 (function(){try{
-  var chosen=localStorage.getItem('bp_lang');
-  var cur="en";
-  if(chosen){ if(chosen!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[chosen];
-      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);} return; }
-  if(sessionStorage.getItem('bp_autolang'))return;
-  sessionStorage.setItem('bp_autolang','1');
-  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
-  if(!/^(en|pl|es|ru)$/.test(want))want='en';
-  if(want!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
-    location.replace(pre+'/'+location.search+location.hash);}
+  if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
+  var cur="en", want=localStorage.getItem('bp_lang');
+  if(!want){
+    if(sessionStorage.getItem('bp_autolang'))return;
+    sessionStorage.setItem('bp_autolang','1');
+    want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  }
+  var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
+  if(pre===undefined||want===cur)return;
+  sessionStorage.setItem('sa_ref',document.referrer||'');
+  window.__saRedirect=1;
+  location.replace(pre+'/'+location.search+location.hash);
 }catch(e){}})();
 </script>
 
+<script defer src="/shramko-analytics.js?v=a15804e9a1" data-ga="G-4561KTT50X" data-skip-if="bp_admin"></script>
 </head>
 <body>
 <header class="nav">
  <a class="logo" href="/">🚸 <span>SafeCross</span></a>
  <nav><a href="/">Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html" class=cur>Contact</a></nav>
- <span class="langs"><a class="lang cur" data-lang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/contact.html">EN</a><a class="lang" data-lang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/contact.html">PL</a><a class="lang" data-lang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
+ <span class="langs"><a class="lang cur" data-lang="en" hreflang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/contact.html">EN</a><a class="lang" data-lang="pl" hreflang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/contact.html">PL</a><a class="lang" data-lang="es" hreflang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" hreflang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
 </header>
 <div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
-<main><h1>Contact</h1><p class="lead">I usually reply within 1–2 business days.</p><form id="leadform" autocomplete="on">
+<main><h1>Contact</h1><p class="lead">I usually reply within 1–2 business days.</p><form id="leadform" data-sa-form="leadform" autocomplete="on">
  <label>Full name*<input name="name" type="text" required autocomplete="name"></label>
  <label>Organisation<input name="organization" type="text" autocomplete="organization"></label>
  <label>Role<input name="role" type="text" autocomplete="organization-title"></label>
@@ -49,7 +54,7 @@
  <label>E-mail*<input name="email" type="email" required autocomplete="email"></label>
  <label class="wide">Message*<textarea name="message" rows="4" required></textarea></label>
  <input name="website" type="text" class="hp" tabindex="-1" autocomplete="off">
- <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>I consent to processing my data to handle this inquiry (controller: Andrii Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*</span></label>
+ <label class="consent wide"><input name="consent" type="checkbox" required value="yes"><span>I consent to processing my data to handle this inquiry (controller: Andrii Shramko, sole trader; <a href='/privacy.html'>privacy policy</a>).*</span></label>
  <input type="hidden" name="lang" value="en">
  <button type="submit">Send</button>
 </form>
@@ -57,21 +62,36 @@
 <p id="formerr" class="err" style="display:none">❌ Sending failed. Write to: zmei116@gmail.com</p>
 
 <script>(function(){var f=document.getElementById('leadform');if(!f)return;
+/* analytics, no personal data: generate_lead ONLY after the server confirmed the
+   lead; lead_type = position of the chosen segment (language-independent code) */
+var SEG=['municipality','national_body','company','research','other'];
+function sa(n,p){try{window.ShramkoAnalytics&&window.ShramkoAnalytics.event(n,p)}catch(x){}}
 f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
-var d=Object.fromEntries(new FormData(f).entries());
+var d=Object.fromEntries(new FormData(f).entries());var sg=f.querySelector('select[name=segment]');
+var lt=SEG[sg?sg.selectedIndex:4]||'other';
 fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
-.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
-.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>
+.then(function(r){if(!r.ok)throw 'http';f.style.display='none';document.getElementById('formok').style.display='block';
+ try{window.ShramkoAnalytics&&window.ShramkoAnalytics.lead('leadform',{lead_type:lt})}catch(x){}})
+.catch(function(x){b.disabled=false;document.getElementById('formerr').style.display='block';
+ sa('form_error',{form_id:'leadform',reason:x==='http'?'http':'network'});});});})();</script>
 <p class="muted">E-mail: <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
 LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a></p></main>
 <footer>
  <div class="foot-grid">
   <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
   <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
+   <a href="/privacy.html#cookies" data-sa-consent="settings">Cookie settings</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
-   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me" data-cta="linkedin">LinkedIn</a></div>
  </div>
  <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
-  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">GitHub (Apache-2.0)</a></p>
 </footer>
+<div id="sa-banner" class="sa-banner" role="region" aria-label="Analytics cookie consent" hidden>
+ <p>With your consent we use Google Analytics 4 (cookies <code>_ga</code>) to see how the site is used. Without consent nothing is sent to Google. You can withdraw consent at any time via “Cookie settings” in the footer. <a href="/privacy.html#cookies">Privacy policy</a></p>
+ <div class="sa-actions">
+  <button type="button" class="sa-btn" data-sa-consent="reject">Reject</button>
+  <button type="button" class="sa-btn" data-sa-consent="accept">Accept</button>
+ </div>
+</div>
 </body></html>

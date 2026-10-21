@@ -5,7 +5,10 @@ Dark, modern, fast. The MAIN page is a live command center: real camera
 feed with real-time counting + a crowd-verified event feed. Decision-maker
 statistics (sourced, Polish) lead the narrative. PL root + /en/.
 """
+import hashlib
 import os
+import re
+import sys
 from i18n_hero import HERO
 import shutil
 
@@ -13,6 +16,12 @@ BASE = "https://patrol.flyreelstudio.eu"
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(ROOT, "public")
 PAGES = ["index", "how-it-works", "accuracy", "resources", "compliance", "contact", "privacy"]
+
+# GA4 measurement ID of THIS site (property 559875257 "Bezpieczne Przejścia (patrol)").
+# It is public (it is in every page) — committed on purpose so a build can never ship
+# without it. main() refuses to finish if any built page lacks exactly this ID.
+GA_ID = "G-4561KTT50X"
+ANALYTICS_SRC = os.path.join(ROOT, "shramko-analytics.js")   # copied to /shramko-analytics.js
 
 T = {
     "pl": {
@@ -79,7 +88,8 @@ T = {
             "index": "SafeCross — живой анализ безопасности пешеходных переходов (ИИ + проверка людьми)",
             "how-it-works": "How it works", "accuracy": "Accuracy",
             "resources": "Deployment", "compliance": "Compliance / GDPR",
-            "contact": "Contact — SafeCross", "privacy": "Privacy",
+            "contact": "Contact — SafeCross",
+            "privacy": "Политика конфиденциальности и правовая информация",
         },
     },
     "es": {
@@ -97,9 +107,39 @@ T = {
             "index": "SafeCross — análisis en vivo de seguridad en pasos de peatones (IA + verificación humana)",
             "how-it-works": "How it works", "accuracy": "Accuracy",
             "resources": "Deployment", "compliance": "Compliance / GDPR",
-            "contact": "Contact — SafeCross", "privacy": "Privacy",
+            "contact": "Contact — SafeCross",
+            "privacy": "Política de privacidad y aviso legal",
         },
     },
+}
+
+# Consent banner + footer "cookie settings" link (WEB-TECH-BASELINE §T6): both buttons
+# have the same class = the same visual weight. PL labels are fixed: "Akceptuję" / "Odrzucam".
+CONSENT = {
+    "pl": {"aria": "Zgoda na cookies analityczne",
+           "text": ("Za Twoją zgodą używamy Google Analytics 4 (cookies <code>_ga</code>), żeby wiedzieć, "
+                    "jak korzystasz ze strony. Bez zgody nic nie trafia do Google. Zgodę wycofasz w każdej "
+                    "chwili linkiem „Ustawienia cookies” w stopce."),
+           "more": "Polityka prywatności", "accept": "Akceptuję", "reject": "Odrzucam",
+           "settings": "Ustawienia cookies"},
+    "en": {"aria": "Analytics cookie consent",
+           "text": ("With your consent we use Google Analytics 4 (cookies <code>_ga</code>) to see how the "
+                    "site is used. Without consent nothing is sent to Google. You can withdraw consent at "
+                    "any time via “Cookie settings” in the footer."),
+           "more": "Privacy policy", "accept": "Accept", "reject": "Reject",
+           "settings": "Cookie settings"},
+    "es": {"aria": "Consentimiento de cookies analíticas",
+           "text": ("Con tu consentimiento usamos Google Analytics 4 (cookies <code>_ga</code>) para saber "
+                    "cómo se usa el sitio. Sin consentimiento no se envía nada a Google. Puedes retirarlo "
+                    "en cualquier momento en «Configuración de cookies», al pie de la página."),
+           "more": "Política de privacidad", "accept": "Aceptar", "reject": "Rechazar",
+           "settings": "Configuración de cookies"},
+    "ru": {"aria": "Согласие на аналитические cookie",
+           "text": ("С вашего согласия мы используем Google Analytics 4 (cookie <code>_ga</code>), чтобы "
+                    "понимать, как пользуются сайтом. Без согласия в Google ничего не отправляется. Отозвать "
+                    "согласие можно в любой момент — ссылка «Настройки cookie» внизу страницы."),
+           "more": "Политика конфиденциальности", "accept": "Принять", "reject": "Отклонить",
+           "settings": "Настройки cookie"},
 }
 
 JSONLD = """
@@ -123,11 +163,18 @@ FAQ_PL = """
 
 FORM_JS = """
 <script>(function(){var f=document.getElementById('leadform');if(!f)return;
+/* analytics, no personal data: generate_lead ONLY after the server confirmed the
+   lead; lead_type = position of the chosen segment (language-independent code) */
+var SEG=['municipality','national_body','company','research','other'];
+function sa(n,p){try{window.ShramkoAnalytics&&window.ShramkoAnalytics.event(n,p)}catch(x){}}
 f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('button');b.disabled=true;
-var d=Object.fromEntries(new FormData(f).entries());
+var d=Object.fromEntries(new FormData(f).entries());var sg=f.querySelector('select[name=segment]');
+var lt=SEG[sg?sg.selectedIndex:4]||'other';
 fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
-.then(function(r){if(!r.ok)throw 0;f.style.display='none';document.getElementById('formok').style.display='block';})
-.catch(function(){b.disabled=false;document.getElementById('formerr').style.display='block';});});})();</script>"""
+.then(function(r){if(!r.ok)throw 'http';f.style.display='none';document.getElementById('formok').style.display='block';
+ try{window.ShramkoAnalytics&&window.ShramkoAnalytics.lead('leadform',{lead_type:lt})}catch(x){}})
+.catch(function(x){b.disabled=false;document.getElementById('formerr').style.display='block';
+ sa('form_error',{form_id:'leadform',reason:x==='http'?'http':'network'});});});})();</script>"""
 
 LIGHTBOX = """
 <div id="lightbox" class="lightbox" style="display:none">
@@ -138,7 +185,7 @@ LIGHTBOX = """
 </div>"""
 
 VERIFY_PL = """
-<section class="verify">
+<section id="verify" class="verify">
  <h2>Jak to działa: 3 modele, które współpracują</h2>
  <div class="pipe3">
   <div><b>1 · YOLOX — lokalnie, za darmo</b><span>Percepcja: wykrywa pieszych i pojazdy w każdej klatce. Szybki, ale „nie rozumie” sceny.</span></div>
@@ -161,7 +208,7 @@ VERIFY_PL = """
  </div>
  <div id="events" class="events"><p class="muted pad">Wczytuję zdarzenia…</p></div>
 </section>
-<section class="charts">
+<section id="charts" class="charts">
  <h2>Statystyka przejścia — na żywo z bazy danych</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Ruch na godzinę (48h)</h3><div class="chart" id="chart-traffic"></div></div>
@@ -170,12 +217,12 @@ VERIFY_PL = """
   <div class="chart-card"><h3>Epizody i naruszenia wg AI (na godzinę)</h3><div class="chart" id="chart-events"></div></div>
  </div>
  <p class="dl">Pobierz pełną analitykę przejścia:
-  <a class="btn ghost" href="/cv/report.html" target="_blank">Raport HTML</a>
+  <a class="btn ghost" href="/cv/report.html" target="_blank" data-cta="report_html">Raport HTML</a>
   <a class="btn ghost" href="/cv/report.csv">Dane CSV</a></p>
 </section>"""
 
 VERIFY_EN = """
-<section class="verify">
+<section id="verify" class="verify">
  <h2>How it works: 3 models that cooperate</h2>
  <div class="pipe3">
   <div><b>1 · YOLOX — local, free</b><span>Perception: finds pedestrians and vehicles in every frame. Fast, but it doesn't "understand" the scene.</span></div>
@@ -198,7 +245,7 @@ VERIFY_EN = """
  </div>
  <div id="events" class="events"><p class="muted pad">Loading events…</p></div>
 </section>
-<section class="charts">
+<section id="charts" class="charts">
  <h2>Crossing statistics — live from the database</h2>
  <div class="chart-grid">
   <div class="chart-card"><h3>Traffic per hour (48h)</h3><div class="chart" id="chart-traffic"></div></div>
@@ -207,12 +254,12 @@ VERIFY_EN = """
   <div class="chart-card"><h3>Episodes & AI violations per hour</h3><div class="chart" id="chart-events"></div></div>
  </div>
  <p class="dl">Download the full crossing analytics:
-  <a class="btn ghost" href="/cv/report.html" target="_blank">HTML report</a>
+  <a class="btn ghost" href="/cv/report.html" target="_blank" data-cta="report_html">HTML report</a>
   <a class="btn ghost" href="/cv/report.csv">CSV data</a></p>
 </section>"""
 
 RESEARCH_PL = """
-<section class="research">
+<section id="research" class="research">
  <h2>Open source · dla badaczy i integratorów</h2>
  <p class="lead">Cały projekt jest otwarty (Apache-2.0) — <strong>każdy może go powtórzyć, zweryfikować lub rozwinąć</strong>.
  To celowo tani, wielomodelowy system (lokalny detektor + tania LLM + weryfikacja ludzi), który zbliża się jakością
@@ -227,13 +274,13 @@ RESEARCH_PL = """
   <div><h3>Współpraca</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Polska).
    Wdrożenia, konsultacje, wspólne badania i granty (KRBRD, NCBR, Horizon).
    <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
-   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
-   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko" data-cta="linkedin">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
 </section>"""
 
 RESEARCH_EN = """
-<section class="research">
+<section id="research" class="research">
  <h2>Open source · for researchers and integrators</h2>
  <p class="lead">The whole project is open (Apache-2.0) — <strong>anyone can reproduce, verify or extend it</strong>.
  It is a deliberately cheap, multi-model system (local detector + cheap LLM + human verification) that approaches
@@ -248,8 +295,8 @@ RESEARCH_EN = """
   <div><h3>Collaborate</h3><p><strong>Andrii Shramko</strong> — computer vision / VR / 3D (Poland).
    Deployments, consulting, joint research and grants.
    <br>✉ <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a>
-   <br>in <a href="https://www.linkedin.com/in/andriishramko">linkedin.com/in/andriishramko</a>
-   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
+   <br>in <a href="https://www.linkedin.com/in/andriishramko" data-cta="linkedin">linkedin.com/in/andriishramko</a>
+   <br>⌥ <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">github.com/AndriiShramko/bezpieczne-przejscia</a></p></div>
  </div>
 </section>"""
 
@@ -258,7 +305,24 @@ LANG_ORDER = ["en", "pl", "es", "ru"]         # English default (first, at /)
 LANG_LABEL = {"en": "EN", "pl": "PL", "es": "ES", "ru": "RU"}
 LANG_LOCALE = {"en": "en_US", "pl": "pl_PL", "es": "es_ES", "ru": "ru_RU"}
 # secondary pages exist only in en/pl — es/ru link them to the English version
+# (es/ru do have their own Live page and privacy policy)
 FULL_LANGS = {"en", "pl"}
+LANG_PAGES = {"es": {"index", "privacy"}, "ru": {"index", "privacy"}}
+
+
+def has_page(lg, page):
+    return lg in FULL_LANGS or page in LANG_PAGES.get(lg, ())
+
+
+def _v(data):
+    """Short content hash for ?v= cache-busting of /assets/* (nginx sends no
+    cache headers, so browsers would otherwise keep a stale style.css/live.js)."""
+    return hashlib.sha256(data if isinstance(data, bytes) else data.encode("utf-8")).hexdigest()[:10]
+
+
+def _file_v(path):
+    with open(path, "rb") as f:
+        return _v(f.read())
 
 
 def head(lang, page, extra=""):
@@ -267,20 +331,22 @@ def head(lang, page, extra=""):
     # secondary nav links fall back to English for es/ru (those pages aren't
     # translated); the index (Live) always stays in-language
     def href(p):
-        plang = lang if (p == "index" or lang in FULL_LANGS) else "en"
+        plang = lang if has_page(lang, p) else "en"
         pre = T[plang]["prefix"]
         return f'{pre}/{p if p != "index" else ""}{".html" if p != "index" else ""}'
     nav = "".join(
         f'<a href="{href(p)}"{" class=cur" if p == page else ""}>{t["nav"][p]}</a>'
         for p in PAGES[:-1])
     switch = "".join(
-        f'<a class="lang{" cur" if lg == lang else ""}" data-lang="{lg}" '
+        f'<a class="lang{" cur" if lg == lang else ""}" data-lang="{lg}" hreflang="{lg}" '
         f'onclick="try{{localStorage.setItem(\'bp_lang\',\'{lg}\')}}catch(e){{}}" '
-        f'href="{T[lg]["prefix"]}/{fname if (page == "index" or lg in FULL_LANGS) else ""}">'
+        f'href="{T[lg]["prefix"]}/{fname if has_page(lg, page) else ""}">'
         f'{LANG_LABEL[lg]}</a>' for lg in LANG_ORDER)
     hreflangs = "".join(
         f'<link rel="alternate" hreflang="{lg}" href="{BASE}{T[lg]["prefix"]}/{fname}">'
-        for lg in LANG_ORDER if (page == "index" or lg in FULL_LANGS))
+        for lg in LANG_ORDER if has_page(lg, page))
+    analytics = (f'<script defer src="/shramko-analytics.js?v={_file_v(ANALYTICS_SRC)}" '
+                 f'data-ga="{GA_ID}" data-skip-if="bp_admin"></script>')
     return f"""<!DOCTYPE html>
 <html lang="{t['lang']}">
 <head>
@@ -298,24 +364,29 @@ def head(lang, page, extra=""):
 <link rel="canonical" href="{BASE}{t['prefix']}/{fname}">
 {hreflangs}
 <link rel="alternate" hreflang="x-default" href="{BASE}/{fname}">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v={_v(CSS)}">
 <script>
-/* auto-language: on first visit send the user to the version matching their
-   browser/system language; a manual switch (below) is remembered and wins. */
+/* auto-language — ONLY on the root "/" (x-default, WEB-TECH-BASELINE T9): send the
+   visitor to the version matching the browser language; a manual switch (below) is
+   remembered and wins. Localized URLs and deep links are never redirected. The
+   external referrer is kept for analytics (otherwise the session is self-referral). */
 (function(){{try{{
-  var chosen=localStorage.getItem('bp_lang');
-  var cur="{lang}";
-  if(chosen){{ if(chosen!==cur){{var pre={{en:'',pl:'/pl',es:'/es',ru:'/ru'}}[chosen];
-      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);}} return; }}
-  if(sessionStorage.getItem('bp_autolang'))return;
-  sessionStorage.setItem('bp_autolang','1');
-  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
-  if(!/^(en|pl|es|ru)$/.test(want))want='en';
-  if(want!==cur){{var pre={{en:'',pl:'/pl',es:'/es',ru:'/ru'}}[want];
-    location.replace(pre+'/'+location.search+location.hash);}}
+  if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
+  var cur="{lang}", want=localStorage.getItem('bp_lang');
+  if(!want){{
+    if(sessionStorage.getItem('bp_autolang'))return;
+    sessionStorage.setItem('bp_autolang','1');
+    want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  }}
+  var pre={{en:'',pl:'/pl',es:'/es',ru:'/ru'}}[want];
+  if(pre===undefined||want===cur)return;
+  sessionStorage.setItem('sa_ref',document.referrer||'');
+  window.__saRedirect=1;
+  location.replace(pre+'/'+location.search+location.hash);
 }}catch(e){{}}}})();
 </script>
 {extra}
+{analytics}
 </head>
 <body>
 <header class="nav">
@@ -332,17 +403,26 @@ def foot(lang):
     imp = ("Administrator danych (demo): Andrii Shramko, JDG, NIP PL7543116302"
            if lang == "pl" else
            "Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302")
+    c = CONSENT[lang]
     return f"""</main>
 <footer>
  <div class="foot-grid">
   <div><strong>🚸 {t['brand']}</strong><p class="muted">{t['disclaimer']}</p></div>
   <div>{imp}<br><a href="{t['prefix']}/privacy.html">{t['nav']['privacy']}</a> ·
+   <a href="{t['prefix']}/privacy.html#cookies" data-sa-consent="settings">{c['settings']}</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
-   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me" data-cta="linkedin">LinkedIn</a></div>
  </div>
  <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
-  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">GitHub (Apache-2.0)</a></p>
 </footer>
+<div id="sa-banner" class="sa-banner" role="region" aria-label="{c['aria']}" hidden>
+ <p>{c['text']} <a href="{t['prefix']}/privacy.html#cookies">{c['more']}</a></p>
+ <div class="sa-actions">
+  <button type="button" class="sa-btn" data-sa-consent="reject">{c['reject']}</button>
+  <button type="button" class="sa-btn" data-sa-consent="accept">{c['accept']}</button>
+ </div>
+</div>
 </body></html>"""
 
 
@@ -403,20 +483,20 @@ def page_index(lang):
                         f'<span class="src">{src}</span></p></div>'
                         for b, tx, src in H["hooks"])
         hero = f"""
-<section class="hero">
+<section id="hero" class="hero">
  <div class="hero-copy">
   <div class="kicker">{H['kicker']}</div>
   <h1>{H['h1']}</h1>
   <p class="lead">{H['lead']}</p>
   <div class="hero-cta">
-   <a class="btn" href="#live">{H['cta1']}</a>
-   <a class="btn ghost" href="#kontakt">{H['cta2']}</a>
+   <a class="btn" href="#live" data-cta="hero_live">{H['cta1']}</a>
+   <a class="btn ghost" href="#kontakt" data-cta="hero_contact">{H['cta2']}</a>
   </div>
  </div>
  <aside class="hero-facts">{facts}</aside>
 </section>"""
         why = f"""
-<section class="hooks"><h2>{H['why_title']}</h2>
+<section id="why" class="hooks"><h2>{H['why_title']}</h2>
  <div class="hook-grid">{hooks}</div></section>"""
         contact = f"""
 <section id="kontakt" class="contact">
@@ -427,7 +507,7 @@ def page_index(lang):
         verify, research = VERIFY_EN, RESEARCH_EN
     elif lang == "pl":
         hero = """
-<section class="hero">
+<section id="hero" class="hero">
  <div class="hero-copy">
   <div class="kicker">Analiza wideo na żywo · prawdziwa kamera · weryfikacja przez ludzi</div>
   <h1>Na polskich przejściach wciąż ginie <span class="hot">ponad 100 osób</span> rocznie.</h1>
@@ -437,8 +517,8 @@ def page_index(lang):
   liczy pieszych, rowerzystów i pojazdy, AI ocenia każdą sytuację konfliktową, a Ty weryfikujesz
   jego werdykty — bo na przejściu nawet jedno naruszenie to o jedno za dużo.</p>
   <div class="hero-cta">
-   <a class="btn" href="#live">Zobacz kamerę na żywo ↓</a>
-   <a class="btn ghost" href="#kontakt">Dla samorządu / KRBRD</a>
+   <a class="btn" href="#live" data-cta="hero_live">Zobacz kamerę na żywo ↓</a>
+   <a class="btn ghost" href="#kontakt" data-cta="hero_contact">Dla samorządu / KRBRD</a>
   </div>
  </div>
  <aside class="hero-facts">
@@ -448,7 +528,7 @@ def page_index(lang):
  </aside>
 </section>"""
         why = """
-<section class="hooks">
+<section id="why" class="hooks">
  <h2>Dlaczego to ważne dla samorządu i KRBRD</h2>
  <div class="hook-grid">
   <div class="hook"><b>52 mld zł / rok</b><p>tyle kosztują Polskę wypadki drogowe — ok. 1,7% PKB.
@@ -470,7 +550,7 @@ def page_index(lang):
         verify, research = VERIFY_PL, RESEARCH_PL
     else:
         hero = """
-<section class="hero">
+<section id="hero" class="hero">
  <div class="hero-copy">
   <div class="kicker">Live video analysis · real camera · human verification</div>
   <h1>Every year <span class="hot">274,000 pedestrians</span> are killed on the world's roads.</h1>
@@ -480,8 +560,8 @@ def page_index(lang):
   conflict situation, and you verify its verdicts. The same open technology could watch any
   crossing — including yours.</p>
   <div class="hero-cta">
-   <a class="btn" href="#live">Watch the live camera ↓</a>
-   <a class="btn ghost" href="#kontakt">For government</a>
+   <a class="btn" href="#live" data-cta="hero_live">Watch the live camera ↓</a>
+   <a class="btn ghost" href="#kontakt" data-cta="hero_contact">For government</a>
   </div>
  </div>
  <aside class="hero-facts">
@@ -491,7 +571,7 @@ def page_index(lang):
  </aside>
 </section>"""
         why = """
-<section class="hooks">
+<section id="why" class="hooks">
  <h2>Why this matters to government</h2>
  <div class="hook-grid">
   <div class="hook"><b>274,000 / yr</b><p>pedestrians die on the world's roads — one every two minutes.
@@ -512,7 +592,7 @@ def page_index(lang):
 </section>"""
         verify, research = VERIFY_EN, RESEARCH_EN
     extra = (JSONLD.replace("%BASE%", BASE) + FAQ_PL +
-             '\n<script defer src="/assets/live.js"></script>')
+             f'\n<script defer src="/assets/live.js?v={_file_v(os.path.join(PUB, "assets", "live.js"))}"></script>')
     return (head(lang, "index", extra) + hero + livesec(lang) + verify + why
             + research + partial(f"about_{lang}.html") + partial(f"faq_{lang}.html")
             + contact + LIGHTBOX + foot(lang))
@@ -696,7 +776,7 @@ def lead_form_html(lang):
              "seg": "Segment", "segs": ["Samorząd / zarząd dróg", "KRBRD / administracja", "Firma", "Projekt UE / nauka", "Inne"],
              "email": "E-mail*", "msg": "Wiadomość*",
              "consent": ("Zgadzam się na przetwarzanie danych w celu obsługi zapytania (administrator: "
-                         "Andrii Shramko, JDG; <a href='/privacy.html'>polityka prywatności</a>).*"),
+                         "Andrii Shramko, JDG; <a href='/pl/privacy.html'>polityka prywatności</a>).*"),
              "send": "Wyślij", "ok": "Dziękuję! Zapytanie dotarło — odezwę się wkrótce.",
              "err": "Nie udało się wysłać. Napisz: zmei116@gmail.com"}
     else:
@@ -704,11 +784,11 @@ def lead_form_html(lang):
              "seg": "Segment", "segs": ["Municipality / road authority", "National road-safety body", "Company", "EU project / research", "Other"],
              "email": "E-mail*", "msg": "Message*",
              "consent": ("I consent to processing my data to handle this inquiry (controller: Andrii "
-                         "Shramko, sole trader; <a href='/en/privacy.html'>privacy policy</a>).*"),
+                         "Shramko, sole trader; <a href='" + T[lang]["prefix"] + "/privacy.html'>privacy policy</a>).*"),
              "send": "Send", "ok": "Thank you! Your inquiry arrived — I'll be in touch soon.",
              "err": "Sending failed. Write to: zmei116@gmail.com"}
     opts = "".join(f"<option>{s}</option>" for s in f["segs"])
-    return f"""<form id="leadform" autocomplete="on">
+    return f"""<form id="leadform" data-sa-form="leadform" autocomplete="on">
  <label>{f['name']}<input name="name" type="text" required autocomplete="name"></label>
  <label>{f['org']}<input name="organization" type="text" autocomplete="organization"></label>
  <label>{f['role']}<input name="role" type="text" autocomplete="organization-title"></label>
@@ -735,31 +815,159 @@ LinkedIn: <a href="https://www.linkedin.com/in/andriishramko">andriishramko</a><
 
 
 def page_privacy(lang):
+    ck = "_ga_" + GA_ID[2:]          # the GA4 session cookie of THIS property
     if lang == "pl":
-        body = """
+        body = f"""
 <h1>Polityka prywatności i nota prawna</h1>
 <h2>Administrator</h2><p>Andrii Shramko, JDG (Polska), NIP PL7543116302, zmei116@gmail.com.</p>
 <h2>Strona i demonstrator</h2>
-<ul><li>Brak cookies śledzących i analityki behawioralnej.</li>
+<ul><li>Bez Twojej zgody strona nie zapisuje cookies śledzących, nie uruchamia analityki w przeglądarce
+i nie łączy się z Google. Google Analytics działa wyłącznie po kliknięciu „Akceptuję” — szczegóły niżej.</li>
 <li>Analiza działa na publicznej kamerze; twarze i tablice są rozmywane, kadry nie są przechowywane,
 nie powstają embeddingi. Zapisywane są liczniki i rozmyte zrzuty zdarzeń do weryfikacji — bez danych osobowych w wyniku.</li>
-<li>Głosy weryfikacyjne (potwierdź/odrzuć) zapisujemy anonimowo (bez danych osobowych) do liczenia trafności.</li>
+<li>Głosy weryfikacyjne (potwierdź/odrzuć) służą do liczenia trafności. Serwer zapisuje przy głosie adres IP
+wyłącznie po to, by z jednego adresu był jeden głos na zdarzenie (głos można zmienić); IP nie jest publikowane
+ani przekazywane do Google.</li>
 <li>Formularz kontaktowy: dane (imię, e-mail, treść) przetwarzane wyłącznie do obsługi zapytania —
 art. 6 ust. 1 lit. b/f RODO; retencja do 12 mies.; powiadomienie technicznie przez Telegram. Prawa: dostęp,
 sprostowanie, usunięcie, sprzeciw, skarga do PUODO.</li></ul>
+<h2 id="cookies">Cookies i Google Analytics 4</h2>
+<ul><li><strong>Tylko po zgodzie.</strong> Po kliknięciu „Akceptuję” w banerze uruchamiamy Google Analytics 4
+(dostawca: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Irlandia). Przed zgodą i po „Odrzucam”
+strona nie wysyła do Google żadnych danych.</li>
+<li><strong>Cel i podstawa:</strong> zbiorcza statystyka korzystania ze strony — odsłony, przewijanie, kliknięcia
+przycisków i linków, głosy, udostępnienia, zmiana języka, odtworzenie klipu, użycie formularza (bez jego treści).
+Podstawa: Twoja zgoda (art. 6 ust. 1 lit. a RODO i przepisy o cookies — Prawo komunikacji elektronicznej).
+Do Google nie trafiają imię, e-mail ani treść wiadomości; Google Signals i personalizacja reklam są wyłączone.</li>
+<li><strong>Cookies:</strong> <code>_ga</code> i <code>{ck}</code> (losowy identyfikator przeglądarki i sesji),
+tylko dla domeny patrol.flyreelstudio.eu, ważne do 400 dni. Dane zdarzeń są przechowywane w Google Analytics
+przez <strong>14 miesięcy</strong>, potem usuwane automatycznie.</li>
+<li><strong>Przekazanie poza EOG:</strong> Google może przetwarzać dane także w USA — na podstawie EU-U.S. Data
+Privacy Framework i standardowych klauzul umownych.</li>
+<li><strong>Wycofanie zgody:</strong> w każdej chwili linkiem „Ustawienia cookies” w stopce każdej strony →
+„Odrzucam”. Wyłączamy wtedy Google Analytics, usuwamy cookies <code>_ga*</code> i zapamiętujemy wybór. Wycofanie
+nie wpływa na zgodność z prawem wcześniejszego przetwarzania.</li>
+<li><strong>Pamięć przeglądarki (localStorage, nie cookies):</strong> Twój wybór zgody (<code>sa_consent</code>),
+język (<code>bp_lang</code>) i Twoje głosy do podświetlenia przycisków (<code>bp_voted2</code>) — zostają
+w Twojej przeglądarce i nie są wysyłane do Google.</li>
+<li><strong>Logi serwera:</strong> jak każdy serwer WWW, serwer zapisuje techniczne logi dostępu (m.in. adres IP,
+czas, adres podstrony, przeglądarka) dla bezpieczeństwa i zbiorczej statystyki odwiedzin (art. 6 ust. 1 lit. f
+RODO); logi są automatycznie rotowane i nadpisywane.</li></ul>
 <p class="note">Żaden wynik nie może być traktowany jako zarzut lub dowód wykroczenia wobec kogokolwiek.</p>"""
+    elif lang == "es":
+        body = f"""
+<h1>Política de privacidad y aviso legal</h1>
+<h2>Responsable</h2><p>Andrii Shramko, empresario individual (Polonia), NIF-IVA PL7543116302, zmei116@gmail.com.</p>
+<h2>Sitio y demostrador</h2>
+<ul><li>Sin tu consentimiento el sitio no guarda cookies de seguimiento, no ejecuta analítica en el navegador
+y no se conecta con Google. Google Analytics solo funciona después de pulsar «Aceptar» — detalles más abajo.</li>
+<li>El análisis se ejecuta sobre una cámara pública; caras y matrículas se difuminan, los fotogramas no se
+guardan y no se calculan embeddings. Solo se guardan contadores e instantáneas difuminadas de eventos para su
+verificación — sin datos personales en el resultado.</li>
+<li>Los votos de verificación (confirmar/refutar) sirven para calcular la precisión. El servidor guarda con cada
+voto la dirección IP solo para que haya un voto por evento desde cada dirección (el voto puede cambiarse); la IP
+no se publica ni se envía a Google.</li>
+<li>Formulario de contacto: los datos (nombre, e-mail, mensaje) se tratan solo para atender la consulta —
+art. 6.1.b/f RGPD; conservación hasta 12 meses; aviso técnico por Telegram. Derechos: acceso, rectificación,
+supresión, oposición, reclamación ante la autoridad de protección de datos (en Polonia, UODO).</li></ul>
+<h2 id="cookies">Cookies y Google Analytics 4</h2>
+<ul><li><strong>Solo con consentimiento.</strong> Tras pulsar «Aceptar» en el aviso activamos Google Analytics 4
+(proveedor: Google Ireland Ltd., Gordon House, Barrow Street, Dublín 4, Irlanda). Antes del consentimiento y tras
+«Rechazar» el sitio no envía ningún dato a Google.</li>
+<li><strong>Finalidad y base:</strong> estadística agregada de uso — páginas vistas, desplazamiento, clics en
+botones y enlaces, votos, compartidos, cambio de idioma, reproducción de clips, uso del formulario (sin su
+contenido). Base: tu consentimiento (art. 6.1.a RGPD y normativa de cookies). A Google no llegan nombre, e-mail ni
+mensaje; Google Signals y la personalización de anuncios están desactivados.</li>
+<li><strong>Cookies:</strong> <code>_ga</code> y <code>{ck}</code> (identificador aleatorio del navegador y de la
+sesión), solo para el dominio patrol.flyreelstudio.eu, válidas hasta 400 días. Los datos de eventos se conservan
+en Google Analytics <strong>14 meses</strong> y luego se borran automáticamente.</li>
+<li><strong>Transferencia fuera del EEE:</strong> Google puede tratar datos también en EE. UU., al amparo del EU-U.S.
+Data Privacy Framework y de cláusulas contractuales tipo.</li>
+<li><strong>Retirar el consentimiento:</strong> en cualquier momento con el enlace «Configuración de cookies» al pie
+de cada página → «Rechazar». Desactivamos Google Analytics, borramos las cookies <code>_ga*</code> y recordamos tu
+elección. La retirada no afecta a la licitud del tratamiento anterior.</li>
+<li><strong>Almacenamiento del navegador (localStorage, no cookies):</strong> tu elección de consentimiento
+(<code>sa_consent</code>), el idioma (<code>bp_lang</code>) y tus votos para resaltar los botones
+(<code>bp_voted2</code>) — se quedan en tu navegador y no se envían a Google.</li>
+<li><strong>Registros del servidor:</strong> como cualquier servidor web, guarda registros técnicos de acceso (entre
+otros, IP, hora, página, navegador) por seguridad y para estadística agregada de visitas (art. 6.1.f RGPD); los
+registros rotan y se sobrescriben automáticamente.</li></ul>
+<p class="note">Ningún resultado puede considerarse una acusación ni una prueba de infracción contra nadie.</p>"""
+    elif lang == "ru":
+        body = f"""
+<h1>Политика конфиденциальности и правовая информация</h1>
+<h2>Администратор данных</h2><p>Andrii Shramko, ИП (JDG, Польша), NIP PL7543116302, zmei116@gmail.com.</p>
+<h2>Сайт и демонстратор</h2>
+<ul><li>Без вашего согласия сайт не сохраняет отслеживающие cookie, не запускает аналитику в браузере
+и не обращается к Google. Google Analytics работает только после нажатия «Принять» — подробности ниже.</li>
+<li>Анализ идёт по публичной камере; лица и номера размываются, кадры не хранятся, эмбеддинги не строятся.
+Сохраняются только счётчики и размытые снимки событий для проверки — без персональных данных в результате.</li>
+<li>Голоса проверки (подтвердить/опровергнуть) нужны для расчёта точности. Вместе с голосом сервер сохраняет
+IP-адрес — только чтобы с одного адреса был один голос на событие (голос можно изменить); IP не публикуется
+и не передаётся в Google.</li>
+<li>Контактная форма: данные (имя, e-mail, сообщение) обрабатываются только для ответа на запрос —
+ст. 6(1)(b)/(f) GDPR; хранение до 12 месяцев; техническое уведомление через Telegram. Права: доступ,
+исправление, удаление, возражение, жалоба в надзорный орган (в Польше — UODO).</li></ul>
+<h2 id="cookies">Cookie и Google Analytics 4</h2>
+<ul><li><strong>Только с согласия.</strong> После нажатия «Принять» в баннере мы включаем Google Analytics 4
+(поставщик: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ирландия). До согласия и после «Отклонить»
+сайт не отправляет в Google никаких данных.</li>
+<li><strong>Цель и основание:</strong> сводная статистика использования сайта — просмотры страниц, прокрутка,
+нажатия кнопок и ссылок, голоса, репосты, смена языка, запуск клипа, работа с формой (без её содержимого).
+Основание: ваше согласие (ст. 6(1)(a) GDPR и правила о cookie). В Google не передаются имя, e-mail и текст
+сообщения; Google Signals и персонализация рекламы выключены.</li>
+<li><strong>Cookie:</strong> <code>_ga</code> и <code>{ck}</code> (случайный идентификатор браузера и сессии),
+только для домена patrol.flyreelstudio.eu, срок до 400 дней. Данные событий хранятся в Google Analytics
+<strong>14 месяцев</strong>, затем удаляются автоматически.</li>
+<li><strong>Передача за пределы ЕЭЗ:</strong> Google может обрабатывать данные и в США — на основании EU-U.S. Data
+Privacy Framework и стандартных договорных условий.</li>
+<li><strong>Отзыв согласия:</strong> в любой момент — ссылка «Настройки cookie» внизу каждой страницы →
+«Отклонить». Мы отключаем Google Analytics, удаляем cookie <code>_ga*</code> и запоминаем выбор. Отзыв не влияет
+на законность обработки до него.</li>
+<li><strong>Хранилище браузера (localStorage, не cookie):</strong> ваш выбор согласия (<code>sa_consent</code>),
+язык (<code>bp_lang</code>) и ваши голоса для подсветки кнопок (<code>bp_voted2</code>) — остаются в вашем
+браузере и не отправляются в Google.</li>
+<li><strong>Логи сервера:</strong> как любой веб-сервер, сервер пишет технические логи доступа (в т.ч. IP, время,
+адрес страницы, браузер) для безопасности и сводной статистики посещений (ст. 6(1)(f) GDPR); логи автоматически
+ротируются и перезаписываются.</li></ul>
+<p class="note">Никакой результат не может считаться обвинением или доказательством нарушения против кого-либо.</p>"""
     else:
-        body = """
+        body = f"""
 <h1>Privacy policy & legal notice</h1>
 <h2>Controller</h2><p>Andrii Shramko, sole trader (Poland), VAT PL7543116302, zmei116@gmail.com.</p>
 <h2>Site & demonstrator</h2>
-<ul><li>No tracking cookies and no behavioural analytics.</li>
+<ul><li>Without your consent the site sets no tracking cookies, runs no analytics in the browser and does not
+connect to Google. Google Analytics runs only after you click “Accept” — details below.</li>
 <li>Analysis runs on a public camera; faces and plates are blurred, frames are not stored, no embeddings are
 computed. Only counters and blurred event snapshots are saved for verification — no personal data in the output.</li>
-<li>Verification votes (confirm/refute) are stored anonymously (no personal data) to compute accuracy.</li>
+<li>Verification votes (confirm/refute) are used to compute accuracy. With each vote the server stores the IP
+address only so that one address gets one vote per event (the vote can be changed); the IP is not published and
+not sent to Google.</li>
 <li>Contact form: data (name, e-mail, message) processed solely to handle the inquiry — GDPR Art. 6(1)(b)/(f);
 retention up to 12 months; technical notification via Telegram. Rights: access, rectification, erasure,
 objection, complaint to the Polish DPA.</li></ul>
+<h2 id="cookies">Cookies & Google Analytics 4</h2>
+<ul><li><strong>Only with consent.</strong> When you click “Accept” in the banner we start Google Analytics 4
+(provider: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ireland). Before consent and after “Reject”
+the site sends no data to Google.</li>
+<li><strong>Purpose and legal basis:</strong> aggregate usage statistics — page views, scrolling, clicks on buttons
+and links, votes, shares, language switch, clip playback, use of the form (never its content). Basis: your consent
+(GDPR Art. 6(1)(a) and the cookie rules of the ePrivacy law). Name, e-mail and message never reach Google; Google
+Signals and ad personalisation are off.</li>
+<li><strong>Cookies:</strong> <code>_ga</code> and <code>{ck}</code> (a random browser and session identifier), for
+the domain patrol.flyreelstudio.eu only, valid for up to 400 days. Event data are kept in Google Analytics for
+<strong>14 months</strong> and then deleted automatically.</li>
+<li><strong>Transfer outside the EEA:</strong> Google may also process data in the USA — under the EU-U.S. Data
+Privacy Framework and standard contractual clauses.</li>
+<li><strong>Withdrawing consent:</strong> at any time via the “Cookie settings” link in the footer of every page →
+“Reject”. We then switch Google Analytics off, delete the <code>_ga*</code> cookies and remember your choice.
+Withdrawal does not affect the lawfulness of earlier processing.</li>
+<li><strong>Browser storage (localStorage, not cookies):</strong> your consent choice (<code>sa_consent</code>), the
+language (<code>bp_lang</code>) and your votes for highlighting the buttons (<code>bp_voted2</code>) — they stay in
+your browser and are not sent to Google.</li>
+<li><strong>Server logs:</strong> like any web server, the server keeps technical access logs (incl. IP address,
+time, page, browser) for security and aggregate visit statistics (GDPR Art. 6(1)(f)); the logs are rotated and
+overwritten automatically.</li></ul>
 <p class="note">No output may be treated as an accusation of, or evidence for, any offence.</p>"""
     return head(lang, "privacy") + body + foot(lang)
 
@@ -951,6 +1159,20 @@ footer{border-top:1px solid var(--line);margin-top:3rem;padding:1.6rem 1.4rem;co
 .fine{max-width:1160px;margin:1.2rem auto 0;font-size:.78rem}
 @media(max-width:820px){.hero{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}
 form{grid-template-columns:1fr}.foot-grid{grid-template-columns:1fr}.nav nav{display:none}}
+/* consent banner (GA4 only after "Akceptuję"); both buttons identical = equal weight */
+.sa-banner{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:90;
+width:min(760px,calc(100% - 24px));display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;
+background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:.85rem 1rem;
+box-shadow:0 8px 28px rgba(0,0,0,.55);color:var(--tx);font-size:.86rem}
+.sa-banner[hidden]{display:none!important}
+.sa-banner p{margin:0;flex:1 1 320px;color:#cdd6e0}
+.sa-banner code{font-size:.85em}
+.sa-actions{display:flex;gap:.6rem;flex:0 0 auto}
+.sa-btn{min-width:8.5rem;font:inherit;font-weight:700;font-size:.92rem;padding:.6rem 1rem;border-radius:10px;
+cursor:pointer;background:var(--panel);color:var(--tx);border:1px solid var(--acc)}
+.sa-btn:hover{background:#1f2b3b}
+.sa-btn:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+@media(max-width:520px){.sa-actions{width:100%}.sa-btn{flex:1;min-width:0}}
 """
 
 ROBOTS = """User-agent: *
@@ -1025,8 +1247,8 @@ def main():
     plans = [("en", PUB, list(gen)),
              ("en", os.path.join(PUB, "en"), list(gen)),   # /en/ kept for compat
              ("pl", os.path.join(PUB, "pl"), list(gen)),
-             ("es", os.path.join(PUB, "es"), ["index"]),
-             ("ru", os.path.join(PUB, "ru"), ["index"])]
+             ("es", os.path.join(PUB, "es"), sorted(LANG_PAGES["es"])),
+             ("ru", os.path.join(PUB, "ru"), sorted(LANG_PAGES["ru"]))]
     for lang, outdir, pages in plans:
         os.makedirs(outdir, exist_ok=True)
         for page in pages:
@@ -1049,8 +1271,41 @@ def main():
     admin_src = os.path.join(ROOT, "admin.html")
     if os.path.exists(admin_src):
         shutil.copy(admin_src, os.path.join(PUB, "admin.html"))
-    print(f"built {n} pages + assets into {PUB}")
+    shutil.copy(ANALYTICS_SRC, os.path.join(PUB, "shramko-analytics.js"))
+    bad = check_ga(PUB)
+    if bad:
+        print("BUILD REFUSED: GA4 id %s missing in %d page(s): %s" % (GA_ID, len(bad), ", ".join(bad[:8])),
+              file=sys.stderr)
+        sys.exit(1)
+    print(f"built {n} pages + assets into {PUB} (GA {GA_ID} verified in every page)")
+
+
+def check_ga(pub):
+    """Return the built pages (relative paths) that do NOT load the analytics module with
+    exactly GA_ID (admin.html is excluded on purpose). Also used by deploy/deploy_static.sh."""
+    want = f'data-ga="{GA_ID}"'
+    bad = [] if re.fullmatch(r"G-[A-Z0-9]{10}", GA_ID or "") else [f"GA_ID {GA_ID!r} is not a G- measurement id"]
+    js = os.path.join(pub, "shramko-analytics.js")
+    if not os.path.isfile(js) or "googletagmanager.com/gtag/js" not in open(js, encoding="utf-8").read():
+        bad.append("shramko-analytics.js")
+    pages = 0
+    for d, _, files in os.walk(pub):
+        for fn in files:
+            if not fn.endswith(".html") or fn == "admin.html":
+                continue
+            pages += 1
+            rel = os.path.relpath(os.path.join(d, fn), pub).replace(os.sep, "/")
+            html = open(os.path.join(d, fn), encoding="utf-8").read()
+            if want not in html or 'src="/shramko-analytics.js' not in html:
+                bad.append(rel)
+    if pages == 0:
+        bad.append("(no pages)")
+    return bad
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--check-ga":      # guard for an already built dir
+        missing = check_ga(sys.argv[2])
+        print("GA OK" if not missing else "GA MISSING: " + ", ".join(missing[:8]))
+        sys.exit(1 if missing else 0)
     main()

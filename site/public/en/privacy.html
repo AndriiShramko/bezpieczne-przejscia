@@ -13,54 +13,92 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a0e14">
 <link rel="canonical" href="https://patrol.flyreelstudio.eu/privacy.html">
-<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/privacy.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/privacy.html">
+<link rel="alternate" hreflang="en" href="https://patrol.flyreelstudio.eu/privacy.html"><link rel="alternate" hreflang="pl" href="https://patrol.flyreelstudio.eu/pl/privacy.html"><link rel="alternate" hreflang="es" href="https://patrol.flyreelstudio.eu/es/privacy.html"><link rel="alternate" hreflang="ru" href="https://patrol.flyreelstudio.eu/ru/privacy.html">
 <link rel="alternate" hreflang="x-default" href="https://patrol.flyreelstudio.eu/privacy.html">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v=dc763f252d">
 <script>
-/* auto-language: on first visit send the user to the version matching their
-   browser/system language; a manual switch (below) is remembered and wins. */
+/* auto-language — ONLY on the root "/" (x-default, WEB-TECH-BASELINE T9): send the
+   visitor to the version matching the browser language; a manual switch (below) is
+   remembered and wins. Localized URLs and deep links are never redirected. The
+   external referrer is kept for analytics (otherwise the session is self-referral). */
 (function(){try{
-  var chosen=localStorage.getItem('bp_lang');
-  var cur="en";
-  if(chosen){ if(chosen!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[chosen];
-      if(pre!==undefined)location.replace(pre+'/'+location.search+location.hash);} return; }
-  if(sessionStorage.getItem('bp_autolang'))return;
-  sessionStorage.setItem('bp_autolang','1');
-  var want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
-  if(!/^(en|pl|es|ru)$/.test(want))want='en';
-  if(want!==cur){var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
-    location.replace(pre+'/'+location.search+location.hash);}
+  if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
+  var cur="en", want=localStorage.getItem('bp_lang');
+  if(!want){
+    if(sessionStorage.getItem('bp_autolang'))return;
+    sessionStorage.setItem('bp_autolang','1');
+    want=((navigator.languages&&navigator.languages[0])||navigator.language||'en').slice(0,2).toLowerCase();
+  }
+  var pre={en:'',pl:'/pl',es:'/es',ru:'/ru'}[want];
+  if(pre===undefined||want===cur)return;
+  sessionStorage.setItem('sa_ref',document.referrer||'');
+  window.__saRedirect=1;
+  location.replace(pre+'/'+location.search+location.hash);
 }catch(e){}})();
 </script>
 
+<script defer src="/shramko-analytics.js?v=a15804e9a1" data-ga="G-4561KTT50X" data-skip-if="bp_admin"></script>
 </head>
 <body>
 <header class="nav">
  <a class="logo" href="/">🚸 <span>SafeCross</span></a>
  <nav><a href="/">Live</a><a href="/how-it-works.html">How it works</a><a href="/accuracy.html">Accuracy</a><a href="/resources.html">Deployment</a><a href="/compliance.html">Compliance / GDPR</a><a href="/contact.html">Contact</a></nav>
- <span class="langs"><a class="lang cur" data-lang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/privacy.html">EN</a><a class="lang" data-lang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/privacy.html">PL</a><a class="lang" data-lang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/">ES</a><a class="lang" data-lang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/">RU</a></span>
+ <span class="langs"><a class="lang cur" data-lang="en" hreflang="en" onclick="try{localStorage.setItem('bp_lang','en')}catch(e){}" href="/privacy.html">EN</a><a class="lang" data-lang="pl" hreflang="pl" onclick="try{localStorage.setItem('bp_lang','pl')}catch(e){}" href="/pl/privacy.html">PL</a><a class="lang" data-lang="es" hreflang="es" onclick="try{localStorage.setItem('bp_lang','es')}catch(e){}" href="/es/privacy.html">ES</a><a class="lang" data-lang="ru" hreflang="ru" onclick="try{localStorage.setItem('bp_lang','ru')}catch(e){}" href="/ru/privacy.html">RU</a></span>
 </header>
 <div class="disclaimer">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</div>
 <main>
 <h1>Privacy policy & legal notice</h1>
 <h2>Controller</h2><p>Andrii Shramko, sole trader (Poland), VAT PL7543116302, zmei116@gmail.com.</p>
 <h2>Site & demonstrator</h2>
-<ul><li>No tracking cookies and no behavioural analytics.</li>
+<ul><li>Without your consent the site sets no tracking cookies, runs no analytics in the browser and does not
+connect to Google. Google Analytics runs only after you click “Accept” — details below.</li>
 <li>Analysis runs on a public camera; faces and plates are blurred, frames are not stored, no embeddings are
 computed. Only counters and blurred event snapshots are saved for verification — no personal data in the output.</li>
-<li>Verification votes (confirm/refute) are stored anonymously (no personal data) to compute accuracy.</li>
+<li>Verification votes (confirm/refute) are used to compute accuracy. With each vote the server stores the IP
+address only so that one address gets one vote per event (the vote can be changed); the IP is not published and
+not sent to Google.</li>
 <li>Contact form: data (name, e-mail, message) processed solely to handle the inquiry — GDPR Art. 6(1)(b)/(f);
 retention up to 12 months; technical notification via Telegram. Rights: access, rectification, erasure,
 objection, complaint to the Polish DPA.</li></ul>
+<h2 id="cookies">Cookies & Google Analytics 4</h2>
+<ul><li><strong>Only with consent.</strong> When you click “Accept” in the banner we start Google Analytics 4
+(provider: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ireland). Before consent and after “Reject”
+the site sends no data to Google.</li>
+<li><strong>Purpose and legal basis:</strong> aggregate usage statistics — page views, scrolling, clicks on buttons
+and links, votes, shares, language switch, clip playback, use of the form (never its content). Basis: your consent
+(GDPR Art. 6(1)(a) and the cookie rules of the ePrivacy law). Name, e-mail and message never reach Google; Google
+Signals and ad personalisation are off.</li>
+<li><strong>Cookies:</strong> <code>_ga</code> and <code>_ga_4561KTT50X</code> (a random browser and session identifier), for
+the domain patrol.flyreelstudio.eu only, valid for up to 400 days. Event data are kept in Google Analytics for
+<strong>14 months</strong> and then deleted automatically.</li>
+<li><strong>Transfer outside the EEA:</strong> Google may also process data in the USA — under the EU-U.S. Data
+Privacy Framework and standard contractual clauses.</li>
+<li><strong>Withdrawing consent:</strong> at any time via the “Cookie settings” link in the footer of every page →
+“Reject”. We then switch Google Analytics off, delete the <code>_ga*</code> cookies and remember your choice.
+Withdrawal does not affect the lawfulness of earlier processing.</li>
+<li><strong>Browser storage (localStorage, not cookies):</strong> your consent choice (<code>sa_consent</code>), the
+language (<code>bp_lang</code>) and your votes for highlighting the buttons (<code>bp_voted2</code>) — they stay in
+your browser and are not sent to Google.</li>
+<li><strong>Server logs:</strong> like any web server, the server keeps technical access logs (incl. IP address,
+time, page, browser) for security and aggregate visit statistics (GDPR Art. 6(1)(f)); the logs are rotated and
+overwritten automatically.</li></ul>
 <p class="note">No output may be treated as an accusation of, or evidence for, any offence.</p></main>
 <footer>
  <div class="foot-grid">
   <div><strong>🚸 SafeCross</strong><p class="muted">Technology demonstrator — it shows what video analysis can do for pedestrian safety. It is NOT official surveillance or law enforcement, imposes no penalties and identifies no persons (faces and plates are blurred). Behavioural readouts are indicative and are verified by humans.</p></div>
   <div>Data controller (demo): Andrii Shramko, sole trader (PL), VAT PL7543116302<br><a href="/privacy.html">Privacy</a> ·
+   <a href="/privacy.html#cookies" data-sa-consent="settings">Cookie settings</a> ·
    <a href="mailto:zmei116@gmail.com">zmei116@gmail.com</a> ·
-   <a href="https://www.linkedin.com/in/andriishramko" rel="me">LinkedIn</a></div>
+   <a href="https://www.linkedin.com/in/andriishramko" rel="me" data-cta="linkedin">LinkedIn</a></div>
  </div>
  <p class="fine">Bezpieczne Przejścia / SafeCross · privacy-first road-safety analytics · Andrii Shramko / Shramko Research Team ·
-  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia">GitHub (Apache-2.0)</a></p>
+  <a href="https://github.com/AndriiShramko/bezpieczne-przejscia" data-cta="github_repo">GitHub (Apache-2.0)</a></p>
 </footer>
+<div id="sa-banner" class="sa-banner" role="region" aria-label="Analytics cookie consent" hidden>
+ <p>With your consent we use Google Analytics 4 (cookies <code>_ga</code>) to see how the site is used. Without consent nothing is sent to Google. You can withdraw consent at any time via “Cookie settings” in the footer. <a href="/privacy.html#cookies">Privacy policy</a></p>
+ <div class="sa-actions">
+  <button type="button" class="sa-btn" data-sa-consent="reject">Reject</button>
+  <button type="button" class="sa-btn" data-sa-consent="accept">Accept</button>
+ </div>
+</div>
 </body></html>
