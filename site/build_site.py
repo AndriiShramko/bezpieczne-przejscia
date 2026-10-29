@@ -828,9 +828,11 @@ nie powstają embeddingi. Zapisywane są liczniki i rozmyte zrzuty zdarzeń do w
 <li>Głosy weryfikacyjne (potwierdź/odrzuć) służą do liczenia trafności. Serwer zapisuje przy głosie adres IP
 wyłącznie po to, by z jednego adresu był jeden głos na zdarzenie (głos można zmienić); IP nie jest publikowane
 ani przekazywane do Google.</li>
-<li>Formularz kontaktowy: dane (imię, e-mail, treść) przetwarzane wyłącznie do obsługi zapytania —
-art. 6 ust. 1 lit. b/f RODO; retencja do 12 mies.; powiadomienie technicznie przez Telegram. Prawa: dostęp,
-sprostowanie, usunięcie, sprzeciw, skarga do PUODO.</li></ul>
+<li>Formularz kontaktowy: dane (imię, e-mail, treść) przetwarzamy, żeby odpowiedzieć na zapytanie i móc
+skontaktować się z Tobą ponownie w sprawie współpracy — art. 6 ust. 1 lit. b/f RODO; powiadomienie technicznie
+przez Telegram. Dane kontaktowe przechowujemy bez z góry określonego terminu — do czasu, aż poprosisz o ich
+usunięcie lub wniesiesz sprzeciw; wystarczy napisać na zmei116@gmail.com. Prawa: dostęp, sprostowanie,
+usunięcie, sprzeciw, skarga do PUODO.</li></ul>
 <h2 id="cookies">Cookies i Google Analytics 4</h2>
 <ul><li><strong>Tylko po zgodzie.</strong> Po kliknięciu „Akceptuję” w banerze uruchamiamy Google Analytics 4
 (dostawca: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Irlandia). Przed zgodą i po „Odrzucam”
@@ -867,9 +869,11 @@ verificación — sin datos personales en el resultado.</li>
 <li>Los votos de verificación (confirmar/refutar) sirven para calcular la precisión. El servidor guarda con cada
 voto la dirección IP solo para que haya un voto por evento desde cada dirección (el voto puede cambiarse); la IP
 no se publica ni se envía a Google.</li>
-<li>Formulario de contacto: los datos (nombre, e-mail, mensaje) se tratan solo para atender la consulta —
-art. 6.1.b/f RGPD; conservación hasta 12 meses; aviso técnico por Telegram. Derechos: acceso, rectificación,
-supresión, oposición, reclamación ante la autoridad de protección de datos (en Polonia, UODO).</li></ul>
+<li>Formulario de contacto: tratamos los datos (nombre, e-mail, mensaje) para responder a la consulta y poder
+volver a contactarte sobre una posible colaboración — art. 6.1.b/f RGPD; aviso técnico por Telegram. Conservamos
+los datos de contacto sin un plazo fijo, hasta que pidas su supresión o te opongas; basta con escribir a
+zmei116@gmail.com. Derechos: acceso, rectificación, supresión, oposición, reclamación ante la autoridad de
+protección de datos (en Polonia, UODO).</li></ul>
 <h2 id="cookies">Cookies y Google Analytics 4</h2>
 <ul><li><strong>Solo con consentimiento.</strong> Tras pulsar «Aceptar» en el aviso activamos Google Analytics 4
 (proveedor: Google Ireland Ltd., Gordon House, Barrow Street, Dublín 4, Irlanda). Antes del consentimiento y tras
@@ -905,9 +909,11 @@ registros rotan y se sobrescriben automáticamente.</li></ul>
 <li>Голоса проверки (подтвердить/опровергнуть) нужны для расчёта точности. Вместе с голосом сервер сохраняет
 IP-адрес — только чтобы с одного адреса был один голос на событие (голос можно изменить); IP не публикуется
 и не передаётся в Google.</li>
-<li>Контактная форма: данные (имя, e-mail, сообщение) обрабатываются только для ответа на запрос —
-ст. 6(1)(b)/(f) GDPR; хранение до 12 месяцев; техническое уведомление через Telegram. Права: доступ,
-исправление, удаление, возражение, жалоба в надзорный орган (в Польше — UODO).</li></ul>
+<li>Контактная форма: данные (имя, e-mail, сообщение) мы обрабатываем, чтобы ответить на запрос и иметь
+возможность снова связаться с вами по поводу сотрудничества — ст. 6(1)(b)/(f) GDPR; техническое уведомление
+через Telegram. Контактные данные храним без заранее установленного срока — пока вы не попросите их удалить
+или не возразите против обработки; достаточно написать на zmei116@gmail.com. Права: доступ, исправление,
+удаление, возражение, жалоба в надзорный орган (в Польше — UODO).</li></ul>
 <h2 id="cookies">Cookie и Google Analytics 4</h2>
 <ul><li><strong>Только с согласия.</strong> После нажатия «Принять» в баннере мы включаем Google Analytics 4
 (поставщик: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ирландия). До согласия и после «Отклонить»
@@ -943,9 +949,10 @@ computed. Only counters and blurred event snapshots are saved for verification �
 <li>Verification votes (confirm/refute) are used to compute accuracy. With each vote the server stores the IP
 address only so that one address gets one vote per event (the vote can be changed); the IP is not published and
 not sent to Google.</li>
-<li>Contact form: data (name, e-mail, message) processed solely to handle the inquiry — GDPR Art. 6(1)(b)/(f);
-retention up to 12 months; technical notification via Telegram. Rights: access, rectification, erasure,
-objection, complaint to the Polish DPA.</li></ul>
+<li>Contact form: we process the data (name, e-mail, message) to answer your inquiry and to be able to contact
+you again later about working together — GDPR Art. 6(1)(b)/(f); technical notification via Telegram. We keep
+contact data without a fixed time limit, until you ask us to delete it or object; just write to
+zmei116@gmail.com. Rights: access, rectification, erasure, objection, complaint to the Polish DPA.</li></ul>
 <h2 id="cookies">Cookies & Google Analytics 4</h2>
 <ul><li><strong>Only with consent.</strong> When you click “Accept” in the banner we start Google Analytics 4
 (provider: Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Ireland). Before consent and after “Reject”
