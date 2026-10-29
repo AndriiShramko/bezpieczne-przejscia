@@ -50,7 +50,10 @@ ssh "${SSH_OPTS[@]}" "$HOST" "set -e; cd ~/patrol
   grep -q 'data-ga=\"$GA_ID\"' dist/index.html && echo 'extracted, GA id present on the server'"
 
 # --- live check ----------------------------------------------------------------------------------------
+# (no `curl | grep -q` here: under pipefail grep -q exits early, curl dies with SIGPIPE/23 and a page
+#  that DOES carry the id reads as a failure — happened on 2026-10-29)
 for u in / /pl/ /pl/privacy.html /es/privacy.html; do
-  curl -fsS "$LIVE$u?nocache=$STAMP" | grep -q "data-ga=\"$GA_ID\"" || { echo "LIVE CHECK FAILED on $u - roll back with dist.bak-$STAMP" >&2; exit 2; }
+  page="$(curl -fsS "$LIVE$u?nocache=$STAMP" || true)"
+  grep -q "data-ga=\"$GA_ID\"" <<<"$page" || { echo "LIVE CHECK FAILED on $u - roll back with dist.bak-$STAMP" >&2; exit 2; }
 done
 echo "deployed release $STAMP; rollback: cd ~/patrol && rsync -a --delete dist.bak-$STAMP/ dist/"
